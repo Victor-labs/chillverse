@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chillverse — Play. Connect. Dominate.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #04040f;
+  --bg2: #080820;
+  --surface: #0f0f28;
+  --surface2: #16163a;
+  --border: rgba(108, 80, 255, 0.16);
+  --border-bright: rgba(108, 80, 255, 0.42);
+  --violet: #6c50ff;
+  --violet-soft: #a78bfa;
+  --cyan: #00e5ff;
+  --pink: #ff4ecd;
+  --amber: #ffb800;
+  --green: #00ff87;
+  --text: #eeeaff;
+  --text-secondary: #9b96c0;
+  --text-muted: #5a5678;
+  --radius: 16px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ═══ NAV ═══ */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 64px;
+  background: rgba(4, 4, 15, 0.72);
+  backdrop-filter: blur(28px);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+
+.logo-mark { width: 38px; height: 38px; perspective: 130px; }
+.logo-cube {
+  width: 34px; height: 34px;
+  position: relative; transform-style: preserve-3d;
+  animation: nav-spin 16s linear infinite;
+}
+.logo-cube .f {
+  position: absolute; width: 34px; height: 34px;
+  border: 1.5px solid rgba(108,80,255,0.7);
+  background: rgba(108,80,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; font-family: 'Space Mono', monospace;
+  color: var(--violet-soft);
+}
+.f.fr { transform: translateZ(17px); }
+.f.bk { transform: rotateY(180deg) translateZ(17px); }
+.f.rt { transform: rotateY(90deg) translateZ(17px); border-color: rgba(0,229,255,0.5); background: rgba(0,229,255,0.07); }
+.f.lt { transform: rotateY(-90deg) translateZ(17px); border-color: rgba(255,78,205,0.5); background: rgba(255,78,205,0.07); }
+.f.tp { transform: rotateX(90deg) translateZ(17px); border-color: rgba(0,255,135,0.5); background: rgba(0,255,135,0.07); }
+.f.bt { transform: rotateX(-90deg) translateZ(17px); border-color: rgba(255,184,0,0.5); background: rgba(255,184,0,0.07); }
+@keyframes nav-spin { to { transform: rotateX(20deg) rotateY(360deg); } }
+
+.logo-text {
+  font-size: 21px; font-weight: 700; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--violet-soft) 0%, var(--cyan) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+.nav-links a { text-decoration: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+
+.nav-cta {
+  padding: 10px 22px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--violet) 0%, #3d1fb5 100%);
+  color: #fff; font-size: 14px; font-weight: 600;
+  text-decoration: none; border: none; cursor: pointer;
+  box-shadow: 0 4px 24px rgba(108,80,255,0.45);
+  transition: opacity 0.2s, transform 0.15s;
+}
+.nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+
+/* ═══ HERO ═══ */
+.hero {
+  min-height: 100vh;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  padding: 130px 64px 100px;
+}
+
+/* 3D BACKGROUND SCENE */
+.hero-3d-bg {
+  position: absolute; inset: 0; z-index: 0;
+  display: flex; align-items: center; justify-content: center;
+  perspective: 900px;
+  pointer-events: none;
+}
+
+.scene-wrap {
+  width: 700px; height: 700px;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+/* big rotating ring of cubes */
+.ring-cube {
+  position: absolute;
+  width: 70px; height: 70px;
+  transform-style: preserve-3d;
+}
+
+.ring-cube .rc-face {
+  position: absolute; width: 70px; height: 70px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.rc-fr { transform: translateZ(35px); }
+.rc-bk { transform: rotateY(180deg) translateZ(35px); }
+.rc-rt { transform: rotateY(90deg)  translateZ(35px); }
+.rc-lt { transform: rotateY(-90deg) translateZ(35px); }
+.rc-tp { transform: rotateX(90deg)  translateZ(35px); }
+.rc-bt { transform: rotateX(-90deg) translateZ(35px); }
+
+/* center mega-cube */
+.mega-cube {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  width: 160px; height: 160px;
+  transform-style: preserve-3d;
+}
+
+.mega-cube .mf {
+  position: absolute; width: 160px; height: 160px;
+  border: 1.5px solid rgba(108,80,255,0.5);
+  background: rgba(108,80,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42px;
+  border-radius: 16px;
+}
+.mf.mfr { transform: translateZ(80px); }
+.mf.mbk { transform: rotateY(180deg) translateZ(80px); }
+.mf.mrt { transform: rotateY(90deg)  translateZ(80px); border-color: rgba(0,229,255,0.4); background: rgba(0,229,255,0.03); }
+.mf.mlt { transform: rotateY(-90deg) translateZ(80px); border-color: rgba(255,78,205,0.4); background: rgba(255,78,205,0.03); }
+.mf.mtp { transform: rotateX(90deg)  translateZ(80px); border-color: rgba(0,255,135,0.4); background: rgba(0,255,135,0.03); }
+.mf.mbt { transform: rotateX(-90deg) translateZ(80px); border-color: rgba(255,184,0,0.4); background: rgba(255,184,0,0.03); }
+
+/* grid floor */
+.grid-floor {
+  position: absolute; left: 50%; top: 50%;
+  width: 900px; height: 900px;
+  background-image:
+    linear-gradient(rgba(108,80,255,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,80,255,0.12) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform: translateX(-50%) translateY(-50%) rotateX(75deg);
+  opacity: 0.6;
+}
+
+/* radial fade mask over 3d scene */
+.hero-3d-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, var(--bg) 75%);
+}
+
+/* glows */
+.glow-violet { position: absolute; width: 480px; height: 480px; border-radius: 50%; background: rgba(108,80,255,0.18); filter: blur(90px); top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.glow-cyan   { position: absolute; width: 320px; height: 320px; border-radius: 50%; background: rgba(0,229,255,0.1); filter: blur(80px); top: 30%; right: 10%; pointer-events: none; }
+.glow-pink   { position: absolute; width: 280px; height: 280px; border-radius: 50%; background: rgba(255,78,205,0.1); filter: blur(80px); bottom: 20%; left: 8%; pointer-events: none; }
+
+/* hero content */
+.hero-content {
+  position: relative; z-index: 2;
+  text-align: center; max-width: 860px;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 50px;
+  border: 1px solid rgba(108,80,255,0.35);
+  background: rgba(108,80,255,0.1);
+  font-size: 13px; font-weight: 600; color: var(--violet-soft);
+  letter-spacing: 0.6px; margin-bottom: 28px;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+  50% { opacity: 0.6; box-shadow: 0 0 2px var(--green); }
+}
+
+.hero-title {
+  font-size: clamp(58px, 9vw, 100px);
+  font-weight: 700; line-height: 0.95; letter-spacing: -4px;
+  margin-bottom: 28px;
+}
+
+.ht-1 { display: block; color: var(--text); }
+.ht-2 {
+  display: block;
+  background: linear-gradient(135deg, var(--violet-soft) 0%, var(--cyan) 50%, var(--pink) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.ht-3 { display: block; color: rgba(238,234,255,0.55); font-size: 0.55em; letter-spacing: -1px; margin-top: 10px; font-weight: 400; }
+
+.hero-sub {
+  font-size: 19px; color: var(--text-secondary);
+  max-width: 520px; margin: 0 auto 48px; line-height: 1.65;
+}
+
+.hero-btns { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+.btn-hero {
+  padding: 17px 40px; border-radius: 50px;
+  font-size: 16px; font-weight: 700;
+  text-decoration: none; border: none; cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.2px;
+}
+
+.btn-hero.primary {
+  background: linear-gradient(135deg, var(--violet) 0%, #3d1fb5 100%);
+  color: #fff;
+  box-shadow: 0 8px 36px rgba(108,80,255,0.5);
+}
+.btn-hero.primary:hover { transform: translateY(-3px); box-shadow: 0 14px 48px rgba(108,80,255,0.7); }
+
+.btn-hero.ghost {
+  background: transparent;
+  border: 1.5px solid var(--border-bright);
+  color: var(--text);
+}
+.btn-hero.ghost:hover { background: rgba(108,80,255,0.08); border-color: var(--violet-soft); }
+
+.hero-scroll-hint {
+  margin-top: 52px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-muted); font-family: 'Space Mono', monospace;
+}
+.scroll-line {
+  width: 40px; height: 1px; background: linear-gradient(90deg, transparent, var(--border-bright));
+}
+.scroll-line.r { background: linear-gradient(90deg, var(--border-bright), transparent); }
+
+/* ═══ STATS ═══ */
+.stats-strip {
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  padding: 36px 64px;
+  display: flex; align-items: center; justify-content: center; gap: 72px; flex-wrap: wrap;
+}
+
+.stat { text-align: center; }
+.stat-n {
+  font-size: 38px; font-weight: 700; font-family: 'Space Mono', monospace; line-height: 1;
+  background: linear-gradient(135deg, var(--violet-soft), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.stat-l { font-size: 12px; color: var(--text-muted); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 6px; }
+
+/* ═══ FEATURES ═══ */
+.features-wrap { padding: 100px 64px; max-width: 1300px; margin: 0 auto; }
+
+.sec-tag { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--violet); margin-bottom: 14px; }
+.sec-h { font-size: clamp(36px, 4.5vw, 54px); font-weight: 700; line-height: 1.08; letter-spacing: -1.5px; margin-bottom: 14px; }
+.sec-p { font-size: 17px; color: var(--text-secondary); max-width: 480px; line-height: 1.65; }
+
+.feat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 18px; margin-top: 56px;
+}
+
+.fc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 30px;
+  position: relative; overflow: hidden;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  cursor: default;
+}
+.fc::before {
+  content: ''; position: absolute;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: var(--fc-glow, rgba(108,80,255,0.12));
+  top: -60px; right: -60px;
+  filter: blur(50px); opacity: 0; transition: opacity 0.3s;
+}
+.fc:hover::before { opacity: 1; }
+.fc:hover { transform: translateY(-7px); border-color: var(--fc-border, rgba(108,80,255,0.45)); box-shadow: var(--fc-shadow, 0 20px 60px rgba(108,80,255,0.18)); }
+
+.fc.v { --fc-glow: rgba(108,80,255,0.14); --fc-border: rgba(108,80,255,0.5); --fc-shadow: 0 20px 60px rgba(108,80,255,0.2); }
+.fc.c { --fc-glow: rgba(0,229,255,0.1); --fc-border: rgba(0,229,255,0.4); --fc-shadow: 0 20px 60px rgba(0,229,255,0.14); }
+.fc.p { --fc-glow: rgba(255,78,205,0.1); --fc-border: rgba(255,78,205,0.4); --fc-shadow: 0 20px 60px rgba(255,78,205,0.14); }
+.fc.a { --fc-glow: rgba(255,184,0,0.08); --fc-border: rgba(255,184,0,0.35); --fc-shadow: 0 20px 60px rgba(255,184,0,0.12); }
+.fc.g { --fc-glow: rgba(0,255,135,0.08); --fc-border: rgba(0,255,135,0.35); --fc-shadow: 0 20px 60px rgba(0,255,135,0.12); }
+
+.fc-icon {
+  width: 50px; height: 50px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 18px;
+}
+.fc.v .fc-icon { background: rgba(108,80,255,0.15); }
+.fc.c .fc-icon { background: rgba(0,229,255,0.12); }
+.fc.p .fc-icon { background: rgba(255,78,205,0.12); }
+.fc.a .fc-icon { background: rgba(255,184,0,0.12); }
+.fc.g .fc-icon { background: rgba(0,255,135,0.1); }
+
+.fc-title { font-size: 19px; font-weight: 600; margin-bottom: 10px; }
+.fc-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.65; }
+
+.fc-pill {
+  display: inline-block; margin-top: 16px;
+  padding: 4px 12px; border-radius: 50px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+}
+.fc.v .fc-pill { background: rgba(108,80,255,0.15); color: var(--violet-soft); }
+.fc.c .fc-pill { background: rgba(0,229,255,0.12); color: var(--cyan); }
+.fc.p .fc-pill { background: rgba(255,78,205,0.12); color: var(--pink); }
+.fc.a .fc-pill { background: rgba(255,184,0,0.1); color: var(--amber); }
+.fc.g .fc-pill { background: rgba(0,255,135,0.1); color: var(--green); }
+
+/* ═══ LEADERBOARD SCENE ═══ */
+.lb-section {
+  padding: 80px 64px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 50%, var(--bg) 100%);
+}
+
+.lb-inner { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+
+.lb-visual {
+  perspective: 700px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.lb-card-wrap {
+  animation: lb-float 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes lb-float {
+  0%, 100% { transform: rotateX(6deg) rotateY(-10deg) translateY(0); }
+  50%       { transform: rotateX(3deg) rotateY(-6deg) translateY(-14px); }
+}
+
+.lb-card {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 22px; padding: 28px; width: 320px;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 80px rgba(108,80,255,0.2);
+}
+
+.lb-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px;
+}
+.lb-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; font-family: 'Space Mono', monospace; }
+.lb-live { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--green); font-weight: 600; }
+.lb-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: live-pulse 2s infinite; }
+
+.lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  margin-bottom: 8px; transition: background 0.2s;
+}
+.lb-row:hover { background: var(--surface2); }
+
+.lb-rank { width: 22px; text-align: center; font-size: 12px; font-weight: 700; font-family: 'Space Mono', monospace; color: var(--text-muted); }
+.lb-rank.gold   { color: var(--amber); }
+.lb-rank.silver { color: #c0c0c0; }
+.lb-rank.bronze { color: #cd7f32; }
+
+.lb-av {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+
+.lb-name { flex: 1; font-size: 13px; font-weight: 600; }
+.lb-score { font-size: 12px; font-weight: 700; font-family: 'Space Mono', monospace; color: var(--violet-soft); }
+.lb-streak { font-size: 10px; color: var(--amber); margin-left: 4px; }
+
+.lb-badge-wrap {
+  position: absolute;
+  width: 320px;
+}
+
+.lb-badge {
+  position: absolute;
+  background: var(--surface);
+  border-radius: 12px; padding: 10px 14px;
+  font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  white-space: nowrap; border: 1px solid;
+}
+.lbb-1 { top: -18px; right: -50px; color: var(--pink); border-color: rgba(255,78,205,0.4); animation: bfloat 4s ease-in-out infinite; }
+.lbb-2 { bottom: 10px; left: -60px; color: var(--cyan); border-color: rgba(0,229,255,0.35); animation: bfloat 4s ease-in-out infinite 2.2s; }
+@keyframes bfloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+
+/* ═══ HOW IT WORKS ═══ */
+.how-wrap { padding: 100px 64px; max-width: 1300px; margin: 0 auto; }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 28px; margin-top: 56px; position: relative; }
+
+.steps::before {
+  content: ''; position: absolute;
+  top: 34px; left: 80px; right: 80px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+}
+
+.step { text-align: center; }
+.step-n {
+  width: 68px; height: 68px; border-radius: 50%;
+  border: 1.5px solid var(--border-bright);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; font-family: 'Space Mono', monospace;
+  margin: 0 auto 18px; color: var(--violet-soft);
+  position: relative; z-index: 1;
+  transition: background 0.25s, border-color 0.25s;
+}
+.step:hover .step-n { background: rgba(108,80,255,0.15); border-color: var(--violet); }
+.step-t { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.step-d { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ═══ COMMUNITY SCROLL ═══ */
+.community-section {
+  padding: 80px 0;
+  background: var(--bg2);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  overflow: hidden;
+}
+
+.community-head { padding: 0 64px 40px; max-width: 1300px; margin: 0 auto; }
+
+.t-scroll { display: flex; gap: 18px; width: max-content; animation: t-run 32s linear infinite; padding: 4px 64px; }
+.t-scroll:hover { animation-play-state: paused; }
+@keyframes t-run { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+.tc {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px 26px;
+  width: 290px; flex-shrink: 0;
+}
+.tc-text { font-size: 13px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 14px; }
+.tc-who { display: flex; align-items: center; gap: 10px; }
+.tc-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.tc-name { font-size: 13px; font-weight: 600; }
+.tc-role { font-size: 11px; color: var(--text-muted); }
+.tc-stars { color: var(--amber); font-size: 11px; margin-bottom: 10px; }
+
+/* ═══ BRANCH CALLOUT ═══ */
+.branch-section {
+  padding: 80px 64px;
+  max-width: 1300px; margin: 0 auto;
+}
+
+.branch-card {
+  background: var(--surface);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 20px;
+  padding: 48px 52px;
+  display: flex; align-items: center; justify-content: space-between; gap: 48px;
+  flex-wrap: wrap;
+  position: relative; overflow: hidden;
+}
+.branch-card::before {
+  content: '';
+  position: absolute; top: -80px; right: -80px;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: rgba(0,229,255,0.06); filter: blur(60px);
+}
+
+.branch-text h3 { font-size: 28px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.5px; }
+.branch-text p { font-size: 16px; color: var(--text-secondary); max-width: 480px; line-height: 1.65; }
+.branch-text .branch-tag {
+  display: inline-block; margin-bottom: 14px;
+  padding: 4px 14px; border-radius: 50px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  background: rgba(0,229,255,0.1); color: var(--cyan);
+  border: 1px solid rgba(0,229,255,0.25);
+}
+
+.branch-btn {
+  padding: 14px 32px; border-radius: 50px;
+  background: transparent; border: 1.5px solid rgba(0,229,255,0.45);
+  color: var(--cyan); font-size: 15px; font-weight: 600;
+  text-decoration: none; white-space: nowrap;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+.branch-btn:hover { background: rgba(0,229,255,0.08); transform: translateY(-2px); }
+
+/* ═══ CTA ═══ */
+.cta-wrap { padding: 120px 64px; text-align: center; max-width: 820px; margin: 0 auto; }
+
+.cta-h {
+  font-size: clamp(42px, 6vw, 68px); font-weight: 700;
+  line-height: 1.0; letter-spacing: -2.5px; margin-bottom: 18px;
+}
+
+.cta-p { font-size: 18px; color: var(--text-secondary); margin-bottom: 44px; }
+
+.cta-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+.btn-cta-main {
+  padding: 18px 46px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--violet) 0%, #3d1fb5 100%);
+  color: #fff; font-size: 17px; font-weight: 700;
+  text-decoration: none; border: none; cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  box-shadow: 0 10px 40px rgba(108,80,255,0.55);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-cta-main:hover { transform: translateY(-3px); box-shadow: 0 18px 56px rgba(108,80,255,0.7); }
+
+.btn-cta-ghost {
+  padding: 18px 46px; border-radius: 50px;
+  background: transparent; border: 1.5px solid var(--border-bright);
+  color: var(--text); font-size: 17px; font-weight: 500;
+  text-decoration: none; font-family: 'Space Grotesk', sans-serif;
+  transition: background 0.2s;
+}
+.btn-cta-ghost:hover { background: rgba(108,80,255,0.08); }
+
+/* ═══ FOOTER ═══ */
+footer {
+  padding: 36px 64px;
+  border-top: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  color: var(--text-muted); font-size: 13px;
+}
+.footer-brand { font-size: 17px; font-weight: 700; background: linear-gradient(135deg,#a78bfa,#00e5ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--text-secondary); }
+
+/* ═══ REVEAL ═══ */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.55s ease, transform 0.55s ease; }
+.reveal.in { opacity: 1; transform: translateY(0); }
+
+@media(max-width:768px){
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  .hero { padding: 100px 20px 80px; }
+  .stats-strip { padding: 28px 20px; gap: 36px; }
+  .features-wrap, .how-wrap, .branch-section { padding: 60px 20px; }
+  .lb-section { padding: 60px 20px; }
+  .lb-inner { grid-template-columns: 1fr; }
+  .lb-visual { display: none; }
+  .community-head { padding: 0 20px 32px; }
+  .cta-wrap { padding: 80px 20px; }
+  footer { padding: 28px 20px; flex-direction: column; }
+  .branch-card { padding: 32px 24px; }
+  .hero-title { letter-spacing: -2px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="logo-mark">
+      <div class="logo-cube">
+        <div class="f fr">CV</div>
+        <div class="f bk"></div>
+        <div class="f rt"></div>
+        <div class="f lt"></div>
+        <div class="f tp"></div>
+        <div class="f bt"></div>
+      </div>
+    </div>
+    <span class="logo-text">Chillverse</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#leaderboard">Leaderboard</a></li>
+    <li><a href="#community">Community</a></li>
+  </ul>
+  <a href="https://cvwtplatform.vercel.app/" target="_blank" class="nav-cta">Play Now →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+
+  <!-- 3D BACKGROUND SCENE -->
+  <div class="hero-3d-bg">
+    <div class="glow-violet"></div>
+    <div class="glow-cyan"></div>
+    <div class="glow-pink"></div>
+    <div class="grid-floor"></div>
+    <!-- Mega cube dead center -->
+    <div class="mega-cube" id="megaCube">
+      <div class="mf mfr">🎮</div>
+      <div class="mf mbk">🏆</div>
+      <div class="mf mrt">🔥</div>
+      <div class="mf mlt">💬</div>
+      <div class="mf mtp">⚡</div>
+      <div class="mf mbt">👾</div>
+    </div>
+    <!-- Orbiting ring cubes -->
+    <div id="ringWrap" style="position:absolute;width:700px;height:700px;transform-style:preserve-3d;"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span class="live-dot"></span>
+      Games · Profiles · Streaks · Chat
+    </div>
+    <h1 class="hero-title">
+      <span class="ht-1">Play. Win.</span>
+      <span class="ht-2">Dominate.</span>
+      <span class="ht-3">Your universe. Your rules.</span>
+    </h1>
+    <p class="hero-sub">
+      Compete, build your profile, keep your streak alive, and chat with your crew — all inside one electrifying platform.
+    </p>
+    <div class="hero-btns">
+      <a href="https://cvwtplatform.vercel.app/" target="_blank" class="btn-hero primary">Enter Chillverse →</a>
+      <a href="#features" class="btn-hero ghost">See what's inside</a>
+    </div>
+    <div class="hero-scroll-hint">
+      <div class="scroll-line"></div>
+      scroll to explore
+      <div class="scroll-line r"></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stat reveal"><div class="stat-n">120K+</div><div class="stat-l">Players Online</div></div>
+  <div class="stat reveal" style="transition-delay:.1s"><div class="stat-n">5M+</div><div class="stat-l">Games Played</div></div>
+  <div class="stat reveal" style="transition-delay:.2s"><div class="stat-n">850K</div><div class="stat-l">Streaks Active</div></div>
+  <div class="stat reveal" style="transition-delay:.3s"><div class="stat-n">#1</div><div class="stat-l">Social Gaming</div></div>
+</div>
+
+<!-- FEATURES -->
+<section id="features" class="features-wrap">
+  <div class="reveal">
+    <div class="sec-tag">// your arsenal</div>
+    <h2 class="sec-h">Built for players.</h2>
+    <p class="sec-p">Everything you need to compete, connect, and climb — in one place.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="fc v reveal">
+      <div class="fc-icon">🎮</div>
+      <div class="fc-title">Play Games</div>
+      <p class="fc-desc">Fast-paced challenges, multiplayer battles, and solo runs. Every win earns you XP and moves you up the board.</p>
+      <span class="fc-pill">Multiplayer</span>
+    </div>
+    <div class="fc a reveal" style="transition-delay:.1s">
+      <div class="fc-icon">🔥</div>
+      <div class="fc-title">Streak System</div>
+      <p class="fc-desc">Log in, play, stay hot. Your streak is your reputation. Miss a day and you'll feel it on the leaderboard.</p>
+      <span class="fc-pill">Daily XP</span>
+    </div>
+    <div class="fc p reveal" style="transition-delay:.2s">
+      <div class="fc-icon">🏆</div>
+      <div class="fc-title">Leaderboards</div>
+      <p class="fc-desc">Global and friend rankings updated in real time. See who's topping the charts — and decide if it'll be you.</p>
+      <span class="fc-pill">Live rankings</span>
+    </div>
+    <div class="fc c reveal" style="transition-delay:.3s">
+      <div class="fc-icon">💬</div>
+      <div class="fc-title">Chat & Crew</div>
+      <p class="fc-desc">Trash talk, team up, or just vibe. Group chats, direct messages, and live reactions keep the energy going.</p>
+      <span class="fc-pill">Real-time</span>
+    </div>
+    <div class="fc g reveal" style="transition-delay:.4s">
+      <div class="fc-icon">🧑‍🚀</div>
+      <div class="fc-title">Your Profile</div>
+      <p class="fc-desc">Level, badges, game history, win rate — your profile is your flex. Customise it, build it, show it off.</p>
+      <span class="fc-pill">Achievements</span>
+    </div>
+  </div>
+</section>
+
+<!-- LEADERBOARD SCENE -->
+<section id="leaderboard" class="lb-section">
+  <div class="lb-inner">
+    <div class="reveal">
+      <div class="sec-tag">// climb the ranks</div>
+      <h2 class="sec-h">The top is within reach.</h2>
+      <p class="sec-p" style="margin-bottom:32px;">Real-time leaderboards show you exactly where you stand — and what it takes to rise. Every game counts.</p>
+      <a href="https://cvwtplatform.vercel.app/" target="_blank" class="btn-hero primary" style="font-size:15px;padding:14px 30px;display:inline-block;">Check your rank →</a>
+    </div>
+    <div class="lb-visual reveal" style="transition-delay:.2s">
+      <div style="position:relative;">
+        <div class="lb-card-wrap">
+          <div class="lb-card">
+            <div class="lb-header">
+              <span class="lb-title">Top Players</span>
+              <span class="lb-live"><span class="lb-live-dot"></span>Live</span>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank gold">🥇</div>
+              <div class="lb-av" style="background:rgba(255,184,0,0.15);color:#ffb800;">ZK</div>
+              <div class="lb-name">ZeroKnight</div>
+              <div class="lb-score">98,410<span class="lb-streak">🔥72</span></div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank silver">🥈</div>
+              <div class="lb-av" style="background:rgba(0,229,255,0.12);color:#00e5ff;">NX</div>
+              <div class="lb-name">NeonX_</div>
+              <div class="lb-score">91,870<span class="lb-streak">🔥58</span></div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank bronze">🥉</div>
+              <div class="lb-av" style="background:rgba(255,78,205,0.12);color:#ff4ecd;">VR</div>
+              <div class="lb-name">VoidRacer</div>
+              <div class="lb-score">88,220<span class="lb-streak">🔥41</span></div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">4</div>
+              <div class="lb-av" style="background:rgba(0,255,135,0.1);color:#00ff87;">SK</div>
+              <div class="lb-name">SkyKid</div>
+              <div class="lb-score">84,100<span class="lb-streak">🔥35</span></div>
+            </div>
+            <div class="lb-row" style="background:rgba(108,80,255,0.08);border-radius:10px;">
+              <div class="lb-rank" style="color:var(--violet-soft);">—</div>
+              <div class="lb-av" style="background:rgba(108,80,255,0.2);color:#a78bfa;">YOU</div>
+              <div class="lb-name" style="color:var(--violet-soft);">Your spot</div>
+              <div class="lb-score" style="color:var(--violet-soft);">???</div>
+            </div>
+          </div>
+        </div>
+        <div class="lb-badge lbb-1">⚡ +2,400 XP gained!</div>
+        <div class="lb-badge lbb-2">👥 4 friends online</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-wrap">
+  <div class="reveal" style="text-align:center">
+    <div class="sec-tag" style="text-align:center">// jump in</div>
+    <h2 class="sec-h" style="text-align:center">Start in 60 seconds.</h2>
+  </div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-n">01</div>
+      <div class="step-t">Create your profile</div>
+      <p class="step-d">Pick your username, avatar, and set your game preferences. Your identity in the verse starts here.</p>
+    </div>
+    <div class="step reveal" style="transition-delay:.12s">
+      <div class="step-n">02</div>
+      <div class="step-t">Jump into a game</div>
+      <p class="step-d">Browse active lobbies, challenge friends, or drop into a quick match. Your first win is seconds away.</p>
+    </div>
+    <div class="step reveal" style="transition-delay:.24s">
+      <div class="step-n">03</div>
+      <div class="step-t">Climb & dominate</div>
+      <p class="step-d">Earn XP, protect your streak, and climb the leaderboard. Every session pushes you higher.</p>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY SCROLL -->
+<section id="community" class="community-section">
+  <div class="community-head">
+    <div class="sec-tag reveal">// the verse speaks</div>
+    <h2 class="sec-h reveal">Players love it here.</h2>
+  </div>
+  <div class="t-scroll">
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"My streak is at 87 days. I don't even open other apps anymore. Chillverse is just different."</p><div class="tc-who"><div class="tc-av" style="background:rgba(108,80,255,0.2);color:#a78bfa;">TK</div><div><div class="tc-name">TrapKing_99</div><div class="tc-role">Top 50 global</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"The leaderboard energy is insane. My whole crew is on here competing every day now. Nothing else hits."</p><div class="tc-who"><div class="tc-av" style="background:rgba(0,229,255,0.15);color:#00e5ff;">FX</div><div><div class="tc-name">FluxGamer</div><div class="tc-role">Ranked player</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"I love the profile customisation. My page actually feels like mine. The badge system goes hard."</p><div class="tc-who"><div class="tc-av" style="background:rgba(255,78,205,0.15);color:#ff4ecd;">AY</div><div><div class="tc-name">Ayomide_</div><div class="tc-role">Badge collector</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"Chat while you play, trash talk while you win. The vibe in here is unmatched. My favourite platform period."</p><div class="tc-who"><div class="tc-av" style="background:rgba(0,255,135,0.12);color:#00ff87;">OB</div><div><div class="tc-name">Obi_Plays</div><div class="tc-role">Community leader</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"Hit top 10 on the global board last week. The competition is real and that's what makes it addictive."</p><div class="tc-who"><div class="tc-av" style="background:rgba(255,184,0,0.15);color:#ffb800;">ZR</div><div><div class="tc-name">ZeroRush</div><div class="tc-role">Top 10 player</div></div></div></div>
+    <!-- loop -->
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"My streak is at 87 days. I don't even open other apps anymore. Chillverse is just different."</p><div class="tc-who"><div class="tc-av" style="background:rgba(108,80,255,0.2);color:#a78bfa;">TK</div><div><div class="tc-name">TrapKing_99</div><div class="tc-role">Top 50 global</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"The leaderboard energy is insane. My whole crew is on here competing every day now. Nothing else hits."</p><div class="tc-who"><div class="tc-av" style="background:rgba(0,229,255,0.15);color:#00e5ff;">FX</div><div><div class="tc-name">FluxGamer</div><div class="tc-role">Ranked player</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"I love the profile customisation. My page actually feels like mine. The badge system goes hard."</p><div class="tc-who"><div class="tc-av" style="background:rgba(255,78,205,0.15);color:#ff4ecd;">AY</div><div><div class="tc-name">Ayomide_</div><div class="tc-role">Badge collector</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"Chat while you play, trash talk while you win. The vibe in here is unmatched. My favourite platform period."</p><div class="tc-who"><div class="tc-av" style="background:rgba(0,255,135,0.12);color:#00ff87;">OB</div><div><div class="tc-name">Obi_Plays</div><div class="tc-role">Community leader</div></div></div></div>
+    <div class="tc"><div class="tc-stars">★★★★★</div><p class="tc-text">"Hit top 10 on the global board last week. The competition is real and that's what makes it addictive."</p><div class="tc-who"><div class="tc-av" style="background:rgba(255,184,0,0.15);color:#ffb800;">ZR</div><div><div class="tc-name">ZeroRush</div><div class="tc-role">Top 10 player</div></div></div></div>
+  </div>
+</section>
+
+<!-- BRANCH CALLOUT -->
+<section class="branch-section">
+  <div class="branch-card reveal">
+    <div class="branch-text">
+      <span class="branch-tag">Branch Feature</span>
+      <h3>There's a learning side too.</h3>
+      <p>Chillverse isn't just games. There's a dedicated knowledge platform branch — for players who want to level up their mind alongside their rank. Explore it when you're ready.</p>
+    </div>
+    <a href="https://cvwtplatform.vercel.app/" target="_blank" class="branch-btn">Explore the branch →</a>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-wrap">
+  <div class="reveal">
+    <h2 class="cta-h">Your verse is waiting.</h2>
+    <p class="cta-p">Drop in, build your profile, and start your streak today. The leaderboard won't climb itself.</p>
+    <div class="cta-row">
+      <a href="https://cvwtplatform.vercel.app/" target="_blank" class="btn-cta-main">Enter Chillverse →</a>
+      <a href="#features" class="btn-cta-ghost">See features</a>
+    </div>
+    <p style="margin-top:18px;font-size:13px;color:var(--text-muted);">Free to join · No credit card</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="footer-brand">Chillverse</span>
+    <span>© 2026 · All rights reserved</span>
+  </div>
+  <div class="footer-links">
+    <a href="https://cvwtplatform.vercel.app/" target="_blank">Platform</a>
+    <a href="#">About</a>
+    <a href="#">Privacy</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+<script>
+// ── Reveal on scroll
+const revEls = document.querySelectorAll('.reveal');
+const revIO = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.12 });
+revEls.forEach(el => revIO.observe(el));
+
+// ── Mega cube: scroll-driven rotation
+const megaCube = document.getElementById('megaCube');
+let curX = 15, curY = -20, tgtX = 15, tgtY = -20;
+let rafId = null;
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function tick() {
+  curX = lerp(curX, tgtX, 0.06);
+  curY = lerp(curY, tgtY, 0.06);
+  megaCube.style.transform = `translateX(-50%) translateY(-50%) rotateX(${curX}deg) rotateY(${curY}deg)`;
+  if (Math.abs(curX - tgtX) > 0.05 || Math.abs(curY - tgtY) > 0.05) {
+    rafId = requestAnimationFrame(tick);
+  } else {
+    rafId = null;
+  }
+}
+
+window.addEventListener('scroll', () => {
+  const progress = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+  tgtX = 15 + progress * 360;
+  tgtY = -20 + progress * 540;
+  if (!rafId) rafId = requestAnimationFrame(tick);
+}, { passive: true });
+
+// ── Ring cubes: place them in a circle around centre
+const ringWrap = document.getElementById('ringWrap');
+const N = 8;
+const RING_R = 260;
+const ringData = [
+  { color: 'rgba(108,80,255,', emoji: '🎯' },
+  { color: 'rgba(0,229,255,',  emoji: '⚡' },
+  { color: 'rgba(255,78,205,', emoji: '🏆' },
+  { color: 'rgba(255,184,0,',  emoji: '🔥' },
+  { color: 'rgba(0,255,135,',  emoji: '👾' },
+  { color: 'rgba(108,80,255,', emoji: '💎' },
+  { color: 'rgba(0,229,255,',  emoji: '🎲' },
+  { color: 'rgba(255,78,205,', emoji: '⭐' },
+];
+
+ringData.forEach((d, i) => {
+  const angle = (i / N) * Math.PI * 2;
+  const x = 350 + Math.cos(angle) * RING_R - 35;
+  const y = 350 + Math.sin(angle) * RING_R - 35;
+
+  const cube = document.createElement('div');
+  cube.className = 'ring-cube';
+  cube.style.cssText = `left:${x}px;top:${y}px;animation:ring-spin${i%2===0?'A':'B'} ${8+i*1.2}s linear infinite;`;
+
+  const faces = [
+    { cls:'rc-fr', z: 35 },
+    { cls:'rc-bk', ry: 180, z: 35 },
+    { cls:'rc-rt', ry: 90,  z: 35 },
+    { cls:'rc-lt', ry: -90, z: 35 },
+    { cls:'rc-tp', rx: 90,  z: 35 },
+    { cls:'rc-bt', rx: -90, z: 35 },
+  ];
+
+  faces.forEach((fc, fi) => {
+    const face = document.createElement('div');
+    face.className = `rc-face ${fc.cls}`;
+    face.style.cssText = `border-color:${d.color}0.4);background:${d.color}0.06);${fi===0?'font-size:22px;display:flex;align-items:center;justify-content:center;':''}`;
+    if(fi===0) face.textContent = d.emoji;
+    cube.appendChild(face);
+  });
+
+  ringWrap.appendChild(cube);
+});
+
+// Add ring spin keyframes dynamically
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes ring-spinA { from{transform:rotateX(15deg) rotateY(0deg)} to{transform:rotateX(15deg) rotateY(360deg)} }
+  @keyframes ring-spinB { from{transform:rotateX(-10deg) rotateY(0deg)} to{transform:rotateX(-10deg) rotateY(-360deg)} }
+  .ring-cube { transform-style: preserve-3d; }
+`;
+document.head.appendChild(style);
+
+// Also animate the ring wrapper itself slowly
+(function animRing() {
+  let t = 0;
+  const rw = document.getElementById('ringWrap');
+  function frame() {
+    t += 0.003;
+    rw.style.transform = `rotateX(12deg) rotateY(${t * 30}deg)`;
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>
