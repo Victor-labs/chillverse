@@ -16,7 +16,7 @@ chillverse/
 ├── tailwind.config.js
 ├── postcss.config.js
 ├── tsconfig.json
-├── netlify.toml             ← Netlify build & redirect config
+├── vercel.json               ← Vercel build, rewrites & headers config
 ├── .env.example              ← Copy to .env.local and fill in Supabase keys
 ├── supabase/
 │   └── schema.sql            ← Run this in Supabase SQL editor
@@ -114,21 +114,27 @@ Visit `http://localhost:5173`
 
 ---
 
-## 🚀 Deploy to Netlify
+## 🚀 Deploy to Vercel
 
 1. Push this repo to GitHub
-2. In Netlify: **Add new site → Import from Git → GitHub** → select this repo
-3. Netlify will read `netlify.toml` automatically:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-4. Add your environment variables in **Site settings → Environment variables**:
+2. Go to [vercel.com](https://vercel.com) → sign in with GitHub → **Add New... → Project**
+3. Import this repo. Vercel auto-detects it as a **Vite** project:
+   - Build command: `npm run build` (or `vite build`)
+   - Output directory: `dist`
+   - Install command: `npm install`
+4. Before clicking Deploy, expand **Environment Variables** and add:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-5. Click **Deploy site**
+5. Click **Deploy**
 
-Every push to `main` auto-deploys.
+Every push to `main` auto-deploys. Preview deployments are created automatically for other branches and PRs.
 
-> If using Google/Discord OAuth, remember to add your live Netlify URL to Supabase's allowed redirect URLs.
+`vercel.json` in this repo handles:
+- SPA rewrites — so routes like `/login` and `/signup` work on refresh/direct visit (without it, React Router routes 404 on Vercel)
+- Basic security headers
+- Long-term caching for static assets
+
+> If using Google/Discord OAuth, remember to add your live Vercel URL (e.g. `https://chillverse.vercel.app`) to Supabase's allowed redirect URLs under **Authentication → URL Configuration**.
 
 ---
 
