@@ -1,3 +1,4 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -18,6 +19,9 @@ export default {
           amber: '#ffb800',
           green: '#00ff87',
           red: '#ff4f4f',
+          orange: '#ff6b00',
+          orange2: '#ff9a3c',
+          blue: '#4f8ef7',
           text: '#eeeaff',
           textSecondary: '#9b96c0',
           textMuted: '#5a5678',
