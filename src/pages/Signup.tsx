@@ -1,3 +1,4 @@
+// src/pages/Signup.tsx
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signUpWithEmail, signInWithGoogle, createProfile } from '../lib/auth'
@@ -136,7 +137,7 @@ export default function Signup() {
       setTimeout(() => navigate('/login'), 2200)
     } else {
       showToast('Account created! Welcome to the verse 🚀', 'success')
-      setTimeout(() => navigate('/'), 1500)
+      setTimeout(() => navigate('/dashboard'), 1500)
     }
   }
 
@@ -150,7 +151,7 @@ export default function Signup() {
       <div className="fixed w-[400px] h-[400px] rounded-full bg-chill-violet/[0.14] blur-[100px] -top-24 -right-24 pointer-events-none" />
       <div className="fixed w-[300px] h-[300px] rounded-full bg-chill-cyan/[0.08] blur-[100px] -bottom-20 -left-20 pointer-events-none" />
 
-      <div className="relative z-[2] w-full max-w-[460px] bg-chill-surface border border-chill-border rounded-[22px] p-8 md:p-11 shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
+      <div className="relative z-[2] w-full max-w-[460px] glass-panel glow-violet-tint rounded-[22px] p-8 md:p-11 shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
 
         <Link to="/" className="flex items-center gap-2.5 mb-7">
           <span className="text-2xl">🎮</span>
