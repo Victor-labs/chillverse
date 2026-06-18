@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import { supabase } from './supabase'
 import type { SignupProfileInput } from '../types'
 
@@ -15,7 +16,7 @@ export async function signInWithEmail(email: string, password: string) {
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin },
+    options: { redirectTo: `${window.location.origin}/dashboard` },
   })
 }
 
@@ -23,7 +24,7 @@ export async function signInWithGoogle() {
 export async function signInWithDiscord() {
   return supabase.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo: window.location.origin },
+    options: { redirectTo: `${window.location.origin}/dashboard` },
   })
 }
 
