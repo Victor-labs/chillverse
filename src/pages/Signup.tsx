@@ -1,10 +1,11 @@
 // src/pages/Signup.tsx
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signUpWithEmail, signInWithGoogle, createProfile } from '../lib/auth'
+import { Rocket, CheckCircle2 } from 'lucide-react'
+import { signUpWithEmail, signInWithGoogle, upsertProfile, getCurrentSession } from '../lib/auth'
+import { interestIcons } from '../lib/icons'
 
-const AVATARS = ['🧑‍🚀', '👾', '🎮', '🔥', '⚡', '💎', '🏆', '🌌']
-const INTERESTS = ['🎯 Strategy', '⚡ Action', '🧩 Puzzle', '🏆 Compete', '💬 Social', '🎲 Casual']
+const INTERESTS = ['Strategy', 'Action', 'Puzzle', 'Compete', 'Social', 'Casual']
 const COUNTRIES = [
   ['NG', 'Nigeria'], ['GH', 'Ghana'], ['KE', 'Kenya'], ['ZA', 'South Africa'],
   ['US', 'United States'], ['GB', 'United Kingdom'], ['CA', 'Canada'], ['AU', 'Australia'], ['OTHER', 'Other'],
@@ -18,7 +19,7 @@ const PLATFORMS = [
 
 function StepDot({ n, state }: { n: number; state: 'active' | 'done' | 'idle' }) {
   const base = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 flex-shrink-0 transition-all'
-  if (state === 'done') return <div className={`${base} border-chill-green bg-chill-green/10 text-chill-green`}>✓</div>
+  if (state === 'done') return <div className={`${base} border-chill-green bg-chill-green/10 text-chill-green`}><CheckCircle2 className="w-4 h-4" /></div>
   if (state === 'active') return <div className={`${base} border-chill-violet bg-chill-violet/[0.12] text-chill-violetSoft`}>{n}</div>
   return <div className={`${base} border-chill-borderBright bg-chill-surface2 text-chill-textMuted`}>{n}</div>
 }
@@ -42,8 +43,6 @@ export default function Signup() {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
 
   // Step 3
-  const [avatar, setAvatar] = useState('🧑‍🚀')
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [country, setCountry] = useState('')
   const [interests, setInterests] = useState<string[]>([])
@@ -101,7 +100,7 @@ export default function Signup() {
   async function handleFinish() {
     setLoading(true)
 
-    const { data, error } = await signUpWithEmail(email.trim(), password)
+    const { error } = await signUpWithEmail(email.trim(), password)
 
     if (error) {
       setLoading(false)
@@ -109,36 +108,44 @@ export default function Signup() {
       return
     }
 
-    const userId = data.user?.id
+    // Email confirmation required: there's no session yet, so any write
+    // here would be rejected by RLS. The on_auth_user_created trigger has
+    // already created a baseline profile row server-side — the rest of
+    // these fields get saved once the user confirms and logs back in.
+    const {
+      data: { session },
+    } = await getCurrentSession()
 
-    if (userId) {
-      const { error: profileError } = await createProfile(userId, {
-        username: username.trim(),
-        displayName: displayName.trim(),
-        avatar,
-        country,
-        interests,
-        dob,
-        connectedPlatform: selectedPlatform,
-      })
-
-      if (profileError) {
-        setLoading(false)
-        showToast('Account created, but profile setup failed: ' + profileError.message, 'err')
-        return
-      }
+    if (!session) {
+      setLoading(false)
+      showToast('Check your email to confirm your account 📩', 'success')
+      setTimeout(() => navigate('/login'), 2200)
+      return
     }
+
+    const { error: profileError } = await upsertProfile(session.user.id, {
+      username: username.trim(),
+      displayName: displayName.trim(),
+      country,
+      interests,
+      dob,
+      connectedPlatform: selectedPlatform,
+    })
 
     setLoading(false)
 
-    if (!data.session) {
-      // Email confirmation required
-      showToast('Check your email to confirm your account 📩', 'success')
-      setTimeout(() => navigate('/login'), 2200)
-    } else {
-      showToast('Account created! Welcome to the verse 🚀', 'success')
-      setTimeout(() => navigate('/dashboard'), 1500)
+    if (profileError) {
+      showToast(
+        profileError.code === '42501'
+          ? "We couldn't save your profile — please confirm your email and try again."
+          : 'Something went wrong saving your profile. Please try again.',
+        'err'
+      )
+      return
     }
+
+    showToast('Account created! Welcome to the verse 🚀', 'success')
+    setTimeout(() => navigate('/dashboard'), 1500)
   }
 
   async function handleGoogleSignup() {
@@ -316,28 +323,10 @@ export default function Signup() {
             </div>
 
             <div className="flex flex-col items-center gap-3">
-              <div
-                onClick={() => setShowAvatarPicker((v) => !v)}
-                className="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-chill-violet to-chill-cyan flex items-center justify-center text-[28px] cursor-pointer border-2 border-chill-borderBright"
-              >
-                {avatar}
+              <div className="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-chill-violet to-chill-cyan flex items-center justify-center border-2 border-chill-borderBright">
+                <Rocket className="w-8 h-8 text-white" />
               </div>
-              <div className="text-xs text-chill-textMuted">Tap to choose avatar</div>
             </div>
-
-            {showAvatarPicker && (
-              <div className="flex flex-wrap gap-2.5 justify-center">
-                {AVATARS.map((a) => (
-                  <span
-                    key={a}
-                    onClick={() => { setAvatar(a); setShowAvatarPicker(false) }}
-                    className="text-2xl cursor-pointer p-2 rounded-lg border border-chill-border hover:border-chill-violetSoft transition-colors"
-                  >
-                    {a}
-                  </span>
-                ))}
-              </div>
-            )}
 
             <Field label="Display name">
               <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How others see you" className={inputClass(false)} />
@@ -354,17 +343,21 @@ export default function Signup() {
 
             <Field label="What are you into?">
               <div className="flex flex-wrap gap-2">
-                {INTERESTS.map((tag) => (
-                  <span
-                    key={tag}
-                    onClick={() => toggleInterest(tag)}
-                    className={`px-3.5 py-1.5 rounded-full border-[1.5px] text-[13px] font-medium cursor-pointer transition-all ${
-                      interests.includes(tag) ? 'border-chill-violet bg-chill-violet/[0.12] text-chill-violetSoft' : 'border-chill-border bg-chill-surface2 text-chill-textSecondary'
-                    }`}
-                  >
-                    {tag}
-                  </span>
-                ))}
+                {INTERESTS.map((tag) => {
+                  const Icon = interestIcons[tag]
+                  return (
+                    <span
+                      key={tag}
+                      onClick={() => toggleInterest(tag)}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border-[1.5px] text-[13px] font-medium cursor-pointer transition-all ${
+                        interests.includes(tag) ? 'border-chill-violet bg-chill-violet/[0.12] text-chill-violetSoft' : 'border-chill-border bg-chill-surface2 text-chill-textSecondary'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {tag}
+                    </span>
+                  )
+                })}
               </div>
             </Field>
 
