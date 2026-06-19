@@ -15,10 +15,12 @@ import {
   MessageCircle,
   Bot,
   Send,
+  Flame,
 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 import { getXpProgress } from '../lib/level'
 import { ripple } from '../lib/ripple'
+import { getAvatarIcon } from '../lib/icons'
 
 // TODO: replace with real unread / live counts once the relevant backends exist
 const MALL_NEW_ITEMS = 3
@@ -102,21 +104,23 @@ export default function Dashboard() {
   const displayName = profile.display_name || profile.username
   const { current, max } = getXpProgress(profile.xp)
   const xpPct = Math.min(100, Math.round((current / max) * 100))
+  const AvatarIcon = getAvatarIcon(profile.avatar)
 
   return (
     <div className="flex flex-col gap-8 max-w-[1100px]">
       {/* Welcome card + XP bar */}
       <section className="glass-panel glow-violet-tint rounded-[22px] p-7 md:p-9">
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="w-[54px] h-[54px] flex-shrink-0 rounded-2xl bg-gradient-to-br from-chill-violet to-chill-cyan flex items-center justify-center text-2xl">
-            {profile.avatar}
+          <div className="w-[54px] h-[54px] flex-shrink-0 rounded-2xl bg-gradient-to-br from-chill-violet to-chill-cyan flex items-center justify-center">
+            <AvatarIcon className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1 min-w-[200px]">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
               {getGreeting()}, {displayName} 👋
             </h1>
-            <p className="text-sm text-chill-textSecondary mt-0.5">
-              🔥 {profile.streak} day streak — keep it going
+            <p className="text-sm text-chill-textSecondary mt-0.5 flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-chill-amber" />
+              {profile.streak} day streak — keep it going
             </p>
           </div>
         </div>
