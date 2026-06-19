@@ -1,3 +1,4 @@
+// src/types/index.ts
 export interface Profile {
   id: string
   username: string
@@ -16,7 +17,6 @@ export interface Profile {
 export interface SignupProfileInput {
   username: string
   displayName: string
-  avatar: string
   country: string
   interests: string[]
   dob: string
