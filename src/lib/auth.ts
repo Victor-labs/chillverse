@@ -83,3 +83,8 @@ export async function isUsernameTaken(username: string): Promise<boolean> {
   if (error) return false
   return !!data
 }
+
+/** Resend confirmation email for an unconfirmed signup. */
+export async function resendConfirmationEmail(email: string) {
+  return supabase.auth.resend({ type: 'signup', email })
+}
