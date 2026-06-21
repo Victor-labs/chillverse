@@ -1,16 +1,29 @@
+// src/components/Footer.tsx
 export default function Footer() {
   return (
-    <footer className="px-6 md:px-16 py-9 border-t border-chill-border flex items-center justify-between flex-wrap gap-4 text-chill-textMuted text-sm">
-      <div className="flex items-center gap-2.5">
-        <span className="text-lg font-bold text-gradient-2">Chillverse</span>
-        <span>© 2026 · All rights reserved</span>
+    <footer style={{
+      padding: '28px 40px', borderTop: '1px solid rgba(108,80,255,0.16)',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 16, background: 'rgba(4,4,15,0.6)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className="text-gradient-2" style={{ fontSize: 18, fontWeight: 800 }}>Chillverse</span>
+        <span style={{ fontSize: 13, color: '#5a5678' }}>© 2026 · All rights reserved</span>
       </div>
-      <div className="flex gap-6">
-        <a href="https://cvwtplatform.vercel.app/" target="_blank" rel="noreferrer" className="hover:text-chill-textSecondary transition-colors">Platform</a>
-        <a href="#" className="hover:text-chill-textSecondary transition-colors">About</a>
-        <a href="/privacy" className="hover:text-chill-textSecondary transition-colors">Privacy</a>
-        <a href="/terms" className="hover:text-chill-textSecondary transition-colors">Terms</a>
-        <a href="#" className="hover:text-chill-textSecondary transition-colors">Contact</a>
+      <div style={{ display: 'flex', gap: 24 }}>
+        {[
+          ['https://cvwtplatform.vercel.app/','Platform'],
+          ['#','About'],
+          ['/privacy','Privacy'],
+          ['/terms','Terms'],
+          ['#','Contact'],
+        ].map(([href, label]) => (
+          <a key={label} href={href} style={{ fontSize: 13, color: '#5a5678', textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => { (e.target as HTMLElement).style.color = '#9b96c0' }}
+            onMouseLeave={e => { (e.target as HTMLElement).style.color = '#5a5678' }}>
+            {label}
+          </a>
+        ))}
       </div>
     </footer>
   )
