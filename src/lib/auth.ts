@@ -4,7 +4,13 @@ import type { SignupProfileInput } from '../types'
 
 /** Sign up a new user with email + password. */
 export async function signUpWithEmail(email: string, password: string) {
-  return supabase.auth.signUp({ email, password })
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/dashboard`,
+    },
+  })
 }
 
 /** Log in an existing user with email + password. */
