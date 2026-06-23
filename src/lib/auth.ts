@@ -54,14 +54,6 @@ export async function getCurrentSession() {
 
 /**
  * Save the rest of onboarding onto the profile row.
- *
- * The on_auth_user_created trigger already creates the row (placeholder
- * username + default avatar) the instant signUp() fires server-side, so
- * this is an idempotent upsert rather than an insert — it just fills in
- * what the trigger couldn't know (the user's chosen username, display
- * name, etc). Requires an active session: RLS only allows a user to write
- * their own row, and there is no session yet if email confirmation is
- * still pending — callers must check for a session before calling this.
  */
 export async function upsertProfile(userId: string, input: SignupProfileInput) {
   return supabase.from('profiles').upsert(
@@ -93,4 +85,16 @@ export async function isUsernameTaken(username: string): Promise<boolean> {
 /** Resend confirmation email for an unconfirmed signup. */
 export async function resendConfirmationEmail(email: string) {
   return supabase.auth.resend({ type: 'signup', email })
+}
+
+/** Call the update-streak edge function for the signed-in user. */
+export async function updateStreak(userId: string) {
+  await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-streak`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ user_id: userId }),
+  })
 }
