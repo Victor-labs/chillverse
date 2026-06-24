@@ -108,7 +108,6 @@ export default function FlagRush({ rank: initialRank, onEnd, onBack }: Props) {
     if (selected !== null) return
     setSelected(i)
     if (flagTimerRef.current) clearInterval(flagTimerRef.current)
-    const cfg = getRankCfg()
     if (i === pool[idxRef.current].c) {
       // XP: faster = more (4s remaining = 6xp, 1s = 3xp)
       const pts = 70 + (flagTimeRef.current * 10)

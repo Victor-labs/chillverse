@@ -37,12 +37,6 @@ function opSymbol(op: 'add' | 'sub' | 'mul') {
   return op === 'add' ? '+' : op === 'sub' ? '−' : '×'
 }
 
-function calcReal(a: number, b: number, op: 'add' | 'sub' | 'mul'): number {
-  if (op === 'add') return a + b
-  if (op === 'sub') return a - b
-  return a * b
-}
-
 function generateGrid(ops: ('add' | 'sub' | 'mul')[], numCells: number): Equation[] {
   const r = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
   const liarIdx = Math.floor(Math.random() * numCells)
@@ -92,7 +86,6 @@ export default function LiarsGrid({ rank: initialRank, onEnd, onBack }: Props) {
   const [cellStatus, setCellStatus] = useState<CellStatus[]>([])
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(60)
-  const [correct, setCorrect] = useState(0)
   const [promoted, setPromoted] = useState<GameRank | null>(null)
   const [result, setResult] = useState<GameEndPayload | null>(null)
   const [streakMultiplier, setStreakMultiplier] = useState(1)
@@ -133,9 +126,8 @@ export default function LiarsGrid({ rank: initialRank, onEnd, onBack }: Props) {
   }
 
   function start() {
-    const cfg = getRankCfg()
     scoreRef.current = 0; correctRef.current = 0; roundRef.current = 1
-    setScore(0); setCorrect(0); setPromoted(null); setResult(null)
+    setScore(0); setPromoted(null); setResult(null)
     setStreakMultiplier(1)
     startRef.current = Date.now()
     newRound(1)
@@ -154,7 +146,7 @@ export default function LiarsGrid({ rank: initialRank, onEnd, onBack }: Props) {
       setStreakMultiplier(mult)
       const pts = Math.floor((timeLeft / cfg.timeSec) * 40 + 20) * mult
       scoreRef.current += pts; correctRef.current += 1
-      setScore(scoreRef.current); setCorrect(correctRef.current)
+      setScore(scoreRef.current)
       // Reveal: dim all correct, highlight liar in red
       setCellStatus(prev => prev.map((_, i) => i === idx ? 'revealed-liar' : 'dimmed'))
       const { promoted: promo } = onCorrect(cfg.streakRequired)

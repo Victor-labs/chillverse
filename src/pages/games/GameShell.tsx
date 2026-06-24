@@ -397,7 +397,7 @@ export function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 }
 
 // ─── useRankState hook ────────────────────────────────────────
-export function useRankStreak(gameId: string, initial: GameRank = 'beginner') {
+export function useRankStreak(_gameId: string, initial: GameRank = 'beginner') {
   const [rankState, setRankState] = useState<PlayerRankState>({
     rank: initial,
     currentStreak: 0,
@@ -464,4 +464,4 @@ export function RankProgressBar({ rank, streak, streakRequired }: { rank: GameRa
 }
 
 // ─── All rank configs export for lobby use ────────────────────
-export { RANK_CONFIGS }
+export { RANK_CONFIGS, getRankConfig, getNextRank }

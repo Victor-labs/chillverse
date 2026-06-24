@@ -1,8 +1,8 @@
 // src/pages/games/ArrowDash.tsx
 import { useState, useEffect, useRef } from 'react'
-import { Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, type LucideIcon } from 'lucide-react'
 import type { GameRank, GameEndPayload } from './types'
-import { getRankConfig, getNextRank, calcSessionXP } from './types'
+import { getRankConfig, calcSessionXP } from './types'
 import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal, TimerBar, useRankStreak } from './GameShell'
 import { ripple } from '../../lib/ripple'
 
@@ -20,7 +20,7 @@ const RANK_TIME: Record<GameRank, number> = {
   master:       15000,
 }
 
-const DIR_ICON: Record<Dir, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
+const DIR_ICON: Record<Dir, LucideIcon> = {
   up:    ArrowUp,
   down:  ArrowDown,
   left:  ArrowLeft,
@@ -189,10 +189,6 @@ export default function ArrowDash({ rank: initialRank, onEnd, onBack }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <ResultScreen payload={result} accent={ACCENT} onReplay={() => { setResult(null); start() }} onBack={onBack} promoted={promoted} />
     </div>
-  )
-
-  if (phase === 'quit') return (
-    <QuitModal onConfirm={onBack} onCancel={() => setPhase('play')} />
   )
 
   return (
