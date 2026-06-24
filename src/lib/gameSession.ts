@@ -32,6 +32,62 @@ export interface PlayerRankRow {
   updated_at: string
 }
 
+// ─── Global session limit (10 total across all games) ───────────────
+const SESSION_LIMIT_KEY   = 'cv_session_limit'
+const SESSION_COOLDOWN_MS = 3 * 60 * 60 * 1000 // 3 hours
+
+interface SessionLimitStore {
+  count: number       // total sessions played this window
+  resetAt: number     // epoch ms when the 3hr cooldown expires (0 = no cooldown)
+}
+
+function getSessionStore(userId: string): SessionLimitStore {
+  try {
+    const raw = localStorage.getItem(`${SESSION_LIMIT_KEY}_${userId}`)
+    if (!raw) return { count: 0, resetAt: 0 }
+    const parsed = JSON.parse(raw) as SessionLimitStore
+    // If cooldown has passed, reset
+    if (parsed.resetAt > 0 && Date.now() >= parsed.resetAt) {
+      const fresh = { count: 0, resetAt: 0 }
+      localStorage.setItem(`${SESSION_LIMIT_KEY}_${userId}`, JSON.stringify(fresh))
+      return fresh
+    }
+    return parsed
+  } catch {
+    return { count: 0, resetAt: 0 }
+  }
+}
+
+function setSessionStore(userId: string, store: SessionLimitStore) {
+  localStorage.setItem(`${SESSION_LIMIT_KEY}_${userId}`, JSON.stringify(store))
+}
+
+/** Returns current global session info for a user. */
+export function getGlobalSessionInfo(userId: string): {
+  count: number
+  limit: number
+  limitReached: boolean
+  resetAt: number
+} {
+  const store = getSessionStore(userId)
+  return {
+    count: store.count,
+    limit: 10,
+    limitReached: store.count >= 10,
+    resetAt: store.resetAt,
+  }
+}
+
+/** Increment the global session counter. Call when a game session is saved. */
+function incrementGlobalSession(userId: string) {
+  const store = getSessionStore(userId)
+  const newCount = store.count + 1
+  const resetAt  = newCount >= 10 && store.resetAt === 0
+    ? Date.now() + SESSION_COOLDOWN_MS
+    : store.resetAt
+  setSessionStore(userId, { count: newCount, resetAt })
+}
+
 /** Write a completed game session and award XP to the profile. */
 export async function saveGameSession(userId: string, input: SessionInput) {
   const { error: sessionError } = await supabase
@@ -50,6 +106,9 @@ export async function saveGameSession(userId: string, input: SessionInput) {
     console.error('gameSession insert error:', sessionError)
     return { error: sessionError }
   }
+
+  // Increment global session counter
+  incrementGlobalSession(userId)
 
   const { error: xpError } = await supabase
     .rpc('award_xp', { p_user_id: userId, p_xp: input.xpEarned })
@@ -84,7 +143,6 @@ export async function savePlayerRank(
 ): Promise<void> {
   const RANK_ORDER: GameRank[] = ['beginner', 'intermediate', 'advanced', 'master']
 
-  // Read current persisted rank first to enforce no-demotion rule
   const existing = await getPlayerRank(userId, game)
   const existingRankIdx = existing ? RANK_ORDER.indexOf(existing.rank) : 0
   const newRankIdx       = RANK_ORDER.indexOf(newRank)
