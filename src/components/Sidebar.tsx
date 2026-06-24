@@ -1,11 +1,11 @@
 // src/components/Sidebar.tsx
-import { Trophy, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { Trophy,
-  Home, Flame, Gamepad2, ShoppingBag, Trophy,
-  MessageCircle, User, Settings, Bell, X, Zap,
+import {
+  Trophy, Home, Flame, Gamepad2, ShoppingBag,
+  MessageCircle, User, Settings, Bell, X, Zap, Shield,
 } from 'lucide-react'
-import { Trophy, ripple } from '../lib/ripple'
+import { ripple } from '../lib/ripple'
 
 interface NavItem {
   label: string
@@ -74,7 +74,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <span style={{ fontSize: 20, fontWeight: 800, background: 'linear-gradient(135deg, var(--accent), var(--accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             Chillverse
           </span>
-          {/* Close button: visible on mobile + tablet */}
           <button
             type="button"
             onClick={onClose}
