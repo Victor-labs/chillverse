@@ -401,13 +401,22 @@ export default function Chat() {
 
     // Create brand new DM room
     const { data: newRoom, error } = await supabase
-      .from('chat_rooms').insert({ type: 'dm', name: null }).select('id').single()
-    if (error || !newRoom) return
+      .from('chat_rooms').insert({ type: 'dm', name: null, created_by: myId }).select('id').single()
+    if (error || !newRoom) {
+      console.error('Failed to create DM room:', error)
+      alert('Could not start chat. Please try again in a moment.')
+      return
+    }
 
-    await supabase.from('room_members').insert([
+    const { error: memberErr } = await supabase.from('room_members').insert([
       { room_id: newRoom.id, user_id: myId },
       { room_id: newRoom.id, user_id: targetUserId },
     ])
+    if (memberErr) {
+      console.error('Failed to add room members:', memberErr)
+      alert('Could not start chat. Please try again in a moment.')
+      return
+    }
 
     await loadRooms()
     setTimeout(() => {
@@ -632,13 +641,13 @@ export default function Chat() {
                     const isMine = msg.sender_id === myId
                     const senderLabel = isMine ? 'You' : (msg.senderName || 'Unknown')
                     return (
-                      <div key={msg.id} style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-end', gap:8, marginBottom:6 }}>
+                      <div key={msg.id} style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8, marginBottom:6 }}>
 
                         {/* Avatar circle — clickable, opens profile modal */}
                         <button
                           type="button"
                           onClick={() => openSenderProfile(msg)}
-                          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-end' }}
+                          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
                           title={senderLabel}>
                           <Avatar name={senderLabel} size={30} radius={10} />
                         </button>
@@ -646,20 +655,8 @@ export default function Chat() {
                         {/* Bubble + meta */}
                         <div style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'75%' }}>
 
-                          {/* Name above bubble */}
-                          {!msg.deleted && (
-                            <button
-                              type="button"
-                              onClick={() => openSenderProfile(msg)}
-                              style={{ background:'none', border:'none', cursor:'pointer', padding:0, marginBottom:3 }}>
-                              <span style={{ fontSize:10, fontWeight:700, color: isMine ? 'var(--accent)' : '#4f8ef7' }}>
-                                {senderLabel}
-                              </span>
-                            </button>
-                          )}
-
                           {msg.replyPreview && !msg.deleted && (
-                            <div style={{ fontSize:11, color:'var(--text-dim)', padding:'4px 10px', background:'rgba(255,255,255,0.04)', borderRadius:8, borderLeft:`2px solid ${isMine ? 'var(--accent)' : '#4f8ef7'}`, marginBottom:4, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            <div style={{ fontSize:11, color:'var(--text-dim)', padding:'4px 10px', background:'rgba(255,255,255,0.04)', borderRadius:8, borderLeft:'2px solid #4f8ef7', marginBottom:4, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                               {msg.replyPreview}
                             </div>
                           )}
@@ -667,7 +664,18 @@ export default function Chat() {
                           <div
                             onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); setCtxMsg(msg); setCtxPos({ x: e.clientX, y: e.clientY }) }}}
                             onDoubleClick={() => { if (!msg.deleted) setReplyTo(msg) }}
-                            style={{ padding:'9px 13px', borderRadius:16, background: isMine ? 'var(--accent)' : 'var(--surface)', color: isMine ? '#fff' : 'var(--text)', boxShadow: isMine ? '0 2px 12px rgba(255,107,0,0.25)' : '2px 2px 8px var(--neu-dark),-1px -1px 4px var(--neu-light)', borderBottomRightRadius: isMine ? 4 : 16, borderBottomLeftRadius: isMine ? 16 : 4, fontSize:13.5, lineHeight:1.45, fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1, cursor:'context-menu', userSelect:'none', wordBreak:'break-word' }}>
+                            style={{ padding:'7px 13px 9px', borderRadius:16, background:'var(--surface)', color:'var(--text)', boxShadow:'2px 2px 8px var(--neu-dark),-1px -1px 4px var(--neu-light)', borderBottomRightRadius: isMine ? 4 : 16, borderBottomLeftRadius: isMine ? 16 : 4, fontSize:13.5, lineHeight:1.45, fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1, cursor:'context-menu', userSelect:'none', wordBreak:'break-word' }}>
+                            {/* Name inlaid on the bubble's first line */}
+                            {!msg.deleted && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openSenderProfile(msg) }}
+                                style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'block', marginBottom:1 }}>
+                                <span style={{ fontSize:10.5, fontWeight:700, color:'#4f8ef7' }}>
+                                  {senderLabel}
+                                </span>
+                              </button>
+                            )}
                             {msg.deleted ? 'Message deleted' : msg.content}
                           </div>
 
