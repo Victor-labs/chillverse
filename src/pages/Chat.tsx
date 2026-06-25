@@ -221,30 +221,37 @@ export default function Chat() {
   async function ensureGlobalRoom(): Promise<string | null> {
     if (!myId) return null
 
-    // Find the global room (type = 'global', name = 'Global Chat')
+    // Find existing global room
     const { data: globalRooms } = await supabase
       .from('chat_rooms')
       .select('id')
       .eq('type', 'global')
-      .eq('name', 'Global Chat')
       .limit(1)
 
     let globalRoomId: string
 
     if (!globalRooms || globalRooms.length === 0) {
-      // Create it — first user in wins; duplicates are fine, we'll just use whichever appears
+      // Try to create — do NOT use created_by (column may not exist in schema)
       const { data: created, error: createErr } = await supabase
         .from('chat_rooms')
-        .insert({ type: 'global', name: 'Global Chat', created_by: myId })
+        .insert({ type: 'global', name: 'Global Chat' })
         .select('id')
         .single()
-      if (createErr || !created) return null
-      globalRoomId = created.id
+
+      if (createErr || !created) {
+        // Another request may have created it simultaneously — retry fetch
+        const { data: retry } = await supabase
+          .from('chat_rooms').select('id').eq('type', 'global').limit(1)
+        if (!retry?.length) return null
+        globalRoomId = retry[0].id
+      } else {
+        globalRoomId = created.id
+      }
     } else {
       globalRoomId = globalRooms[0].id
     }
 
-    // Make sure this user is a member
+    // Ensure current user is a member (upsert-safe)
     const { data: existingMembership } = await supabase
       .from('room_members')
       .select('user_id')
