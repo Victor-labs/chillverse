@@ -1,6 +1,4 @@
 // src/pages/multiplayer/useRoom.ts
-// Supabase Realtime hook — room state, player presence, chat, broadcast events
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
@@ -35,8 +33,16 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
   const [countdownServerTs, setCountdownServerTs] = useState<string | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
+  // Refs to avoid stale closures in async handlers
+  const isHostRef = useRef(false)
+  const roomRef = useRef<GameRoomRow | null>(null)
+  const playersRef = useRef<RoomPlayerProfile[]>([])
 
-  // ── Fetch initial room + players + message history ──────────
+  // Keep refs in sync with state
+  useEffect(() => { roomRef.current = room }, [room])
+  useEffect(() => { playersRef.current = players }, [players])
+
+  // ── Fetch initial room + players + messages ──────────────────
   const loadRoom = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -53,20 +59,13 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       return
     }
     setRoom(roomData as GameRoomRow)
+    roomRef.current = roomData as GameRoomRow
 
-    // Load players with profile join
     const { data: playersData } = await supabase
       .from('room_players')
       .select(`
-        player_id,
-        team,
-        is_host,
-        joined_at,
-        profiles:player_id (
-          username,
-          display_name,
-          avatar
-        )
+        player_id, team, is_host, joined_at,
+        profiles:player_id ( username, display_name, avatar )
       `)
       .eq('room_id', roomId)
       .order('joined_at', { ascending: true })
@@ -85,11 +84,11 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
         }
       })
       setPlayers(mapped)
+      playersRef.current = mapped
+      isHostRef.current = mapped.find(p => p.player_id === myId)?.is_host ?? false
     }
 
-    // Load message history
     await loadMessages()
-
     setLoading(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId])
@@ -98,15 +97,8 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     const { data: msgData } = await supabase
       .from('room_messages')
       .select(`
-        id,
-        room_id,
-        player_id,
-        message,
-        created_at,
-        profiles:player_id (
-          username,
-          display_name
-        )
+        id, room_id, player_id, message, created_at,
+        profiles:player_id ( username, display_name )
       `)
       .eq('room_id', roomId)
       .order('created_at', { ascending: true })
@@ -130,6 +122,54 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     }
   }, [roomId])
 
+  // ── startCountdown — uses DB-returned timestamp ──────────────
+  const startCountdown = useCallback(async () => {
+    const { data } = await supabase
+      .from('game_rooms')
+      .update({ status: 'countdown', countdown_start_at: new Date().toISOString() })
+      .eq('id', roomId)
+      .select('countdown_start_at')
+      .single()
+
+    if (!data) return
+
+    // Broadcast for low-latency sync on slow Realtime connections.
+    // Postgres Changes listener will also fire and set countdownServerTs —
+    // both paths use the same DB value so there is no double-set divergence.
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'room_event',
+      payload: {
+        type: 'countdown_start',
+        serverTimestamp: data.countdown_start_at,
+        roomId,
+      },
+    })
+  }, [roomId])
+
+  // Stable ref so it can be called inside Postgres Changes handler
+  const startCountdownRef = useRef(startCountdown)
+  useEffect(() => { startCountdownRef.current = startCountdown }, [startCountdown])
+
+  // ── Auto-transition to in_progress after 5-second countdown ──
+  useEffect(() => {
+    if (!countdownServerTs) return
+    const elapsed = Date.now() - new Date(countdownServerTs).getTime()
+    const remaining = Math.max(0, 5000 - elapsed)
+
+    const timer = setTimeout(async () => {
+      if (isHostRef.current) {
+        await supabase
+          .from('game_rooms')
+          .update({ status: 'in_progress' })
+          .eq('id', roomId)
+          .eq('status', 'countdown') // guard: only update if still in countdown
+      }
+    }, remaining)
+
+    return () => clearTimeout(timer)
+  }, [countdownServerTs, roomId])
+
   // ── Supabase Realtime setup ──────────────────────────────────
   useEffect(() => {
     loadRoom()
@@ -138,24 +178,26 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       config: { broadcast: { self: true } },
     })
 
-    // Postgres Changes — room status updates
+    // Room status updates
     channel.on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomId}` },
       (payload) => {
-        setRoom(payload.new as GameRoomRow)
-        if ((payload.new as GameRoomRow).countdown_start_at) {
-          setCountdownServerTs((payload.new as GameRoomRow).countdown_start_at)
+        const updated = payload.new as GameRoomRow
+        setRoom(updated)
+        roomRef.current = updated
+        // Always trust the DB timestamp — not a client-generated one
+        if (updated.countdown_start_at) {
+          setCountdownServerTs(updated.countdown_start_at)
         }
       }
     )
 
-    // Postgres Changes — player joins
+    // Player joins
     channel.on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
       async () => {
-        // Re-fetch players list to get full profile data
         const { data } = await supabase
           .from('room_players')
           .select(`
@@ -166,46 +208,64 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
           .order('joined_at', { ascending: true })
 
         if (data) {
-          setPlayers(
-            data.map((row: Record<string, unknown>) => {
-              const profile = row.profiles as { username: string; display_name: string | null; avatar: string } | null
-              return {
-                player_id: row.player_id as string,
-                username: profile?.username ?? 'Player',
-                display_name: profile?.display_name ?? null,
-                avatar: profile?.avatar ?? '',
-                team: row.team as TeamChoice,
-                is_host: row.is_host as boolean,
-                joined_at: row.joined_at as string,
-              }
-            })
-          )
+          const mapped: RoomPlayerProfile[] = data.map((row: Record<string, unknown>) => {
+            const profile = row.profiles as { username: string; display_name: string | null; avatar: string } | null
+            return {
+              player_id: row.player_id as string,
+              username: profile?.username ?? 'Player',
+              display_name: profile?.display_name ?? null,
+              avatar: profile?.avatar ?? '',
+              team: row.team as TeamChoice,
+              is_host: row.is_host as boolean,
+              joined_at: row.joined_at as string,
+            }
+          })
+
+          setPlayers(mapped)
+          playersRef.current = mapped
+          isHostRef.current = mapped.find(p => p.player_id === myId)?.is_host ?? false
+
+          // Auto-start: when room fills, host triggers countdown automatically
+          const currentRoom = roomRef.current
+          if (
+            currentRoom &&
+            mapped.length >= currentRoom.max_player_count &&
+            currentRoom.status === 'waiting' &&
+            isHostRef.current
+          ) {
+            startCountdownRef.current()
+          }
         }
       }
     )
 
-    // Postgres Changes — player leaves
+    // Player leaves
     channel.on(
       'postgres_changes',
       { event: 'DELETE', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
       (payload) => {
         const gone = (payload.old as { player_id: string }).player_id
-        setPlayers(prev => prev.filter(p => p.player_id !== gone))
+        setPlayers(prev => {
+          const updated = prev.filter(p => p.player_id !== gone)
+          playersRef.current = updated
+          isHostRef.current = updated.find(p => p.player_id === myId)?.is_host ?? false
+          return updated
+        })
       }
     )
 
-    // Broadcast — team changes, game state, etc.
+    // Broadcast events
     channel.on('broadcast', { event: 'room_event' }, ({ payload }) => {
       const ev = payload as RealtimeBroadcastEvent
       if (ev.type === 'team_change') {
         setPlayers(prev =>
-          prev.map(p =>
-            p.player_id === ev.playerId ? { ...p, team: ev.team } : p
-          )
+          prev.map(p => p.player_id === ev.playerId ? { ...p, team: ev.team } : p)
         )
       }
       if (ev.type === 'countdown_start') {
-        setCountdownServerTs(ev.serverTimestamp)
+        // Only set from broadcast if DB Postgres Changes hasn't fired yet.
+        // Both use the same DB-originated timestamp so there's no divergence.
+        setCountdownServerTs(prev => prev ?? ev.serverTimestamp)
       }
       if (ev.type === 'chat_message') {
         setMessages(prev => [
@@ -230,7 +290,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       channel.unsubscribe()
       channelRef.current = null
     }
-  }, [roomId, loadRoom])
+  }, [roomId, myId, loadRoom])
 
   // ── Actions ──────────────────────────────────────────────────
 
@@ -241,21 +301,15 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
 
       const { data, error: sendErr } = await supabase
         .from('room_messages')
-        .insert({
-          room_id: roomId,
-          player_id: myId,
-          message: trimmed,
-        })
+        .insert({ room_id: roomId, player_id: myId, message: trimmed })
         .select('id, created_at')
         .single()
 
       if (sendErr || !data) return
 
-      const me = players.find(p => p.player_id === myId)
+      const me = playersRef.current.find(p => p.player_id === myId)
       const senderName = me?.display_name || me?.username || 'Player'
 
-      // Broadcast so all clients (including this one) render it instantly,
-      // instead of waiting for a manual reload to re-fetch history.
       channelRef.current?.send({
         type: 'broadcast',
         event: 'room_event',
@@ -269,7 +323,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
         } as RealtimeBroadcastEvent,
       })
     },
-    [roomId, myId, players]
+    [roomId, myId]
   )
 
   const updateMyTeam = useCallback(
@@ -280,7 +334,6 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
         .eq('room_id', roomId)
         .eq('player_id', myId)
 
-      // Broadcast immediately for low-latency UI sync
       channelRef.current?.send({
         type: 'broadcast',
         event: 'room_event',
@@ -290,27 +343,13 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     [roomId, myId]
   )
 
-  const startCountdown = useCallback(async () => {
-    const serverTimestamp = new Date().toISOString()
-    // Update DB status → triggers Postgres Changes for all clients
-    await supabase
-      .from('game_rooms')
-      .update({ status: 'countdown', countdown_start_at: serverTimestamp })
-      .eq('id', roomId)
-
-    // Also broadcast directly for lower latency
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'room_event',
-      payload: {
-        type: 'countdown_start',
-        serverTimestamp,
-        roomId,
-      },
-    })
-  }, [roomId])
-
   const leaveRoom = useCallback(async () => {
+    // Block leaving once countdown or game has started
+    if (
+      roomRef.current?.status === 'countdown' ||
+      roomRef.current?.status === 'in_progress'
+    ) return
+
     await supabase
       .from('room_players')
       .delete()
@@ -341,5 +380,4 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     broadcast,
     countdownServerTs,
   }
-          }
-        
+}
