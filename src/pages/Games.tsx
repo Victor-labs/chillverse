@@ -84,7 +84,6 @@ const GAMES: GameMeta[] = [
   { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash, sessionCost: 3 },
 ]
 
-const DEFAULT_STREAK_STATE = { rank: 'beginner' as GameRank, currentStreak: 0, allTimeStreak: 0 }
 
 // ─── Lobby Card ───────────────────────────────────────────────
 function LobbyCard({
