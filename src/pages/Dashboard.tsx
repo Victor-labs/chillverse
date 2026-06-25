@@ -34,7 +34,7 @@ interface FeatureTile {
 const FEATURE_TILES: FeatureTile[] = [
   { label: 'Studio',       desc: 'Create & publish content',    icon: Clapperboard, iconBg: 'rgba(255,77,139,0.12)',  iconColor: '#ff4d8b', to: '/coming-soon?feature=Studio'      },
   { label: 'Achievements', desc: 'Track goals & unlock badges', icon: Trophy,       iconBg: 'rgba(245,197,66,0.12)', iconColor: '#f5c542', to: '/coming-soon?feature=Achievements' },
-  { label: 'Mall',         desc: 'Shop exclusive drops',        icon: ShoppingBag,  iconBg: 'rgba(255,107,0,0.12)',  iconColor: '#ff6b00', to: '/coming-soon?feature=Mall'         },
+  { label: 'Mall',         desc: 'Shop exclusive drops',        icon: ShoppingBag,  iconBg: 'rgba(255,107,0,0.12)',  iconColor: '#ff6b00', to: '/mall'         },
   { label: 'Profile',      desc: 'Your stats, rank & showcase', icon: User,         iconBg: 'rgba(62,207,142,0.12)', iconColor: '#3ecf8e', to: '/profile'                          },
   { label: 'Games',        desc: 'Quick-fire mini games',       icon: Gamepad2,     iconBg: 'rgba(79,142,247,0.12)', iconColor: '#4f8ef7', to: '/games'                            },
   { label: 'Trivia Night', desc: 'Weekly live trivia rooms',    icon: Brain,        iconBg: 'rgba(155,109,255,0.12)',iconColor: '#9b6dff', to: '/games'                            },
@@ -217,7 +217,7 @@ export default function Dashboard() {
 
   const QUICK_ACTIONS: QuickAction[] = [
     { label: 'Play Games', sub: onlineCount != null ? `${onlineCount} online` : '…',  to: '/games',                          bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2   },
-    { label: 'Mall',       sub: 'New drops',    to: '/coming-soon?feature=Mall',       bg: 'linear-gradient(135deg,#ff6b00,#ff9a3c)', icon: ShoppingBag },
+    { label: 'Mall',       sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,#ff6b00,#ff9a3c)', icon: ShoppingBag },
     { label: 'Watch',      sub: 'Trending now', to: '/watch',      bg: 'linear-gradient(135deg,#ff4d8b,#ff6b6b)', icon: Film        },
   ]
 
