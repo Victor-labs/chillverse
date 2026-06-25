@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag,
-  MessageCircle, User, Settings, Bell, X, Zap, Shield, Users,
+  User, Settings, Zap, X,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 
@@ -15,25 +15,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Streak',        to: '/streak',                            icon: Flame,        badge: null },
-  { label: 'Dashboard',     to: '/dashboard',                         icon: Home,         badge: null },
-  { label: 'Games',         to: '/games',                             icon: Gamepad2,     badge: null },
-  { label: 'Multiplayer',   to: '/multiplayer',                       icon: Users,        badge: null },
-  { label: 'Mall',          to: '/mall',                              icon: ShoppingBag,  badge: 3    },
-  { label: 'Ranks',         to: '/ranks',         icon: Trophy,   badge: null },
-  { label: 'Achievements',  to: '/achievements',  icon: Zap,      badge: null },
-  { label: 'Challenges',    to: '/coming-soon?feature=Challenges',    icon: Shield,       badge: null },
-  { label: 'Chat',          to: '/chat',                              icon: MessageCircle,badge: 5    },
-  { label: 'Profile',       to: '/profile',                           icon: User,         badge: null },
-  { label: 'Settings',      to: '/settings',                          icon: Settings,     badge: null },
-  { label: 'Notifications', to: '/coming-soon?feature=Notifications', icon: Bell,         badge: 12   },
+  { label: 'Dashboard',    to: '/dashboard',    icon: Home,        badge: null },
+  { label: 'Streak',       to: '/streak',        icon: Flame,       badge: null },
+  { label: 'Games',        to: '/games',         icon: Gamepad2,    badge: null },
+  { label: 'Mall',         to: '/mall',          icon: ShoppingBag, badge: null },
+  { label: 'Ranks',        to: '/ranks',         icon: Trophy,      badge: null },
+  { label: 'Achievements', to: '/achievements',  icon: Zap,         badge: null },
+  { label: 'Profile',      to: '/profile',       icon: User,        badge: null },
+  { label: 'Settings',     to: '/settings',      icon: Settings,    badge: null },
 ]
 
-function isItemActive(item: NavItem, pathname: string, search: string): boolean {
-  const [path, query] = item.to.split('?')
-  if (path !== pathname) return false
-  if (!query) return true
-  return search === `?${query}`
+function isItemActive(item: NavItem, pathname: string): boolean {
+  return pathname === item.to
 }
 
 interface SidebarProps {
@@ -42,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
-  const { pathname, search } = useLocation()
+  const { pathname } = useLocation()
   const navigate = useNavigate()
 
   function handleNavClick(e: React.MouseEvent<HTMLButtonElement>, to: string) {
@@ -53,7 +46,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Overlay — shown on mobile + tablet when open */}
       {open && (
         <div
           className="fixed inset-0 z-[340] lg:hidden"
@@ -89,7 +81,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         {/* Nav */}
         <nav className="flex-1 flex flex-col gap-1 px-4 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
-            const active = isItemActive(item, pathname, search)
+            const active = isItemActive(item, pathname)
             const Icon = item.icon
             return (
               <button

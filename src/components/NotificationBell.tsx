@@ -1,11 +1,12 @@
 // src/components/NotificationBell.tsx
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Bell, X, Trophy, Flame, TrendingUp, MessageCircle, UserPlus, Zap,
   Star, Shield, Sparkles, Target, Award, Crown, CheckCircle,
   Sword, Rocket, Gem, Users, Heart, Mail, Sprout, User,
   Moon, Calendar, Activity, Flag, Plus, ArrowRight, Grid, Search,
-  Gamepad2, Home, Lock, BarChart2, Layers, Brain, Eye,
+  Gamepad2, Home, Lock, BarChart2, Layers, Brain, Eye, ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -15,7 +16,6 @@ import type React from 'react'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LucideIcon = React.ComponentType<any>
 
-// Map icon key strings from DB → Lucide component
 const ICON_MAP: Record<string, LucideIcon> = {
   'bell': Bell, 'trophy': Trophy, 'flame': Flame, 'trending-up': TrendingUp,
   'message-circle': MessageCircle, 'user-plus': UserPlus, 'zap': Zap,
@@ -54,7 +54,6 @@ const TYPE_COLOR: Record<string, string> = {
   streak:      '#ff4d8b',
 }
 
-// Fallback icon per notification type (if no icon key in DB row)
 const TYPE_ICON: Record<string, string> = {
   achievement: 'trophy',
   follow:      'user-plus',
@@ -75,6 +74,7 @@ function timeAgo(iso: string) {
 export default function NotificationBell() {
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
+  const navigate = useNavigate()
 
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -108,7 +108,7 @@ export default function NotificationBell() {
     if (!open && userId) {
       setLoading(true)
       const data = await getNotifications(userId)
-      setNotifications(data as Notification[])
+      setNotifications((data as Notification[]).slice(0, 5))
       setLoading(false)
       if (unread > 0) {
         await markNotificationsRead(userId)
@@ -145,13 +145,13 @@ export default function NotificationBell() {
             </button>
           </div>
 
-          <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 340, overflowY: 'auto' }}>
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
                 <span style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', display: 'block', animation: 'spin 0.8s linear infinite' }} />
               </div>
             ) : notifications.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{ padding: '32px 20px', textAlign: 'center' }}>
                 <Bell size={28} style={{ color: 'var(--text-muted)', display: 'block', margin: '0 auto 10px' }} />
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No notifications yet</p>
               </div>
@@ -174,6 +174,17 @@ export default function NotificationBell() {
               })
             )}
           </div>
+
+          {/* View All button */}
+          <button
+            type="button"
+            onClick={() => { setOpen(false); navigate('/notifications') }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderTop: '1px solid rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--accent)', transition: 'background 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,0,0.08)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+          >
+            View All Notifications <ChevronRight size={14} />
+          </button>
         </div>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
