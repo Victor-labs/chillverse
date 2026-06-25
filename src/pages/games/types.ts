@@ -12,6 +12,7 @@ export type GameId =
   | 'two-truths'
   | 'speed-math'
   | 'liars-grid'
+  | 'hangman'
 
 export type GameKey =
   | 'arrow_dash'
@@ -23,6 +24,7 @@ export type GameKey =
   | 'two_truths'
   | 'speed_math'
   | 'liars_grid'
+  | 'hangman'
 
 export interface RankConfig {
   rank: GameRank
