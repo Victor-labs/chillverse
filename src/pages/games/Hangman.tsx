@@ -7,7 +7,6 @@ import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal } from './Game
 import { ripple } from '../../lib/ripple'
 
 const ACCENT = '#ff6b00'
-const GAME_ID = 'hangman' as const
 const MAX_LIVES = 3
 const MAX_HINTS = 3
 
@@ -423,7 +422,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack }: Props) {
             disabled={hintsLeft <= 0 || !!wordResult}
             className="ripple-wrap"
             style={{
-              padding:'6px 16px', borderRadius:12, border:'none', cursor: hintsLeft <= 0 || wordResult ? 'not-allowed' : 'pointer',
+              padding:'6px 16px', borderRadius:12, cursor: hintsLeft <= 0 || wordResult ? 'not-allowed' : 'pointer',
               background: hintsLeft > 0 && !wordResult ? 'rgba(245,197,66,0.12)' : 'var(--surface2)',
               color: hintsLeft > 0 && !wordResult ? '#f5c542' : 'var(--text-muted)',
               fontSize:11, fontWeight:700, marginBottom:10,
