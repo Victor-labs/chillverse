@@ -34,14 +34,7 @@ import Hangman from './games/Hangman'
 const MAX_PLAYS    = 7
 const GLOBAL_LIMIT = 10
 
-function formatCountdown(resetAt: number): string {
-  const ms = Math.max(0, resetAt - Date.now())
-  const totalSec = Math.ceil(ms / 1000)
-  const h = Math.floor(totalSec / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-  const s = totalSec % 60
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-}
+
 
 // ─── Game registry ───────────────────────────────────────────
 type GameId =
@@ -146,14 +139,11 @@ export default function Games() {
   const [allTimeStreaks, setAllTimeStreaks] = useState<Partial<Record<GameId, number>>>({})
   const [results,     setResults]     = useState<GameEndPayload[]>([])
   const [globalCount, setGlobalCount] = useState(0)
-  const [globalReset, setGlobalReset] = useState(0)
-  const [countdown,   setCountdown]   = useState('00:00:00')
 
   const refreshGlobalInfo = useCallback(() => {
     if (!userId) return
     const info = getGlobalSessionInfo(userId)
     setGlobalCount(info.count)
-    setGlobalReset(info.resetAt)
   }, [userId])
 
   // load player data
@@ -249,7 +239,7 @@ export default function Games() {
               <Lock size={18} style={{ color:'#9b6dff', flexShrink:0 }} />
               <div>
                 <p style={{ fontSize:14, fontWeight:800, color:'#9b6dff', marginBottom:2 }}>
-                  Daily limit reached · Resets in <span style={{ fontFamily:'monospace', letterSpacing:1 }}>{countdown}</span>
+                  Daily session limit reached
                 </p>
                 <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.5 }}>
                   You've played {GLOBAL_LIMIT} sessions today. Come back after the cooldown — or upgrade to Pro for unlimited play.
