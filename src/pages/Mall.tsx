@@ -155,7 +155,7 @@ function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBal
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
     >
       <div style={{ background: 'var(--surface)', borderRadius: 22, padding: 24, width: '100%', maxWidth: 360, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.55)', position: 'relative' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
@@ -223,8 +223,8 @@ function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBal
 ══════════════════════════════════════════════════════ */
 function SubPage({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: 'var(--bg)', overflowY: 'auto', animation: 'slideInRight 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
-      <div style={{ position: 'sticky', top: 0, height: 58, display: 'flex', alignItems: 'center', gap: 14, padding: '0 20px', background: 'rgba(17,17,19,0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.05)', zIndex: 50 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'var(--bg)', overflowY: 'auto', animation: 'slideInRight 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
+      <div style={{ position: 'sticky', top: 0, height: 58, display: 'flex', alignItems: 'center', gap: 14, padding: '0 20px', background: 'rgba(17,17,19,0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.05)', zIndex: 410 }}>
         <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
           <ArrowLeft size={15} />
         </button>
@@ -363,12 +363,6 @@ export default function Mall() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.05)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
             <Gem size={13} color="#4f8ef7" /> {diamondBalance.toLocaleString()} Diamonds
           </div>
-        </div>
-
-        {/* Hours bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14, padding: '10px 14px', fontSize: 11.5, color: '#3ecf8e', marginBottom: 22 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ecf8e', boxShadow: '0 0 6px #3ecf8e' }} />
-          Open now · Closes at 7:00 PM
         </div>
 
         {/* Featured carousel */}
