@@ -30,23 +30,6 @@ export default function BrowseRooms() {
 
   async function fetchRooms() {
     setLoading(true)
-    const { data } = await supabase
-      .from('game_rooms')
-      .select(`
-        *,
-        host_profile:host_id (
-          username,
-          display_name
-        ),
-        room_players (
-          team
-        )
-      `)
-      .eq('status', 'waiting')
-      .eq('is_private', false)
-      .lt('current_player_count', supabase.rpc as unknown as never)  // filter happens in query below
-
-    // Re-do the query properly (supabase JS v2)
     const { data: rawRooms } = await supabase
       .from('game_rooms')
       .select(`
