@@ -40,6 +40,7 @@ export interface UseRaceGameReturn {
   submitAnswer: (answer: unknown, correct: boolean, points: number, responseMs: number) => void
   hasAnsweredThisRound: boolean
   channel: RealtimeChannel | null
+  startRound: (idx: number, promptData: unknown) => void
 }
 
 export function useRaceGame({
@@ -189,5 +190,6 @@ export function useRaceGame({
     submitAnswer,
     hasAnsweredThisRound: hasAnswered,
     channel: channelRef.current,
+    startRound,
   }
 }

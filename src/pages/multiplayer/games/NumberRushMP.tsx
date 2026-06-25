@@ -47,7 +47,6 @@ const OPS = ['+', '-', '×', '÷', '(', ')']
 export default function NumberRushMP({ roomId, myId, players, onGameOver }: MPGameProps) {
   const isOrchestrator = players[0]?.player_id === myId
 
-  const [rounds,       setRounds]       = useState<typeof NUMBER_RUSH_ROUNDS>([])
   const [roundIndex,   setRoundIndex]   = useState(0)
   const [phase,        setPhase]        = useState<Phase>('playing')
   const [serverTs,     setServerTs]     = useState<string | null>(null)
@@ -58,7 +57,6 @@ export default function NumberRushMP({ roomId, myId, players, onGameOver }: MPGa
   const [exprError,    setExprError]    = useState<string | null>(null)
   const [roundWinner,  setRoundWinner]  = useState<{ id: string; expr: string; ms: number; pts: number } | null>(null)
   const [scores,       setScores]       = useState<Record<string, number>>({})
-  const [wins,         setWins]         = useState<Record<string, number>>({})
   const [timeLeft,     setTimeLeft]     = useState(ROUND_SEC)
   const [results,      setResults]      = useState<PlayerResult[] | null>(null)
   const [roundLocked,  setRoundLocked]  = useState(false)
@@ -128,7 +126,6 @@ export default function NumberRushMP({ roomId, myId, players, onGameOver }: MPGa
         scoresRef.current = newScores
         winsRef.current   = newWins
         setScores(newScores)
-        setWins(newWins)
 
         setTimeout(() => {
           const next = (ev.roundIndex ?? 0) + 1
@@ -167,7 +164,6 @@ export default function NumberRushMP({ roomId, myId, players, onGameOver }: MPGa
     channel.subscribe(() => {
       if (isOrchestrator) {
         const rs = pickRounds(ROUNDS)
-        setRounds(rs)
         roundsRef.current = rs
         startRound(0, rs)
       }

@@ -24,7 +24,7 @@ function pickRounds(count: number): TTRound[] {
     const idx = Math.floor(Math.random() * pool.length)
     const item = pool.splice(idx, 1)[0]
     // TWO_TRUTHS_DATA shape: { statements: string[], lieIndex: number }
-    out.push({ statements: item.statements, lieIndex: item.lieIndex })
+    out.push({ statements: item.statements, lieIndex: item.falseIdx })
   }
   return out
 }
@@ -49,7 +49,6 @@ export default function TwoTruthsMP({ roomId, myId, players, room, onGameOver }:
   const teamMode       = (room.team_mode ?? 'ffa') as 'ffa' | '2v2'
   const teams          = Object.fromEntries(players.map(p => [p.player_id, p.team ?? null])) as Record<string, 'A' | 'B' | null>
 
-  const [rounds,       setRounds]       = useState<TTRound[]>([])
   const [roundIndex,   setRoundIndex]   = useState(0)
   const [currentRound, setCurrentRound] = useState<TTRound | null>(null)
   const [phase,        setPhase]        = useState<Phase>('playing')
@@ -161,7 +160,6 @@ export default function TwoTruthsMP({ roomId, myId, players, room, onGameOver }:
     channel.subscribe(() => {
       if (isOrchestrator) {
         const rnds = pickRounds(ROUNDS)
-        setRounds(rnds)
         roundsRef.current = rnds
         startRound(0, rnds)
       }

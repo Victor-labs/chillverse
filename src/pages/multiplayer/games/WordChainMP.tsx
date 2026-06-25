@@ -49,7 +49,6 @@ export default function WordChainMP({ roomId, myId, players, onGameOver }: MPGam
 
   const [roundNum,    setRoundNum]    = useState(1)
   const [phase,       setPhase]       = useState<Phase>('playing')
-  const [turnOrder,   setTurnOrder]   = useState<string[]>([])
   const [activeId,    setActiveId]    = useState<string | null>(null)
   const [lastWord,    setLastWord]    = useState('')
   const [chainWords,  setChainWords]  = useState<{ word: string; playerId: string }[]>([])
@@ -58,7 +57,6 @@ export default function WordChainMP({ roomId, myId, players, onGameOver }: MPGam
   const [inputVal,    setInputVal]    = useState('')
   const [inputError,  setInputError]  = useState<string | null>(null)
   const [submitted,   setSubmitted]   = useState(false)
-  const [serverTs,    setServerTs]    = useState<string | null>(null)
   const [timeLeft,    setTimeLeft]    = useState(TURN_SEC)
   const [results,     setResults]     = useState<PlayerResult[] | null>(null)
   const [roundMsg,    setRoundMsg]    = useState<string | null>(null)
@@ -116,7 +114,6 @@ export default function WordChainMP({ roomId, myId, players, onGameOver }: MPGam
 
   const startTurn = useCallback((activePlayerId: string, ts: string) => {
     setActiveId(activePlayerId)
-    setServerTs(ts)
     setSubmitted(false)
     setInputVal('')
     setInputError(null)
@@ -145,7 +142,6 @@ export default function WordChainMP({ roomId, myId, players, onGameOver }: MPGam
 
   useEffect(() => {
     const order = players.map(p => p.player_id)
-    setTurnOrder(order)
     orderRef.current = order
 
     const channel = supabase.channel(`wc:${roomId}`, { config: { broadcast: { self: true } } })

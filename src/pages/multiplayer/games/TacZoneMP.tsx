@@ -30,23 +30,19 @@ type TacEvent = TacMoveEvent | TacStartEvent
 export default function TacZoneMP({ roomId, myId, players, onGameOver }: MPGameProps) {
   const [board,      setBoard]      = useState<Cell[]>(Array(9).fill(null))
   const [mySymbol,   setMySymbol]   = useState<'X' | 'O' | null>(null)
-  const [activeSym,  setActiveSym]  = useState<'X'>('X')
+  const [activeSym,  setActiveSym]  = useState<'X' | 'O'>('X')
   const [winLine,    setWinLine]    = useState<number[] | null>(null)
   const [phase,      setPhase]      = useState<Phase>('playing')
-  const [turnTs,     setTurnTs]     = useState<string | null>(null)
   const [timeLeft,   setTimeLeft]   = useState(TURN_SEC)
   const [results,    setResults]    = useState<PlayerResult[] | null>(null)
-  const [moveCount,  setMoveCount]  = useState(0)
 
   const channelRef   = useRef<RealtimeChannel | null>(null)
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null)
-  const startRef     = useRef(Date.now())
 
   const isOrchestrator = players[0]?.player_id === myId  // first-joined drives setup
 
   // ── Timer countdown ──
   function startTurnTimer(ts: string) {
-    setTurnTs(ts)
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       const elapsed = (Date.now() - new Date(ts).getTime()) / 1000
@@ -67,18 +63,15 @@ export default function TacZoneMP({ roomId, myId, players, onGameOver }: MPGameP
   }
 
   // ── Build results and end ──
-  const endGame = useCallback((boardState: Cell[], winnerSym: 'X' | 'O' | null, moves: number) => {
+  const endGame = useCallback((winnerSym: 'X' | 'O' | null, moves: number) => {
     if (phase === 'ended') return
     setPhase('ended')
     if (timerRef.current) clearInterval(timerRef.current)
 
-    const durationSec = Math.round((Date.now() - startRef.current) / 1000)
     const myRank: GameRank = 'beginner'
     const rankCfg = getRankConfig(myRank)
 
     const playerResults: PlayerResult[] = players.map(p => {
-      const isX    = p.player_id === players.find(pl => pl.player_id === myId)?.player_id
-                     ? mySymbol === 'X' : mySymbol !== 'X'
       const pSym   = p.player_id === myId ? mySymbol : (mySymbol === 'X' ? 'O' : 'X')
       const won    = winnerSym !== null && pSym === winnerSym
       const drew   = winnerSym === null
@@ -128,9 +121,9 @@ export default function TacZoneMP({ roomId, myId, players, onGameOver }: MPGameP
           const filled = next.every(c => c !== null)
           if (line) {
             setWinLine(line)
-            endGame(next, ev.symbol, next.filter(Boolean).length)
+            endGame(ev.symbol, next.filter(Boolean).length)
           } else if (filled) {
-            endGame(next, null, 9)
+            endGame(null, 9)
           } else {
             setActiveSym(ev.symbol === 'X' ? 'O' : 'X')
             const ts = new Date().toISOString()
@@ -138,7 +131,6 @@ export default function TacZoneMP({ roomId, myId, players, onGameOver }: MPGameP
           }
           return next
         })
-        setMoveCount(m => m + 1)
       }
 
       if ((ev as { type: string }).type === 'tac_forfeit') {

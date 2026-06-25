@@ -5,7 +5,7 @@ import { calcSessionXP, getRankConfig } from '../../games/types'
 import type { GameRank } from '../../games/types'
 import { TRIVIA_QUESTIONS } from '../../games/gameData'
 import { calcRaceRoundScore, getRoundTimeState, broadcastRaceEvent } from '../raceEngine'
-import type { RoundStartPayload, RoundRevealPayload, PlayerRoundResult } from '../raceEngine'
+import type { RoundRevealPayload, PlayerRoundResult } from '../raceEngine'
 import MultiplayerResults from '../MultiplayerResults'
 import type { PlayerResult } from '../MultiplayerResults'
 import type { MPGameProps } from './mpGameTypes'
@@ -29,9 +29,9 @@ function pickQuestions(count: number): TriviaQuestion[] {
     const idx = Math.floor(Math.random() * pool.length)
     const q   = pool.splice(idx, 1)[0]
     picked.push({
-      question: q.question,
-      options:  q.options,
-      answer:   q.answer,
+      question: q.q,
+      options:  q.a,
+      answer:   q.correct,
     })
   }
   return picked
@@ -72,7 +72,6 @@ export default function TriviaClashMP({ roomId, myId, players, onGameOver }: MPG
   const answersRef    = useRef<Record<string, { answerIdx: number; responseMs: number }>>({})
   const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
   const roundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startRef      = useRef(Date.now())
 
   // ── Timer display ──
   function runDisplayTimer(serverTs: string) {
@@ -195,6 +194,7 @@ export default function TriviaClashMP({ roomId, myId, players, onGameOver }: MPG
           const nextIdx = reveal.roundIndex + 1
           if (nextIdx >= ROUNDS) {
             setPhase('ended')
+            if (isOrchestrator) endMatch(scores, correctCount)
           } else if (isOrchestrator) {
             setQuestions(prev => { startRound(nextIdx, prev); return prev })
           }
@@ -266,7 +266,6 @@ export default function TriviaClashMP({ roomId, myId, players, onGameOver }: MPG
     )
   }
 
-  const myReveal   = revealData?.results.find(r => r.playerId === myId)
   const answeredIds = revealData?.results.map(r => r.playerId) ?? []
 
   return (

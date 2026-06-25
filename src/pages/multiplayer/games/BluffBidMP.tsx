@@ -46,7 +46,6 @@ export default function BluffBidMP({ roomId, myId, players, room, onGameOver }: 
   const teamMode       = (room.team_mode ?? 'ffa') as 'ffa' | '2v2'
   const teams          = Object.fromEntries(players.map(p => [p.player_id, p.team ?? null])) as Record<string, 'A' | 'B' | null>
 
-  const [facts,        setFacts]        = useState<typeof BLUFF_BID_DATA>([])
   const [roundIndex,   setRoundIndex]   = useState(0)
   const [phase,        setPhase]        = useState<Phase>('playing')
   const [serverTs,     setServerTs]     = useState<string | null>(null)
@@ -56,7 +55,6 @@ export default function BluffBidMP({ roomId, myId, players, room, onGameOver }: 
   const [revealGuesses,setRevealGuesses]= useState<Record<string, number> | null>(null)
   const [revealScores, setRevealScores] = useState<Record<string, number> | null>(null)
   const [scores,       setScores]       = useState<Record<string, number>>({})
-  const [winsCount,    setWinsCount]    = useState<Record<string, number>>({})
   const [timeLeft,     setTimeLeft]     = useState(ROUND_SEC)
   const [results,      setResults]      = useState<PlayerResult[] | null>(null)
 
@@ -152,7 +150,6 @@ export default function BluffBidMP({ roomId, myId, players, room, onGameOver }: 
         scoresRef.current = newScores
         winsRef.current   = newWins
         setScores(newScores)
-        setWinsCount(newWins)
 
         setTimeout(() => {
           const next = (ev.roundIndex ?? 0) + 1
@@ -185,7 +182,6 @@ export default function BluffBidMP({ roomId, myId, players, room, onGameOver }: 
     channel.subscribe(() => {
       if (isOrchestrator) {
         const fs = pickFacts(ROUNDS)
-        setFacts(fs)
         factsRef.current = fs
         startRound(0, fs)
       }
