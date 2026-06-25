@@ -236,14 +236,40 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim()) return
-      await supabase.from('room_messages').insert({
-        room_id: roomId,
-        player_id: myId,
-        message: text.trim(),
+      const trimmed = text.trim()
+      if (!trimmed) return
+
+      const { data, error: sendErr } = await supabase
+        .from('room_messages')
+        .insert({
+          room_id: roomId,
+          player_id: myId,
+          message: trimmed,
+        })
+        .select('id, created_at')
+        .single()
+
+      if (sendErr || !data) return
+
+      const me = players.find(p => p.player_id === myId)
+      const senderName = me?.display_name || me?.username || 'Player'
+
+      // Broadcast so all clients (including this one) render it instantly,
+      // instead of waiting for a manual reload to re-fetch history.
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'room_event',
+        payload: {
+          type: 'chat_message',
+          id: data.id,
+          playerId: myId,
+          senderName,
+          message: trimmed,
+          createdAt: data.created_at,
+        } as RealtimeBroadcastEvent,
       })
     },
-    [roomId, myId]
+    [roomId, myId, players]
   )
 
   const updateMyTeam = useCallback(
@@ -315,4 +341,5 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     broadcast,
     countdownServerTs,
   }
-}
+          }
+        
