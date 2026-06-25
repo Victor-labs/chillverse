@@ -189,10 +189,11 @@ function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBal
           <X size={13} />
         </button>
 
-        <div style={{
-          width: '100%', height: 160, borderRadius: 16, marginBottom: 16, overflow: 'hidden',
-          background: item.image_url ? `url(${item.image_url}) center/cover` : 'var(--surface2)',
-        }} />
+        <div style={{ width: '100%', height: 200, borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'var(--surface2)' }}>
+          {item.image_url && (
+            <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          )}
+        </div>
 
         {item.sub_category && (
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 6 }}>
@@ -408,15 +409,6 @@ export default function Mall() {
   const { wallet } = useWallet()
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
-  const [now, setNow] = useState(new Date())
-
-  // Re-check open/closed every 30s in case the window crosses while the page is open
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30000)
-    return () => clearInterval(t)
-  }, [])
-
-  const { isOpen, next } = useMemo(() => getMallStatus(now), [now])
   const diamondBalance = wallet?.gem_balance ?? 0
 
   const featured = useMemo(
@@ -424,9 +416,6 @@ export default function Mall() {
     [items]
   )
 
-  if (!isOpen) {
-    return <ClosedScreen next={next} onBack={() => navigate(-1)} />
-  }
 
   return (
     <>
