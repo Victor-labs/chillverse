@@ -68,3 +68,45 @@ export interface FeedItem {
   sub: string
   detail: GameDetail | StudioDetail | AchievementDetail
 }
+
+// ── Mall ────────────────────────────────────────────────────────────────────
+
+export type MallRarity = 'Common' | 'Rare' | 'Epic' | 'Mythic'
+export type MallItemCategory = 'avatar_skin' | 'profile_pic' | 'chat_theme' | 'xp_booster'
+
+export interface MallItem {
+  id: string
+  category: MallItemCategory
+  sub_category: string | null
+  name: string
+  description: string | null
+  rarity: MallRarity
+  price_gems: number | null
+  unlock_xp: number | null
+  is_pro_locked: boolean
+  unlocks_profile_pic_id: string | null
+  grants_free_on_unlock: boolean
+  image_url: string | null
+  is_consumable: boolean
+  is_active: boolean
+  created_at: string
+}
+
+export interface ProfilePicUnlockRequirement {
+  id: string
+  profile_pic_item_id: string
+  required_avatar_item_id: string
+}
+
+export interface UserWallet {
+  user_id: string
+  gem_balance: number
+}
+
+export interface UserInventoryItem {
+  id: string
+  user_id: string
+  item_id: string
+  is_equipped: boolean
+  quantity: number
+}
