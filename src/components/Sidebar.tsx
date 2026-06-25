@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag,
-  MessageCircle, User, Settings, Bell, X, Zap, Shield,
+  MessageCircle, User, Settings, Bell, X, Zap, Shield, Users,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 
@@ -18,10 +18,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Streak',        to: '/streak',                            icon: Flame,        badge: null },
   { label: 'Dashboard',     to: '/dashboard',                         icon: Home,         badge: null },
   { label: 'Games',         to: '/games',                             icon: Gamepad2,     badge: null },
+  { label: 'Multiplayer',   to: '/multiplayer',                       icon: Users,        badge: null },
   { label: 'Mall',          to: '/mall',                              icon: ShoppingBag,  badge: 3    },
   { label: 'Ranks',         to: '/ranks',         icon: Trophy,   badge: null },
   { label: 'Achievements',  to: '/achievements',  icon: Zap,      badge: null },
-  { label: 'Achievements',  to: '/coming-soon?feature=Achievements',  icon: Shield,       badge: null },
+  { label: 'Challenges',    to: '/coming-soon?feature=Challenges',    icon: Shield,       badge: null },
   { label: 'Chat',          to: '/chat',                              icon: MessageCircle,badge: 5    },
   { label: 'Profile',       to: '/profile',                           icon: User,         badge: null },
   { label: 'Settings',      to: '/settings',                          icon: Settings,     badge: null },
