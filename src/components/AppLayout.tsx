@@ -10,6 +10,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/chat':      'Chat',
   '/games':     'Games',
   '/ranks':     'Rank',
+  '/mall':      'Mall',
 }
 
 export default function AppLayout() {

@@ -18,7 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Streak',        to: '/streak',                            icon: Flame,        badge: null },
   { label: 'Dashboard',     to: '/dashboard',                         icon: Home,         badge: null },
   { label: 'Games',         to: '/games',                             icon: Gamepad2,     badge: null },
-  { label: 'Mall',          to: '/coming-soon?feature=Mall',          icon: ShoppingBag,  badge: 3    },
+  { label: 'Mall',          to: '/mall',                              icon: ShoppingBag,  badge: 3    },
   { label: 'Ranks',         to: '/ranks',                             icon: Trophy,       badge: null },
   { label: 'Achievements',  to: '/coming-soon?feature=Achievements',  icon: Shield,       badge: null },
   { label: 'Chat',          to: '/chat',                              icon: MessageCircle,badge: 5    },
