@@ -64,32 +64,46 @@ export default function CreateRoom() {
       const hasPassword = password.trim().length > 0
       let passwordHash: string | null = null
 
-      // Only generate a short code for private rooms.
-      // Public rooms don't need one — they appear in Browse Rooms.
-      const shortCode = hasPassword ? generateShortCode() : ''
-
       if (hasPassword) {
         passwordHash = await hashPassword(password.trim())
       }
 
       // -- Step 1: Insert the room -----------------------------------------
-      // current_player_count starts at 1 (the host) — we do NOT rely on a
-      // DB trigger to increment it. The host row insert below keeps these in sync.let room = null
-let roomErr = null
-for (let attempt = 0; attempt < 5; attempt++) {
-  const code = hasPassword ? generateShortCode() : ''
-  const result = await supabase
-    .from('game_rooms')
-    .insert({ ..., short_code: code })
-    .select('id, short_code')
-    .single()
-  if (!result.error) { room = result.data; break }
-  if (!result.error.message.includes('idx_game_rooms_short_code')) {
-    roomErr = result.error; break // Different error — stop retrying
-  }
-  // Short code collision — generate a new one and retry
-}
-if (!room) throw new Error(roomErr?.message ?? 'Failed to create room')
+      // Retry up to 5 times in case of a short_code collision.
+      let room: { id: string; short_code: string } | null = null
+      let roomErr: { message: string } | null = null
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = hasPassword ? generateShortCode() : ''
+        const result = await supabase
+          .from('game_rooms')
+          .insert({
+            game_id:              selectedGame.id,
+            room_name:            finalName,
+            host_id:              userId,
+            is_private:           hasPassword,
+            password_hash:        passwordHash,
+            status:               'waiting',
+            max_player_count:     selectedGame.maxPlayers,
+            min_player_count:     selectedGame.minPlayers,
+            current_player_count: 1,
+            short_code:           code,
+          })
+          .select('id, short_code')
+          .single()
+
+        if (!result.error) {
+          room = result.data
+          break
+        }
+        if (!result.error.message.includes('idx_game_rooms_short_code')) {
+          roomErr = result.error
+          break
+        }
+        // Short code collision — loop and try a new one
+      }
+
+      if (!room) throw new Error(roomErr?.message ?? 'Failed to create room')
 
       // -- Step 2: Insert host as player ------------------------------------
       // is_host: true so RoomLobby renders the Crown and Start button.
