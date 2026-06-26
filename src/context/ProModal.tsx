@@ -16,6 +16,11 @@ interface ProModalProps {
 
 const SLIDES: Slide[] = [
   {
+    type: 'video',
+    src: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Go%20pro/7b061d6fb30ca32a12b9919ce0b32ffd_720w.mp4',
+    text: 'Enjoy higher limit sessions',
+  },
+  {
     type: 'image',
     src: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Go%20pro/file_00000000b478722f930745622a15686c.png',
     text: 'What you get from premium...',
@@ -57,12 +62,13 @@ const SLIDES: Slide[] = [
   },
 ]
 
-const INTERVAL = 9000
+const INTERVAL = 4000
+const FIRST_SLIDE_DELAY = 6000
 
 export function ProModal({ visible, onClose, onGoPro }: ProModalProps) {
   const [idx, setIdx] = useState<number>(0)
   const [contentVisible, setContentVisible] = useState<boolean>(true)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
@@ -73,15 +79,17 @@ export function ProModal({ visible, onClose, onGoPro }: ProModalProps) {
 
   useEffect(() => {
     if (!visible) return
-    timerRef.current = setInterval(() => {
+    // First slide gets 6s, subsequent slides get 4s
+    const delay = idx === 0 ? FIRST_SLIDE_DELAY : INTERVAL
+    timerRef.current = setTimeout(() => {
       setContentVisible(false)
       setTimeout(() => {
         setIdx(i => (i + 1) % SLIDES.length)
         setContentVisible(true)
       }, 450)
-    }, INTERVAL)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [visible])
+    }, delay)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [visible, idx])
 
   useEffect(() => {
     if (SLIDES[idx].type === 'video' && videoRef.current) {
@@ -91,7 +99,7 @@ export function ProModal({ visible, onClose, onGoPro }: ProModalProps) {
   }, [idx])
 
   const jumpTo = (i: number) => {
-    if (timerRef.current) clearInterval(timerRef.current)
+    if (timerRef.current) clearTimeout(timerRef.current)
     setContentVisible(false)
     setTimeout(() => { setIdx(i); setContentVisible(true) }, 450)
   }
@@ -196,15 +204,6 @@ export function ProModal({ visible, onClose, onGoPro }: ProModalProps) {
                   borderRadius:8,padding:'3px 8px',
                   color:'rgba(255,255,255,0.6)',fontSize:10,fontWeight:700,
                 }}>{idx+1} / {SLIDES.length}</div>
-                {/* Video badge */}
-                {slide.type === 'video' && (
-                  <div style={{
-                    position:'absolute',top:10,left:10,
-                    background:'linear-gradient(135deg,#ff6b00,#ff9a3c)',
-                    borderRadius:6,padding:'3px 8px',
-                    color:'#fff',fontSize:9,fontWeight:800,letterSpacing:0.5,
-                  }}>▶ VIDEO</div>
-                )}
               </div>
 
               {/* Caption */}
