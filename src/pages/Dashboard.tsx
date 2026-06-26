@@ -30,41 +30,41 @@ function getGreeting(name: string): { line: string; sub: string } {
 
   // Time-aware pool
   const greetings = {
-    lateNight: [   // 0–4
-      { line: `Late night, ${name}..`,   sub: 'Still up? Respect the grind.' },
-      { line: `Can't sleep, ${name}?`,   sub: 'Neither can we. Let's go.' },
-      { line: `Night owl mode 🦉`,        sub: `What's good, ${name}?` },
+    lateNight: [   // 0-4
+      { line: `Late night, ${name}..`,    sub: "Still up? Respect the grind." },
+      { line: `Can't sleep, ${name}?`,    sub: "Neither can we. Let's go." },
+      { line: `Night owl mode 🦉`,         sub: `What's good, ${name}?` },
     ],
-    earlyMorning: [ // 5–8
-      { line: `Early bird, ${name} 🐦`,  sub: 'You're up before everyone.' },
-      { line: `Good morning, ${name}`,   sub: 'Coffee first or games first?' },
-      { line: `Rise & grind, ${name}`,   sub: 'The leaderboard won't climb itself.' },
+    earlyMorning: [ // 5-8
+      { line: `Early bird, ${name} 🐦`,   sub: "You're up before everyone." },
+      { line: `Good morning, ${name}`,    sub: "Coffee first or games first?" },
+      { line: `Rise & grind, ${name}`,    sub: "The leaderboard won't climb itself." },
     ],
-    morning: [     // 9–11
-      { line: `Morning, ${name} ☀️`,     sub: 'What are we getting into today?' },
-      { line: `Coffee time, ${name}?`,   sub: 'Or are you already on it.' },
-      { line: `Back at it, ${name}`,     sub: 'Let's make today count.' },
+    morning: [     // 9-11
+      { line: `Morning, ${name} ☀️`,      sub: "What are we getting into today?" },
+      { line: `Coffee time, ${name}?`,    sub: "Or are you already on it." },
+      { line: `Back at it, ${name}`,      sub: "Let's make today count." },
     ],
-    afternoon: [   // 12–16
-      { line: `Hey ${name} 👋`,          sub: 'Good to see you back.' },
-      { line: `Game time, ${name}?`,     sub: 'Sessions are waiting.' },
-      { line: `Bored?¿ ${name}`,         sub: 'Yeah we got you.' },
+    afternoon: [   // 12-16
+      { line: `Hey ${name} 👋`,           sub: "Good to see you back." },
+      { line: `Game time, ${name}?`,      sub: "Sessions are waiting." },
+      { line: `Bored?¿ ${name}`,          sub: "Yeah we got you." },
     ],
-    evening: [     // 17–20
-      { line: `Evening, ${name}`,        sub: 'Wind down or heat up?' },
-      { line: `Hey ${name}, what's up`,  sub: 'The crew's online.' },
-      { line: `Moonlight chat, ${name}?`,sub: 'It's that time of day.' },
+    evening: [     // 17-20
+      { line: `Evening, ${name}`,         sub: "Wind down or heat up?" },
+      { line: `Hey ${name}, what's up`,   sub: "The crew's online." },
+      { line: `Moonlight chat, ${name}?`, sub: "It's that time of day." },
     ],
-    night: [       // 21–23
-      { line: `Night mode, ${name} 🌙`,  sub: 'Last sessions of the day.' },
-      { line: `Still here, ${name}?`,    sub: 'One more game won't hurt.' },
-      { line: `Moonlight chat, ${name}?`,sub: 'Quiet hours, real ones only.' },
+    night: [       // 21-23
+      { line: `Night mode, ${name} 🌙`,   sub: "Last sessions of the day." },
+      { line: `Still here, ${name}?`,     sub: "One more game won't hurt." },
+      { line: `Moonlight chat, ${name}?`, sub: "Quiet hours, real ones only." },
     ],
   }
 
   // Weekend bonus
   if ((day === 0 || day === 6) && h >= 10 && h < 14) {
-    return { line: `Weekend energy, ${name}`, sub: 'No alarm, no rules. Let's go.' }
+    return { line: `Weekend energy, ${name}`, sub: "No alarm, no rules. Let's go." }
   }
 
   let pool
