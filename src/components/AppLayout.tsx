@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import AchievementToast from './AchievementToast'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -35,6 +36,7 @@ export default function AppLayout() {
 
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Topbar title={title} onMenuClick={() => setSidebarOpen(true)} />
+      <AchievementToast />
 
       {/*
         Desktop (≥1024px lg): sidebar is always visible, offset main by sidebar width.
