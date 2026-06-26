@@ -10,7 +10,8 @@ import { ripple } from '../../lib/ripple'
 
 const ACCENT     = '#ff4d8b'
 const MAX_LIVES  = 3
-const TIME_LIMIT = 6   // seconds per question
+const TIME_LIMIT_NORMAL     = 12  // seconds for first 20 questions
+const TIME_LIMIT_IMPOSSIBLE = 7   // seconds for last 10 (harder) questions
 const XP_PER_Q   = 25
 
 // ─── Question bank with accepted answer variants ──────────────
@@ -112,7 +113,8 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
   const [phase, setPhase]         = useState<'info' | 'play' | 'result' | 'quit'>('info')
   const [qIndex, setQIndex]       = useState(0)
   const [shuffled, setShuffled]   = useState<Question[]>([])
-  const [timeLeft, setTimeLeft]   = useState(TIME_LIMIT)
+  const [timeLeft, setTimeLeft]   = useState(TIME_LIMIT_NORMAL)
+  const [timeLimit, setTimeLimit]  = useState(TIME_LIMIT_NORMAL)
   const [input, setInput]         = useState('')
   const [lives, setLives]         = useState(MAX_LIVES)
   const [correct, setCorrect]     = useState(0)
@@ -130,7 +132,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
     const dur = Math.floor((Date.now() - startRef.current) / 1000)
     const xp  = finalCorrect * XP_PER_Q
     const payload: GameEndPayload = {
-      gameId: 'close_call' as any,
+      gameId: 'close-call' as any,
       gameName: 'Close Call',
       rank: _rank,
       score: finalCorrect * 100,
@@ -159,6 +161,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
         return t - 1
       })
     }, 1000)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [phase, qIndex, answerState])
 
@@ -207,7 +210,9 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
     }
     setQIndex(next)
     setInput('')
-    setTimeLeft(TIME_LIMIT)
+    const limit = next >= 20 ? TIME_LIMIT_IMPOSSIBLE : TIME_LIMIT_NORMAL
+    setTimeLimit(limit)
+    setTimeLeft(limit)
     setAnswerState('idle')
     setTimeout(() => inputRef.current?.focus(), 100)
   }
@@ -219,7 +224,8 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
     setInput('')
     setLives(MAX_LIVES)
     setCorrect(0)
-    setTimeLeft(TIME_LIMIT)
+    setTimeLeft(TIME_LIMIT_NORMAL)
+    setTimeLimit(TIME_LIMIT_NORMAL)
     setAnswerState('idle')
     setResult(null)
     startRef.current = Date.now()
@@ -290,7 +296,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack }: Props) {
         </div>
 
         {/* Timer */}
-        <TimerRing timeLeft={timeLeft} total={TIME_LIMIT} />
+        <TimerRing timeLeft={timeLeft} total={timeLimit} />
 
         {/* Question card */}
         <div style={{
