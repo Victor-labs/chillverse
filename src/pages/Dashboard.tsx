@@ -179,11 +179,16 @@ export default function Dashboard() {
   const { current, max } = getXpProgress(profile.xp)
   const xpPct = Math.min(100, Math.round((current / max) * 100))
 
-  const greeting = useMemo(
-    () => getGreeting(displayName),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayName, new Date().getHours()]
-  )
+  // currentHour drives greeting — only updates when the clock hour changes
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours())
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const h = new Date().getHours()
+      setCurrentHour(prev => prev !== h ? h : prev)
+    }, 60_000)
+    return () => clearInterval(iv)
+  }, [])
+  const greeting = useMemo(() => getGreeting(displayName), [displayName, currentHour])
   const streakInfo  = getStreakMessage(profile.streak)
 
   const QUICK_ACTIONS: QuickAction[] = [
