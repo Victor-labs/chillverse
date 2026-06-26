@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Move, Brain, Layers, BookOpen, Grid3X3, Flag,
-  Eye, Calculator, LayoutGrid, ArrowLeft, Lock, ChevronRight, Zap, Hash,
+  Eye, Calculator, LayoutGrid, ArrowLeft, Lock, ChevronRight, Zap, Hash, Target, Clock,
   type LucideIcon,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
