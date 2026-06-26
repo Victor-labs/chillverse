@@ -23,6 +23,12 @@ export interface GameRoomRow {
   team_mode: 'ffa' | '2v2' | null
   countdown_start_at: string | null
   created_at: string
+  /**
+   * 8-character alphanumeric code used as the join code for private rooms.
+   * Generated client-side on room creation and stored in the DB.
+   * Public rooms never display this — it is only shared by the host of a private room.
+   */
+  short_code: string
 }
 
 export interface RoomPlayerRow {

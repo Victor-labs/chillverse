@@ -1,7 +1,7 @@
 // src/pages/multiplayer/CreateRoom.tsx
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Lock, Eye, EyeOff, ChevronLeft, Check } from 'lucide-react'
+import { Lock, Eye, EyeOff, ChevronLeft, Check, Copy } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
@@ -12,6 +12,17 @@ import {
   playerCountLabel,
   type MultiplayerGameId,
 } from './multiplayerGameData'
+
+// ── Generate a short, human-friendly 8-character alphanumeric code ──────────
+// Used as the join code for private rooms. Uppercase only for readability.
+function generateShortCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no I, O, 0, 1 — avoids confusion
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return code
+}
 
 export default function CreateRoom() {
   const navigate = useNavigate()
@@ -29,7 +40,9 @@ export default function CreateRoom() {
   const [showPw, setShowPw] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copiedCode, setCopiedCode] = useState(false)
 
+  // Pre-fill room name once profile loads
   useEffect(() => {
     if (profile && !roomName) {
       const name = profile.display_name || profile.username || 'Player'
@@ -39,6 +52,7 @@ export default function CreateRoom() {
   }, [profile])
 
   const selectedGame = selectedGameId ? MULTIPLAYER_GAME_MAP[selectedGameId] : null
+  const isPrivate = password.trim().length > 0
 
   async function handleCreate() {
     if (!selectedGame || !session?.user) return
@@ -46,40 +60,46 @@ export default function CreateRoom() {
     setCreating(true)
 
     try {
+      const userId = session.user.id
       const finalName = roomName.trim() || `${profile?.display_name ?? 'Player'}'s Room`
       const hasPassword = password.trim().length > 0
-      const isPrivate = hasPassword
       let passwordHash: string | null = null
+      const shortCode = generateShortCode()
 
       if (hasPassword) {
         passwordHash = await hashPassword(password.trim())
       }
 
-      // Insert room with current_player_count: 0 — trigger handles the count
+      // ── Step 1: Insert the room ──────────────────────────────────────────
+      // current_player_count starts at 1 (the host) — we do NOT rely on a
+      // DB trigger to increment it, because trigger presence is not guaranteed.
+      // The host row insert below keeps these in sync.
       const { data: room, error: roomErr } = await supabase
         .from('game_rooms')
         .insert({
-          game_id: selectedGame.id,
-          room_name: finalName,
-          host_id: session.user.id,
-          is_private: isPrivate,
-          password_hash: passwordHash,
-          status: 'waiting',
-          max_player_count: selectedGame.maxPlayers,
-          min_player_count: selectedGame.minPlayers,
-          current_player_count: 0,
+          game_id:              selectedGame.id,
+          room_name:            finalName,
+          host_id:              userId,
+          is_private:           hasPassword,
+          password_hash:        passwordHash,
+          status:               'waiting',
+          max_player_count:     selectedGame.maxPlayers,
+          min_player_count:     selectedGame.minPlayers,
+          current_player_count: 1,  // host counts from the start
+          short_code:           shortCode,
         })
-        .select('id')
+        .select('id, short_code')
         .single()
 
       if (roomErr || !room) throw new Error(roomErr?.message ?? 'Failed to create room')
 
-      // Insert creator as host — trigger increments current_player_count to 1
+      // ── Step 2: Insert host as player ────────────────────────────────────
+      // is_host: true so RoomLobby renders the Crown and Start button.
       const { error: playerErr } = await supabase.from('room_players').insert({
-        room_id: room.id,
-        player_id: session.user.id,
-        is_host: true,
-        team: null,
+        room_id:  room.id,
+        player_id: userId,
+        is_host:  true,
+        team:     null,
       })
 
       if (playerErr) throw new Error(playerErr.message)
@@ -194,10 +214,13 @@ export default function CreateRoom() {
       {/* ── Step 3: Password (optional — makes room private) ── */}
       <section className="space-y-2">
         <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-          Set a password <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(makes room private)</span>
+          Set a password{' '}
+          <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+            (makes room private)
+          </span>
         </label>
         <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Leave blank to make the room public.
+          Leave blank for a public room — it will appear in Browse Rooms for anyone to join.
         </p>
         <div className="relative">
           <Lock
@@ -234,10 +257,32 @@ export default function CreateRoom() {
             {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
-        {password.trim().length > 0 && (
-          <p className="text-[11px]" style={{ color: '#a78bfa' }}>
-            🔒 This room will be private — players need the password to join.
-          </p>
+
+        {/* Private room info callout */}
+        {isPrivate && (
+          <div
+            className="rounded-xl px-4 py-3 space-y-2"
+            style={{ background: 'rgba(108,80,255,0.08)', border: '1px solid rgba(108,80,255,0.2)' }}
+          >
+            <p className="text-[11px] font-semibold" style={{ color: '#a78bfa' }}>
+              🔒 Private room — share the 8-digit code with your friends to invite them.
+            </p>
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Your unique code is generated when the room is created. You'll see it in the lobby.
+            </p>
+          </div>
+        )}
+
+        {/* Public room info callout */}
+        {selectedGame && !isPrivate && (
+          <div
+            className="rounded-xl px-4 py-3"
+            style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.15)' }}
+          >
+            <p className="text-[11px]" style={{ color: '#00e5ff' }}>
+              🌐 Public room — visible to all players in Browse Rooms. Anyone can join until it's full.
+            </p>
+          </div>
         )}
       </section>
 

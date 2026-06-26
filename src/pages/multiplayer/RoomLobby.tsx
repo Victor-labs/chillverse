@@ -1,7 +1,7 @@
 // src/pages/multiplayer/RoomLobby.tsx
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Crown, Users, LogOut, Play } from 'lucide-react'
+import { Crown, Users, LogOut, Play, Copy, Check } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useRoom } from './useRoom'
 import ChatPanel from './ChatPanel'
@@ -115,6 +115,51 @@ function PlayerCard({
   )
 }
 
+// ─── Short code copy widget (private rooms only) ──────────────
+function PrivateCodeBadge({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="flex items-center gap-2 rounded-xl px-3 py-2 transition-colors"
+      style={{
+        background: 'rgba(108,80,255,0.08)',
+        border: '1px solid rgba(108,80,255,0.25)',
+        cursor: 'pointer',
+      }}
+    >
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-left" style={{ color: 'var(--text-muted)' }}>
+          Private Room Code
+        </p>
+        <p
+          className="font-extrabold text-base tracking-[0.25em] font-mono text-left"
+          style={{ color: '#a78bfa', letterSpacing: '0.2em' }}
+        >
+          {code}
+        </p>
+      </div>
+      <div
+        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ml-1"
+        style={{ background: copied ? 'rgba(62,207,142,0.15)' : 'rgba(108,80,255,0.12)' }}
+      >
+        {copied
+          ? <Check size={13} style={{ color: '#3ecf8e' }} />
+          : <Copy size={13} style={{ color: '#a78bfa' }} />
+        }
+      </div>
+    </button>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────
 export default function RoomLobby() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -140,6 +185,9 @@ export default function RoomLobby() {
   const isHost = myPlayer?.is_host ?? false
   const isLocked = room?.status === 'countdown' || room?.status === 'in_progress'
 
+  // ── canStart: uses live players array length, NOT current_player_count ──
+  // current_player_count in the DB row may lag behind the realtime players
+  // array which is always authoritative in the lobby.
   const canStart = (() => {
     if (!room || !game || !isHost) return false
     const count = players.length
@@ -159,6 +207,7 @@ export default function RoomLobby() {
     return ''
   })()
 
+  // Slots remaining uses live players.length — always accurate
   const slotsRemaining = room ? room.max_player_count - players.length : 0
 
   // Navigate to game once in_progress
@@ -168,10 +217,6 @@ export default function RoomLobby() {
       navigate(`/multiplayer/game/${room.game_id}/${roomId}`)
     }
   }, [room?.status, room?.game_id, roomId, navigate, room])
-
-  async function copyRoomId() {
-    if (roomId) await navigator.clipboard.writeText(roomId)
-  }
 
   if (loading) {
     return (
@@ -214,7 +259,7 @@ export default function RoomLobby() {
 
         {/* ── Room header ── */}
         <div
-          className="rounded-2xl p-5 mb-6 space-y-1"
+          className="rounded-2xl p-5 mb-6 space-y-3"
           style={{ background: 'var(--surface)', border: '1px solid rgba(108,80,255,0.18)' }}
         >
           <div className="flex items-start justify-between gap-3">
@@ -228,7 +273,6 @@ export default function RoomLobby() {
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {game?.name} · {room.is_private ? '🔒 Private' : '🌐 Public'}
               </p>
-              {/* Slots remaining — hidden when full */}
               {slotsRemaining > 0 && (
                 <p className="text-xs mt-1" style={{ color: '#3ecf8e' }}>
                   {slotsRemaining} slot{slotsRemaining !== 1 ? 's' : ''} remaining
@@ -249,32 +293,29 @@ export default function RoomLobby() {
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={copyRoomId}
-            className="mt-2 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5"
-            style={{
-              background: 'var(--surface2)',
-              color: 'var(--text-muted)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              cursor: 'pointer',
-              fontFamily: 'monospace',
-            }}
-          >
-            Room ID: {roomId?.slice(0, 8)}… (tap to copy)
-          </button>
+          {/* ── Private room: show the 8-char short code for the host to share ── */}
+          {/* Public rooms: no code shown — they appear in Browse Rooms automatically */}
+          {room.is_private && room.short_code && isHost && (
+            <PrivateCodeBadge code={room.short_code} />
+          )}
+          {room.is_private && room.short_code && !isHost && (
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              🔒 Private room — your host will share the room code.
+            </p>
+          )}
         </div>
 
         {/* ── Players ── */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Users size={15} style={{ color: '#a78bfa' }} />
+            {/* Player count uses live players array — always accurate including host */}
             <h2 className="font-bold text-sm" style={{ color: 'var(--text)' }}>
               Players ({players.length}/{room.max_player_count})
             </h2>
           </div>
 
-          {gameHasTeams && room.current_player_count >= 4 ? (
+          {gameHasTeams && players.length >= 4 ? (
             <div className="grid grid-cols-2 gap-x-4">
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#4f8ef7' }}>Team A</p>
@@ -361,7 +402,7 @@ export default function RoomLobby() {
             </button>
           )}
 
-          {/* Force Start — host fallback, reduced visual weight */}
+          {/* Force Start — host only */}
           {isHost && room.status === 'waiting' && (
             <button
               type="button"
@@ -378,11 +419,11 @@ export default function RoomLobby() {
               }}
             >
               <Play size={16} />
-              {canStart ? 'Force Start' : startBlockReason}
+              {canStart ? 'Start Game' : startBlockReason}
             </button>
           )}
 
-          {/* Non-host waiting message with live player progress */}
+          {/* Non-host waiting message */}
           {!isHost && room.status === 'waiting' && (
             <div
               className="flex-1 py-3 rounded-xl text-center text-sm"
@@ -393,10 +434,10 @@ export default function RoomLobby() {
               }}
             >
               {canStart
-                ? `Waiting for players… (${players.length}/${room.max_player_count})`
+                ? `Waiting for host to start… (${players.length}/${room.max_player_count})`
                 : startBlockReason
-                  ? `Need ${startBlockReason} to start`
-                  : `Waiting for host… (${players.length}/${room.max_player_count})`
+                  ? `${startBlockReason} to start`
+                  : `Waiting for more players… (${players.length}/${room.max_player_count})`
               }
             </div>
           )}
