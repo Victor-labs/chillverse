@@ -33,9 +33,9 @@ export interface PlayerRankRow {
   updated_at: string
 }
 
-// ─── Global session limit (10 total across all games) ───────────────
+// ─── Global session limit (15 total across all games) ───────────────
 const SESSION_LIMIT_KEY   = 'cv_session_limit'
-const SESSION_COOLDOWN_MS = 3 * 60 * 60 * 1000 // 3 hours
+const SESSION_COOLDOWN_MS = 6 * 60 * 60 * 1000 // 6 hours
 
 interface SessionLimitStore {
   count: number       // total sessions played this window
@@ -73,8 +73,8 @@ export function getGlobalSessionInfo(userId: string): {
   const store = getSessionStore(userId)
   return {
     count: store.count,
-    limit: 10,
-    limitReached: store.count >= 10,
+    limit: 15,
+    limitReached: store.count >= 15,
     resetAt: store.resetAt,
   }
 }
@@ -83,7 +83,7 @@ export function getGlobalSessionInfo(userId: string): {
 function incrementGlobalSession(userId: string) {
   const store = getSessionStore(userId)
   const newCount = store.count + 1
-  const resetAt  = newCount >= 10 && store.resetAt === 0
+  const resetAt  = newCount >= 15 && store.resetAt === 0
     ? Date.now() + SESSION_COOLDOWN_MS
     : store.resetAt
   setSessionStore(userId, { count: newCount, resetAt })
