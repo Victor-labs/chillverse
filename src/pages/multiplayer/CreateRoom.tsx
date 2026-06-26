@@ -1,7 +1,7 @@
 // src/pages/multiplayer/CreateRoom.tsx
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Lock, Eye, EyeOff, ChevronLeft, Check, Copy } from 'lucide-react'
+import { Lock, Eye, EyeOff, ChevronLeft, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
@@ -40,8 +40,6 @@ export default function CreateRoom() {
   const [showPw, setShowPw] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copiedCode, setCopiedCode] = useState(false)
-
   // Pre-fill room name once profile loads
   useEffect(() => {
     if (profile && !roomName) {
