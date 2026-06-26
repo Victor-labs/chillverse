@@ -5,7 +5,7 @@ import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply,
   MessageCircle, UserPlus, ShieldOff, UserCheck,
-  ChevronRight, ExternalLink,
+  ExternalLink,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
