@@ -2,7 +2,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Trophy, Home, Flame, Gamepad2, ShoppingBag,
+  Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
   User, Settings, Zap, X,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Streak',       to: '/streak',        icon: Flame,       badge: null },
   { label: 'Games',        to: '/games',         icon: Gamepad2,    badge: null },
   { label: 'Mall',         to: '/mall',          icon: ShoppingBag, badge: null },
+  { label: 'Gift',         to: '/gift',         icon: Gift,        badge: null },
   { label: 'Ranks',        to: '/ranks',         icon: Trophy,      badge: null },
   { label: 'Achievements', to: '/achievements',  icon: Zap,         badge: null },
   { label: 'Profile',      to: '/profile',       icon: User,        badge: null },
