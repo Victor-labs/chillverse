@@ -16,6 +16,7 @@ interface UseRoomReturn {
   messages: RoomMessageEnriched[]
   loading: boolean
   error: string | null
+  isHost: boolean
   sendMessage: (text: string) => Promise<void>
   updateMyTeam: (team: TeamChoice) => Promise<void>
   startCountdown: () => Promise<void>
@@ -24,7 +25,9 @@ interface UseRoomReturn {
   countdownServerTs: string | null
 }
 
-// ─── Fetch the full player list for a room, with profile join ─────────────────
+// ---------------------------------------------------------------
+// Fetch the full player list for a room, with profile join
+// ---------------------------------------------------------------
 async function fetchPlayerList(roomId: string): Promise<RoomPlayerProfile[]> {
   const { data } = await supabase
     .from('room_players')
@@ -53,26 +56,43 @@ async function fetchPlayerList(roomId: string): Promise<RoomPlayerProfile[]> {
   })
 }
 
-// ─── Retry wrapper ────────────────────────────────────────────────────────────
-// Supabase replication can lag by 100–400 ms after a client-side insert.
-// When the lobby mounts immediately after CreateRoom navigates, the initial
-// fetch can race against replication and return zero rows even though the
-// host row was successfully written. We retry up to maxAttempts times with
-// an exponential back-off before giving up.
+// ---------------------------------------------------------------
+// Retry wrapper — handles Supabase replication lag (100-400 ms)
+// after a client-side insert so the initial fetch never returns
+// empty when the lobby mounts immediately after CreateRoom.
+// ---------------------------------------------------------------
 async function fetchPlayerListWithRetry(
   roomId: string,
   expectedMinCount = 1,
   maxAttempts = 5,
 ): Promise<RoomPlayerProfile[]> {
-  let delay = 150 // ms — starts short, doubles each attempt
+  let delay = 150
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const list = await fetchPlayerList(roomId)
     if (list.length >= expectedMinCount) return list
     await new Promise(res => setTimeout(res, delay))
     delay = Math.min(delay * 2, 1500)
   }
-  // Return whatever we have after exhausting retries
   return fetchPlayerList(roomId)
+}
+
+// ---------------------------------------------------------------
+// Update current_player_count to an exact value derived from the
+// authoritative room_players table. Call this after any player
+// join or leave so the cached count stays in sync.
+// ---------------------------------------------------------------
+async function syncPlayerCount(roomId: string) {
+  const { count } = await supabase
+    .from('room_players')
+    .select('*', { head: true, count: 'exact' })
+    .eq('room_id', roomId)
+
+  if (typeof count === 'number') {
+    await supabase
+      .from('game_rooms')
+      .update({ current_player_count: count })
+      .eq('id', roomId)
+  }
 }
 
 export function useRoom(roomId: string, myId: string): UseRoomReturn {
@@ -82,23 +102,26 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
   const [loading,           setLoading]           = useState(true)
   const [error,             setError]             = useState<string | null>(null)
   const [countdownServerTs, setCountdownServerTs] = useState<string | null>(null)
+  const [isHost,            setIsHost]            = useState(false)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const roomRef    = useRef<GameRoomRow | null>(null)
   const playersRef = useRef<RoomPlayerProfile[]>([])
   const isHostRef  = useRef(false)
 
-  // ── Centralised state + ref update ───────────────────────────────────────────
+  // -- Centralised state + ref update ----------------------------------
   const applyPlayers = useCallback((list: RoomPlayerProfile[]) => {
     setPlayers(list)
     playersRef.current = list
-    isHostRef.current  = list.find(p => p.player_id === myId)?.is_host ?? false
+    const meIsHost = list.find(p => p.player_id === myId)?.is_host ?? false
+    isHostRef.current = meIsHost
+    setIsHost(meIsHost)
   }, [myId])
 
   // Keep roomRef in sync
   useEffect(() => { roomRef.current = room }, [room])
 
-  // ── loadMessages ──────────────────────────────────────────────────────────────
+  // -- loadMessages -----------------------------------------------------
   const loadMessages = useCallback(async () => {
     const { data: msgData } = await supabase
       .from('room_messages')
@@ -128,7 +151,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     }
   }, [roomId])
 
-  // ── loadRoom ─────────────────────────────────────────────────────────────────
+  // -- loadRoom ---------------------------------------------------------
   const loadRoom = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -148,8 +171,8 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     setRoom(roomData as GameRoomRow)
     roomRef.current = roomData as GameRoomRow
 
-    // Always expect at least 1 player (the host). The retry loop handles the
-    // race condition where the host row hasn't replicated yet when the lobby mounts.
+    // Expect at least 1 player (the host). The retry loop handles the
+    // race condition where the host row hasn't replicated yet.
     const list = await fetchPlayerListWithRetry(roomId, 1)
     applyPlayers(list)
 
@@ -157,7 +180,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     setLoading(false)
   }, [roomId, applyPlayers, loadMessages])
 
-  // ── startCountdown ────────────────────────────────────────────────────────────
+  // -- startCountdown ---------------------------------------------------
   const startCountdown = useCallback(async () => {
     const { data } = await supabase
       .from('game_rooms')
@@ -183,7 +206,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
   const startCountdownRef = useRef(startCountdown)
   useEffect(() => { startCountdownRef.current = startCountdown }, [startCountdown])
 
-  // ── Auto-transition: countdown → in_progress ─────────────────────────────────
+  // -- Auto-transition: countdown -> in_progress ------------------------
   useEffect(() => {
     if (!countdownServerTs) return
     const elapsed   = Date.now() - new Date(countdownServerTs).getTime()
@@ -202,27 +225,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     return () => clearTimeout(timer)
   }, [countdownServerTs, roomId])
 
-  // ── Host transfer on leave ────────────────────────────────────────────────────
-  async function transferHostIfNeeded(afterDeletion: RoomPlayerProfile[]) {
-    if (afterDeletion.length === 0) return
-    const newHost = afterDeletion[0] // sorted by joined_at asc — oldest remaining
-    if (newHost.is_host) return      // already flagged as host
-
-    // Only the new host's own client writes — prevents N simultaneous updates
-    if (newHost.player_id !== myId) return
-
-    await supabase
-      .from('room_players')
-      .update({ is_host: true })
-      .eq('room_id', roomId)
-      .eq('player_id', newHost.player_id)
-
-    // Re-fetch to reflect the updated is_host flag
-    const refreshed = await fetchPlayerList(roomId)
-    applyPlayers(refreshed)
-  }
-
-  // ── Supabase Realtime ─────────────────────────────────────────────────────────
+  // -- Supabase Realtime ------------------------------------------------
   useEffect(() => {
     loadRoom()
 
@@ -238,9 +241,30 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
         const updated = payload.new as GameRoomRow
         setRoom(updated)
         roomRef.current = updated
+
+        if (updated.status === 'aborted') {
+          setError('The host has left. This room has been closed.')
+          setLoading(false)
+          setCountdownServerTs(null)
+          return
+        }
+
         if (updated.countdown_start_at) {
           setCountdownServerTs(updated.countdown_start_at)
         }
+      }
+    )
+
+    // Room deleted (host left before game started)
+    channel.on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomId}` },
+      () => {
+        setRoom(null)
+        setError('The host has left. This room has been closed.')
+        setLoading(false)
+        setPlayers([])
+        setCountdownServerTs(null)
       }
     )
 
@@ -249,12 +273,13 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
       async () => {
-        // No retry needed here — the INSERT event fires after replication,
-        // so the row is guaranteed to be readable.
         const list = await fetchPlayerList(roomId)
         applyPlayers(list)
 
-        // Auto-start when room fills to capacity
+        // Sync the cached count with ground truth
+        await syncPlayerCount(roomId)
+
+        // Auto-start when room fills to capacity (host-only action)
         const currentRoom = roomRef.current
         if (
           currentRoom &&
@@ -273,17 +298,32 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       { event: 'DELETE', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
       async (payload) => {
         const gone = (payload.old as { player_id: string }).player_id
+
+        // Check if the departed player was host BEFORE mutating the list
+        const wasHost = playersRef.current.find(p => p.player_id === gone)?.is_host ?? false
         const afterDeletion = playersRef.current.filter(p => p.player_id !== gone)
         applyPlayers(afterDeletion)
 
-        const wasHost = playersRef.current.find(p => p.player_id === gone)?.is_host ?? false
-        if (wasHost && afterDeletion.length > 0) {
-          await transferHostIfNeeded(afterDeletion)
+        // Sync the cached count
+        await syncPlayerCount(roomId)
+
+        // If the host left and the game hasn't started yet, the room row
+        // itself will be deleted by leaveRoom() — the DELETE listener above
+        // will handle navigation for remaining players. Nothing extra to do here.
+
+        // If the host left during countdown, abort it for remaining players
+        if (wasHost && roomRef.current?.status === 'countdown') {
+          setCountdownServerTs(null)
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'room_event',
+            payload: { type: 'countdown_abort', roomId },
+          })
         }
       }
     )
 
-    // Broadcast events (team changes, chat, countdown low-latency path)
+    // Broadcast events (team changes, chat, countdown)
     channel.on('broadcast', { event: 'room_event' }, ({ payload }) => {
       const ev = payload as RealtimeBroadcastEvent
 
@@ -294,6 +334,9 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
       }
       if (ev.type === 'countdown_start') {
         setCountdownServerTs(prev => prev ?? ev.serverTimestamp)
+      }
+      if (ev.type === 'countdown_abort') {
+        setCountdownServerTs(null)
       }
       if (ev.type === 'chat_message') {
         setMessages(prev => [
@@ -321,7 +364,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, myId])
 
-  // ── Actions ───────────────────────────────────────────────────────────────────
+  // -- Actions ----------------------------------------------------------
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
@@ -366,12 +409,32 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     })
   }, [roomId, myId])
 
+  /**
+   * Leave room rules:
+   * - If the game is in_progress or completed: NOBODY can leave.
+   * - If the host leaves BEFORE the game starts (waiting/countdown):
+   *   the entire room is deleted, kicking all players out.
+   * - If a non-host leaves before the game starts: they remove themselves
+   *   and the player count is decremented.
+   */
   const leaveRoom = useCallback(async () => {
-    if (
-      roomRef.current?.status === 'countdown' ||
-      roomRef.current?.status === 'in_progress'
-    ) return
+    const currentRoom = roomRef.current
+    if (!currentRoom) return
 
+    // Nobody can leave a game that is already in progress or completed
+    if (currentRoom.status === 'in_progress' || currentRoom.status === 'completed') {
+      return
+    }
+
+    // Host leaving before game starts -> delete the room entirely.
+    // This cascades to room_players and kicks everyone out.
+    if (isHostRef.current) {
+      await supabase.from('game_rooms').delete().eq('id', roomId)
+      await channelRef.current?.unsubscribe()
+      return
+    }
+
+    // Non-host leaving -> remove self from the room
     await supabase
       .from('room_players')
       .delete()
@@ -395,6 +458,7 @@ export function useRoom(roomId: string, myId: string): UseRoomReturn {
     messages,
     loading,
     error,
+    isHost,
     sendMessage,
     updateMyTeam,
     startCountdown,

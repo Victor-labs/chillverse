@@ -26,7 +26,7 @@ export default function MultiplayerGameShell() {
   const { session } = useAuth()
   const myId = session?.user?.id ?? ''
 
-  const { room, players, messages, sendMessage, broadcast, loading, error } =
+  const { room, players, messages, sendMessage, broadcast, loading, error, isHost } =
     useRoom(roomId ?? '', myId)
 
   const [gameOver, setGameOver] = useState(false)
@@ -37,16 +37,24 @@ export default function MultiplayerGameShell() {
     if (room.status === 'waiting') {
       navigate(`/multiplayer/room/${roomId}`, { replace: true })
     }
-    if (room.status === 'completed' || gameOver) {
-      // Mark room completed in DB — host-agnostic, any player can do it
-      // (Supabase RLS allows host update; for simplicity first player wins the race)
+  }, [room?.status, loading, navigate, roomId, room])
+
+  // When the game ends, only the HOST marks the room as completed.
+  // This prevents race conditions where multiple players all try to
+  // update the row at once. Non-hosts just set local gameOver state.
+  useEffect(() => {
+    if (!room || loading) return
+    if ((room.status === 'completed' || gameOver) && isHost) {
       supabase
         .from('game_rooms')
         .update({ status: 'completed' })
         .eq('id', roomId)
-        .then(() => {})
+        .eq('status', 'in_progress') // guard — only transition from in_progress
+        .then(({ error }) => {
+          if (error) console.error('[MultiplayerGameShell] Failed to complete room:', error.message)
+        })
     }
-  }, [room?.status, gameOver, loading, navigate, roomId, room])
+  }, [room?.status, gameOver, loading, isHost, roomId, room])
 
   if (loading) {
     return (
@@ -60,7 +68,12 @@ export default function MultiplayerGameShell() {
   if (error || !room) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4" style={{ background: 'var(--bg)' }}>
-        <p className="font-bold text-lg" style={{ color: 'var(--text)' }}>Room not found</p>
+        <p className="font-bold text-lg" style={{ color: 'var(--text)' }}>
+          {error?.includes('closed') ? 'Room Closed' : 'Room not found'}
+        </p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          {error ?? 'This room no longer exists.'}
+        </p>
         <button
           type="button"
           onClick={() => navigate('/multiplayer')}

@@ -2,11 +2,11 @@
 
 import type { MultiplayerGameId } from './multiplayerGameData'
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Database row shapes
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
-export type RoomStatus = 'waiting' | 'countdown' | 'in_progress' | 'completed'
+export type RoomStatus = 'waiting' | 'countdown' | 'in_progress' | 'completed' | 'aborted'
 export type TeamChoice = 'A' | 'B' | null
 
 export interface GameRoomRow {
@@ -47,9 +47,9 @@ export interface RoomMessageRow {
   created_at: string
 }
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Enriched shapes (joined with profiles)
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
 export interface RoomPlayerProfile {
   player_id: string
@@ -66,9 +66,9 @@ export interface RoomMessageEnriched extends RoomMessageRow {
   senderAvatar: string
 }
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Browse list shape (public room cards)
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
 export interface PublicRoomCard extends GameRoomRow {
   hostName: string
@@ -76,13 +76,18 @@ export interface PublicRoomCard extends GameRoomRow {
   teamB: number
 }
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Realtime Broadcast event payloads
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
 export interface CountdownStartEvent {
   type: 'countdown_start'
   serverTimestamp: string  // ISO string — all clients compute elapsed from this
+  roomId: string
+}
+
+export interface CountdownAbortEvent {
+  type: 'countdown_abort'
   roomId: string
 }
 
@@ -109,13 +114,14 @@ export interface GameStateEvent {
 
 export type RealtimeBroadcastEvent =
   | CountdownStartEvent
+  | CountdownAbortEvent
   | PlayerTeamChangeEvent
   | ChatMessageEvent
   | GameStateEvent
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Room creation form input
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
 export interface CreateRoomInput {
   gameId: MultiplayerGameId
@@ -124,9 +130,9 @@ export interface CreateRoomInput {
   password: string
 }
 
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 // Join private room RPC response
-// ──────────────────────────────────────────────────────
+// ------------------------------------------------------
 
 export interface JoinPrivateRoomResult {
   ok: boolean

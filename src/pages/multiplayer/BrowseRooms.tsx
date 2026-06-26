@@ -27,11 +27,11 @@ export default function BrowseRooms() {
   const [joiningId,  setJoiningId]  = useState<string | null>(null)
   const [filterGame, setFilterGame] = useState<string>('all')
 
-  // ── fetchRooms ──────────────────────────────────────────────────────────────
-  // NOTE: short_code is intentionally NOT selected here.
-  // BrowseRooms never needs to display it. Only RoomLobby (private rooms) shows it.
-  // Selecting a column that doesn't exist yet (pre-migration) silently returns
-  // null from Supabase, making the entire list appear empty.
+  // -----------------------------------------------------------------
+  // fetchRooms
+  // Uses the actual room_players row count as the authoritative player
+  // count — never relies on the cached current_player_count column.
+  // -----------------------------------------------------------------
   const fetchRooms = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
@@ -58,11 +58,12 @@ export default function BrowseRooms() {
 
     if (rawRooms) {
       const cards: PublicRoomCard[] = rawRooms
-        // Filter full rooms client-side — keeps UI correct even if trigger lags
+        // Filter full rooms using the GROUND-TRUTH player count from the
+        // room_players join — never the cached current_player_count column.
         .filter((r: Record<string, unknown>) => {
-          const current = r.current_player_count as number
+          const players = (r.room_players as { team: string | null }[] | null) ?? []
           const max     = r.max_player_count as number
-          return current < max
+          return players.length < max
         })
         .map((r: Record<string, unknown>) => {
           const host    = r.host_profile as { username: string; display_name: string | null } | null
@@ -81,7 +82,9 @@ export default function BrowseRooms() {
     setLoading(false)
   }, [])
 
-  // ── Realtime: re-fetch on any game_rooms or room_players change ─────────────
+  // -----------------------------------------------------------------
+  // Realtime: re-fetch on any game_rooms or room_players change
+  // -----------------------------------------------------------------
   useEffect(() => {
     fetchRooms()
 
@@ -107,40 +110,95 @@ export default function BrowseRooms() {
     return () => { channel.unsubscribe() }
   }, [fetchRooms])
 
-  // ── Join public room ────────────────────────────────────────────────────────
+  // -----------------------------------------------------------------
+  // Join public room
+  // Checks capacity using an atomic read of the actual room_players
+  // count before inserting, preventing race-condition overfill.
+  // -----------------------------------------------------------------
   async function joinPublicRoom(roomId: string) {
     if (!myId) return
     setJoiningId(roomId)
 
-    // Check if already a member — avoids duplicate insert error
-    const { data: existing } = await supabase
-      .from('room_players')
-      .select('player_id')
-      .eq('room_id', roomId)
-      .eq('player_id', myId)
-      .maybeSingle()
+    try {
+      // 1. Check if already a member
+      const { data: existing } = await supabase
+        .from('room_players')
+        .select('player_id')
+        .eq('room_id', roomId)
+        .eq('player_id', myId)
+        .maybeSingle()
 
-    if (!existing) {
-      const { error } = await supabase.from('room_players').insert({
-        room_id:   roomId,
-        player_id: myId,
-        is_host:   false,
-        team:      null,
-      })
-      if (error) {
-        console.error('[BrowseRooms] joinPublicRoom error:', error.message)
-        setJoiningId(null)
-        return
+      if (!existing) {
+        // 2. Read the ACTUAL player count directly from room_players
+        const { count: actualCount, error: countErr } = await supabase
+          .from('room_players')
+          .select('*', { head: true, count: 'exact' })
+          .eq('room_id', roomId)
+
+        if (countErr) {
+          console.error('[BrowseRooms] count error:', countErr.message)
+          setJoiningId(null)
+          return
+        }
+
+        // 3. Also read the room's max + status in the same check window
+        const { data: roomRow, error: roomErr } = await supabase
+          .from('game_rooms')
+          .select('max_player_count, status')
+          .eq('id', roomId)
+          .single()
+
+        if (roomErr || !roomRow || roomRow.status !== 'waiting') {
+          setJoiningId(null)
+          return // Room gone or no longer waiting
+        }
+
+        if (typeof actualCount === 'number' && actualCount >= roomRow.max_player_count) {
+          setJoiningId(null)
+          return // Room became full between our fetch and click
+        }
+
+        // 4. Insert player
+        const { error: insertErr } = await supabase.from('room_players').insert({
+          room_id:   roomId,
+          player_id: myId,
+          is_host:   false,
+          team:      null,
+        })
+
+        if (insertErr) {
+          // Duplicate key means another tab/client raced and won — that's fine,
+          // just navigate into the room.
+          if (!insertErr.message.includes('duplicate')) {
+            console.error('[BrowseRooms] joinPublicRoom error:', insertErr.message)
+            setJoiningId(null)
+            return
+          }
+        }
+
+        // 5. Best-effort sync of the cached count column
+        const { count: freshCount } = await supabase
+          .from('room_players')
+          .select('*', { head: true, count: 'exact' })
+          .eq('room_id', roomId)
+
+        if (typeof freshCount === 'number') {
+          await supabase
+            .from('game_rooms')
+            .update({ current_player_count: freshCount })
+            .eq('id', roomId)
+        }
       }
-    }
 
-    setJoiningId(null)
-    navigate(`/multiplayer/room/${roomId}`)
+      navigate(`/multiplayer/room/${roomId}`)
+    } finally {
+      setJoiningId(null)
+    }
   }
 
-  // ── Join private room via 8-char short code ─────────────────────────────────
-  // Uses join_private_room_by_code RPC (added in migration 0005).
-  // Falls back to join_private_room (UUID-based) if the new RPC isn't deployed yet.
+  // -----------------------------------------------------------------
+  // Join private room via 8-char short code
+  // -----------------------------------------------------------------
   async function joinPrivateRoom() {
     const code = shortCode.trim().toUpperCase()
     if (code.length !== 8) {
@@ -151,33 +209,35 @@ export default function BrowseRooms() {
     setJoiningPrivate(true)
     setPrivateError(null)
 
-    const hashedPw = privatePassword.trim()
-      ? await hashPassword(privatePassword.trim())
-      : ''
+    try {
+      const hashedPw = privatePassword.trim()
+        ? await hashPassword(privatePassword.trim())
+        : ''
 
-    const { data, error } = await supabase.rpc('join_private_room_by_code', {
-      p_short_code: code,
-      p_password:   hashedPw,
-    })
+      const { data, error } = await supabase.rpc('join_private_room_by_code', {
+        p_short_code: code,
+        p_password:   hashedPw,
+      })
 
-    setJoiningPrivate(false)
+      if (error) {
+        setPrivateError(error.message)
+        return
+      }
 
-    if (error) {
-      setPrivateError(error.message)
-      return
+      const result = data as { ok: boolean; error?: string; room_id?: string }
+      if (!result.ok) {
+        setPrivateError(result.error ?? 'Could not join room')
+        return
+      }
+      if (!result.room_id) {
+        setPrivateError('Room not found')
+        return
+      }
+
+      navigate(`/multiplayer/room/${result.room_id}`)
+    } finally {
+      setJoiningPrivate(false)
     }
-
-    const result = data as { ok: boolean; error?: string; room_id?: string }
-    if (!result.ok) {
-      setPrivateError(result.error ?? 'Could not join room')
-      return
-    }
-    if (!result.room_id) {
-      setPrivateError('Room not found')
-      return
-    }
-
-    navigate(`/multiplayer/room/${result.room_id}`)
   }
 
   const filteredRooms = filterGame === 'all'
@@ -223,7 +283,7 @@ export default function BrowseRooms() {
         </button>
       </div>
 
-      {/* Fetch error — visible so you can diagnose DB issues instantly */}
+      {/* Fetch error */}
       {fetchError && (
         <div
           className="rounded-xl px-4 py-3 text-sm"
@@ -233,7 +293,7 @@ export default function BrowseRooms() {
         </div>
       )}
 
-      {/* ── Join via code (private rooms only) ── */}
+      {/* -- Join via code (private rooms only) -- */}
       <section
         className="rounded-2xl p-4 space-y-3"
         style={{ background: 'var(--surface)', border: '1px solid rgba(108,80,255,0.18)' }}
@@ -312,7 +372,7 @@ export default function BrowseRooms() {
         )}
       </section>
 
-      {/* ── Public rooms list ── */}
+      {/* -- Public rooms list -- */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -390,6 +450,8 @@ export default function BrowseRooms() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filteredRooms.map(room => {
             const game      = MULTIPLAYER_GAME_MAP[room.game_id as keyof typeof MULTIPLAYER_GAME_MAP]
+            // Use the authoritative current_player_count from the DB row,
+            // which is kept in sync by syncPlayerCount in useRoom.
             const count     = room.current_player_count
             const max       = room.max_player_count
             const slotsLeft = max - count

@@ -48,7 +48,7 @@ export default function ChatPanel({ messages, myId, onSend }: ChatPanelProps) {
 
   const unreadCount = messages.length
 
-  // ── Message bubble ──────────────────────────────────────────
+  // -- Message bubble -------------------------------------------
   function Bubble({ msg }: { msg: RoomMessageEnriched }) {
     const isMine = msg.player_id === myId
     const initials = msg.senderName.charAt(0).toUpperCase()
@@ -94,14 +94,14 @@ export default function ChatPanel({ messages, myId, onSend }: ChatPanelProps) {
     )
   }
 
-  // ────────────────────────────────────────────────────────────
+  // ----------------------------------------------------------------
   // Desktop: right-side panel (lg: always visible)
   // Mobile: slide-up drawer triggered by toggle button
-  // ────────────────────────────────────────────────────────────
+  // ----------------------------------------------------------------
 
   return (
     <>
-      {/* ── Mobile toggle button ── */}
+      {/* -- Mobile toggle button -- */}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -127,7 +127,7 @@ export default function ChatPanel({ messages, myId, onSend }: ChatPanelProps) {
         )}
       </button>
 
-      {/* ── Mobile overlay ── */}
+      {/* -- Mobile overlay -- */}
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-[60]"
@@ -136,7 +136,7 @@ export default function ChatPanel({ messages, myId, onSend }: ChatPanelProps) {
         />
       )}
 
-      {/* ── Chat panel (mobile drawer + desktop sidebar) ── */}
+      {/* -- Chat panel (mobile drawer + desktop sidebar) -- */}
       <div
         className={`
           fixed z-[70] flex flex-col
@@ -233,5 +233,4 @@ export default function ChatPanel({ messages, myId, onSend }: ChatPanelProps) {
       </div>
     </>
   )
-      }
-  
+}

@@ -13,7 +13,7 @@ import {
   type MultiplayerGameId,
 } from './multiplayerGameData'
 
-// ── Generate a short, human-friendly 8-character alphanumeric code ──────────
+// -- Generate a short, human-friendly 8-character alphanumeric code ---------
 // Used as the join code for private rooms. Uppercase only for readability.
 function generateShortCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no I, O, 0, 1 — avoids confusion
@@ -40,6 +40,7 @@ export default function CreateRoom() {
   const [showPw, setShowPw] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   // Pre-fill room name once profile loads
   useEffect(() => {
     if (profile && !roomName) {
@@ -62,16 +63,18 @@ export default function CreateRoom() {
       const finalName = roomName.trim() || `${profile?.display_name ?? 'Player'}'s Room`
       const hasPassword = password.trim().length > 0
       let passwordHash: string | null = null
-      const shortCode = generateShortCode()
+
+      // Only generate a short code for private rooms.
+      // Public rooms don't need one — they appear in Browse Rooms.
+      const shortCode = hasPassword ? generateShortCode() : ''
 
       if (hasPassword) {
         passwordHash = await hashPassword(password.trim())
       }
 
-      // ── Step 1: Insert the room ──────────────────────────────────────────
+      // -- Step 1: Insert the room -----------------------------------------
       // current_player_count starts at 1 (the host) — we do NOT rely on a
-      // DB trigger to increment it, because trigger presence is not guaranteed.
-      // The host row insert below keeps these in sync.
+      // DB trigger to increment it. The host row insert below keeps these in sync.
       const { data: room, error: roomErr } = await supabase
         .from('game_rooms')
         .insert({
@@ -91,7 +94,7 @@ export default function CreateRoom() {
 
       if (roomErr || !room) throw new Error(roomErr?.message ?? 'Failed to create room')
 
-      // ── Step 2: Insert host as player ────────────────────────────────────
+      // -- Step 2: Insert host as player ------------------------------------
       // is_host: true so RoomLobby renders the Crown and Start button.
       const { error: playerErr } = await supabase.from('room_players').insert({
         room_id:  room.id,
@@ -133,7 +136,7 @@ export default function CreateRoom() {
         </h1>
       </div>
 
-      {/* ── Step 1: Game selector ── */}
+      {/* -- Step 1: Game selector -- */}
       <section className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
           Choose a game
@@ -187,7 +190,7 @@ export default function CreateRoom() {
         )}
       </section>
 
-      {/* ── Step 2: Room name ── */}
+      {/* -- Step 2: Room name -- */}
       <section className="space-y-2">
         <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
           Room name
@@ -209,7 +212,7 @@ export default function CreateRoom() {
         />
       </section>
 
-      {/* ── Step 3: Password (optional — makes room private) ── */}
+      {/* -- Step 3: Password (optional — makes room private) -- */}
       <section className="space-y-2">
         <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
           Set a password{' '}
@@ -284,7 +287,7 @@ export default function CreateRoom() {
         )}
       </section>
 
-      {/* ── Error ── */}
+      {/* -- Error -- */}
       {error && (
         <p
           className="text-sm rounded-xl px-4 py-3"
@@ -294,7 +297,7 @@ export default function CreateRoom() {
         </p>
       )}
 
-      {/* ── Submit ── */}
+      {/* -- Submit -- */}
       <button
         type="button"
         onClick={handleCreate}

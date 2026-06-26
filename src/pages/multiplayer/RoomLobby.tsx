@@ -17,7 +17,9 @@ function avatarColor(name: string) {
   return AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length]
 }
 
-// ─── Countdown overlay (5 seconds) ───────────────────────────
+// ---------------------------------------------------------------
+// Countdown overlay (5 seconds)
+// ---------------------------------------------------------------
 function CountdownOverlay({ serverTs }: { serverTs: string }) {
   const [count, setCount] = useState<number | null>(null)
   const frameRef = useRef<number>(0)
@@ -67,7 +69,9 @@ function CountdownOverlay({ serverTs }: { serverTs: string }) {
   )
 }
 
-// ─── Player card ─────────────────────────────────────────────
+// ---------------------------------------------------------------
+// Player card
+// ---------------------------------------------------------------
 function PlayerCard({
   name,
   isHost,
@@ -115,7 +119,9 @@ function PlayerCard({
   )
 }
 
-// ─── Short code copy widget (private rooms only) ──────────────
+// ---------------------------------------------------------------
+// Short code copy widget (private rooms only)
+// ---------------------------------------------------------------
 function PrivateCodeBadge({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -160,7 +166,9 @@ function PrivateCodeBadge({ code }: { code: string }) {
   )
 }
 
-// ─── Main ─────────────────────────────────────────────────────
+// ---------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------
 export default function RoomLobby() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
@@ -173,6 +181,7 @@ export default function RoomLobby() {
     messages,
     loading,
     error,
+    isHost,
     sendMessage,
     updateMyTeam,
     startCountdown,
@@ -182,27 +191,31 @@ export default function RoomLobby() {
 
   const game = room ? MULTIPLAYER_GAME_MAP[room.game_id as keyof typeof MULTIPLAYER_GAME_MAP] : null
   const myPlayer = players.find(p => p.player_id === myId)
-  const isHost = myPlayer?.is_host ?? false
   const isLocked = room?.status === 'countdown' || room?.status === 'in_progress'
 
-  // ── canStart: uses live players array length, NOT current_player_count ──
-  // current_player_count in the DB row may lag behind the realtime players
-  // array which is always authoritative in the lobby.
-  const canStart = (() => {
-    if (!room || !game || !isHost) return false
+  // -- enoughPlayers: purely about count, independent of host status ----
+  // Used by BOTH host and non-host to show accurate waiting messages.
+  const enoughPlayers = (() => {
+    if (!room || !game) return false
     const count = players.length
     if (game.fixedCount) return count === game.maxPlayers
     return count >= game.minPlayers
   })()
 
+  // -- canStart: host ONLY can click the start button -------------------
+  const canStart = isHost && enoughPlayers && room?.status === 'waiting'
+
+  // Reason the start button is disabled (shown inside the button)
   const startBlockReason = (() => {
     if (!room || !game) return ''
-    const count = players.length
-    if (game.fixedCount && count < game.maxPlayers) {
-      return `Need ${game.maxPlayers - count} more player${game.maxPlayers - count > 1 ? 's' : ''}`
-    }
-    if (!game.fixedCount && count < game.minPlayers) {
-      return `Need ${game.minPlayers - count} more player${game.minPlayers - count > 1 ? 's' : ''}`
+    if (!enoughPlayers) {
+      const count = players.length
+      if (game.fixedCount && count < game.maxPlayers) {
+        return `Need ${game.maxPlayers - count} more player${game.maxPlayers - count > 1 ? 's' : ''}`
+      }
+      if (!game.fixedCount && count < game.minPlayers) {
+        return `Need ${game.minPlayers - count} more player${game.minPlayers - count > 1 ? 's' : ''}`
+      }
     }
     return ''
   })()
@@ -229,11 +242,16 @@ export default function RoomLobby() {
     )
   }
 
+  // Room was closed by host leaving — show clear message and back button
   if (error || !room) {
     return (
       <div className="text-center py-20 space-y-3">
-        <p className="text-lg font-bold" style={{ color: 'var(--text)' }}>Room not found</p>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{error}</p>
+        <p className="text-lg font-bold" style={{ color: 'var(--text)' }}>
+          {error?.includes('closed') ? 'Room Closed' : 'Room not found'}
+        </p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          {error ?? 'This room no longer exists.'}
+        </p>
         <button
           type="button"
           onClick={() => navigate('/multiplayer')}
@@ -253,11 +271,11 @@ export default function RoomLobby() {
 
   return (
     <>
-      {countdownServerTs && <CountdownOverlay serverTs={countdownServerTs} />}
+      {countdownServerTs && room.status === 'countdown' && <CountdownOverlay serverTs={countdownServerTs} />}
 
       <div className="max-w-4xl mx-auto py-6 lg:pr-80">
 
-        {/* ── Room header ── */}
+        {/* -- Room header -- */}
         <div
           className="rounded-2xl p-5 mb-6 space-y-3"
           style={{ background: 'var(--surface)', border: '1px solid rgba(108,80,255,0.18)' }}
@@ -285,15 +303,21 @@ export default function RoomLobby() {
               style={{
                 background: room.status === 'waiting'
                   ? 'rgba(0,229,255,0.1)'
-                  : 'rgba(255,184,0,0.1)',
-                color: room.status === 'waiting' ? '#00e5ff' : '#ffb800',
+                  : room.status === 'countdown'
+                  ? 'rgba(255,184,0,0.1)'
+                  : 'rgba(108,80,255,0.1)',
+                color: room.status === 'waiting' ? '#00e5ff'
+                  : room.status === 'countdown' ? '#ffb800'
+                  : '#a78bfa',
               }}
             >
-              {room.status === 'waiting' ? 'Waiting' : room.status}
+              {room.status === 'waiting' ? 'Waiting'
+                : room.status === 'countdown' ? 'Starting…'
+                : 'In Game'}
             </span>
           </div>
 
-          {/* ── Private room: show the 8-char short code for the host to share ── */}
+          {/* -- Private room: show the 8-char short code for the host to share -- */}
           {/* Public rooms: no code shown — they appear in Browse Rooms automatically */}
           {room.is_private && room.short_code && isHost && (
             <PrivateCodeBadge code={room.short_code} />
@@ -305,7 +329,7 @@ export default function RoomLobby() {
           )}
         </div>
 
-        {/* ── Players ── */}
+        {/* -- Players -- */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Users size={15} style={{ color: '#a78bfa' }} />
@@ -379,7 +403,7 @@ export default function RoomLobby() {
           )}
         </div>
 
-        {/* ── Actions ── */}
+        {/* -- Actions -- */}
         <div className="mt-6 flex items-center gap-3">
           {/* Leave — hidden during countdown/in_progress */}
           {!isLocked && (
@@ -402,7 +426,7 @@ export default function RoomLobby() {
             </button>
           )}
 
-          {/* Force Start — host only */}
+          {/* Force Start — host only, enabled when enough players */}
           {isHost && room.status === 'waiting' && (
             <button
               type="button"
@@ -419,11 +443,11 @@ export default function RoomLobby() {
               }}
             >
               <Play size={16} />
-              {canStart ? 'Start Game' : startBlockReason}
+              {canStart ? 'Start Game' : startBlockReason || 'Waiting for players…'}
             </button>
           )}
 
-          {/* Non-host waiting message */}
+          {/* Non-host waiting message — shows accurate status for ALL players */}
           {!isHost && room.status === 'waiting' && (
             <div
               className="flex-1 py-3 rounded-xl text-center text-sm"
@@ -433,12 +457,39 @@ export default function RoomLobby() {
                 border: '1px solid rgba(255,255,255,0.05)',
               }}
             >
-              {canStart
+              {enoughPlayers
                 ? `Waiting for host to start… (${players.length}/${room.max_player_count})`
                 : startBlockReason
                   ? `${startBlockReason} to start`
                   : `Waiting for more players… (${players.length}/${room.max_player_count})`
               }
+            </div>
+          )}
+
+          {/* Countdown / in-progress status message for everyone */}
+          {room.status === 'countdown' && (
+            <div
+              className="flex-1 py-3 rounded-xl text-center text-sm font-semibold"
+              style={{
+                background: 'rgba(255,184,0,0.08)',
+                color: '#ffb800',
+                border: '1px solid rgba(255,184,0,0.15)',
+              }}
+            >
+              Game starting…
+            </div>
+          )}
+
+          {room.status === 'in_progress' && (
+            <div
+              className="flex-1 py-3 rounded-xl text-center text-sm font-semibold"
+              style={{
+                background: 'rgba(108,80,255,0.08)',
+                color: '#a78bfa',
+                border: '1px solid rgba(108,80,255,0.15)',
+              }}
+            >
+              Game in progress
             </div>
           )}
         </div>

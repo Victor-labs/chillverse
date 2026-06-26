@@ -10,7 +10,7 @@ export default function MultiplayerHome() {
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-8">
 
-      {/* ── Hero ── */}
+      {/* -- Hero -- */}
       <div className="text-center space-y-3">
         <div className="flex items-center justify-center gap-2 mb-2">
           <span className="text-3xl">🎮</span>
@@ -31,7 +31,7 @@ export default function MultiplayerHome() {
         </p>
       </div>
 
-      {/* ── Quick actions ── */}
+      {/* -- Quick actions -- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           type="button"
@@ -82,7 +82,7 @@ export default function MultiplayerHome() {
         </button>
       </div>
 
-      {/* ── Stat pills ── */}
+      {/* -- Stat pills -- */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { icon: <Zap size={14} />, label: 'XP Counts', color: '#f5c542' },
@@ -102,7 +102,7 @@ export default function MultiplayerHome() {
         ))}
       </div>
 
-      {/* ── Game catalog ── */}
+      {/* -- Game catalog -- */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Gamepad2 size={16} style={{ color: '#a78bfa' }} />

@@ -1,5 +1,5 @@
 // src/pages/multiplayer/MultiplayerResults.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trophy, Zap, Crown, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -46,6 +46,7 @@ export default function MultiplayerResults({
 }: MultiplayerResultsProps) {
   const navigate = useNavigate()
   const [xpSaved, setXpSaved] = useState(false)
+  const [xpError, setXpError] = useState<string | null>(null)
 
   // Sort players by score descending
   const ranked = [...players].sort((a, b) => b.score - a.score)
@@ -62,45 +63,60 @@ export default function MultiplayerResults({
       : 'draw'
       : null
 
-  // Build GameEndPayload per player and write XP once
+  // Build GameEndPayload per player and write XP once.
+  // Uses a cancellation flag so the effect cleans up safely if the
+  // component unmounts mid-write.
   useEffect(() => {
-    if (xpSaved) return
+    if (xpSaved || players.length === 0) return
+
+    let cancelled = false
     setXpSaved(true)
 
-    players.forEach(async (p) => {
-      const rankCfg = getRankConfig(p.rank)
+    Promise.all(
+      players.map(async (p) => {
+        if (cancelled) return
 
-      // XP multiplier for team games
-      let multiplier = 1.0
-      if (teamMode === '2v2' && winningTeam) {
-        if (winningTeam === 'draw') multiplier = 0.6
-        else multiplier = p.team === winningTeam ? 1.0 : 0.25
-      }
+        const rankCfg = getRankConfig(p.rank)
 
-      const baseXp  = calcSessionXP(p.correct, p.total, p.streak, rankCfg.xpBase)
-      const xpEarned = Math.round(baseXp * multiplier)
+        // XP multiplier for team games
+        let multiplier = 1.0
+        if (teamMode === '2v2' && winningTeam) {
+          if (winningTeam === 'draw') multiplier = 0.6
+          else multiplier = p.team === winningTeam ? 1.0 : 0.25
+        }
 
-      const payload: GameEndPayload = {
-        gameId: 'trivia-clash',   // placeholder; real gameId passed via players prop
-        gameName,
-        rank: p.rank,
-        score: p.score,
-        xpEarned,
-        durationSec: 0,
-        streak: p.streak,
-        correct: p.correct,
-        total: p.total,
-        detail: { mode: teamMode, team: p.team ?? 'ffa' },
-      }
+        const baseXp   = calcSessionXP(p.correct, p.total, p.streak, rankCfg.xpBase)
+        const xpEarned = Math.round(baseXp * multiplier)
 
-      // Write XP to profile — same path as single-player
-      await supabase.rpc('add_xp', {
-        p_user_id: p.playerId,
-        p_xp: payload.xpEarned,
+        const payload: GameEndPayload = {
+          gameId: 'trivia-clash',   // placeholder; real gameId passed via players prop
+          gameName,
+          rank: p.rank,
+          score: p.score,
+          xpEarned,
+          durationSec: 0,
+          streak: p.streak,
+          correct: p.correct,
+          total: p.total,
+          detail: { mode: teamMode, team: p.team ?? 'ffa' },
+        }
+
+        // Write XP to profile — same path as single-player
+        const { error } = await supabase.rpc('add_xp', {
+          p_user_id: p.playerId,
+          p_xp: payload.xpEarned,
+        })
+
+        if (error && !cancelled) {
+          console.error('[MultiplayerResults] XP write failed for', p.playerId, error.message)
+          setXpError('Some XP updates failed — they will be retried.')
+        }
       })
-    })
+    )
+
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [players.length])
 
   const myResult = ranked.find(p => p.playerId === myId)
   const myPlacement = ranked.findIndex(p => p.playerId === myId)
@@ -113,7 +129,7 @@ export default function MultiplayerResults({
     >
       <div className="w-full max-w-lg space-y-5">
 
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <div className="text-center space-y-1">
           <p className="text-4xl">{gameEmoji}</p>
           <h1 className="font-extrabold text-2xl" style={{ color: 'var(--text)' }}>
@@ -122,7 +138,7 @@ export default function MultiplayerResults({
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{gameName}</p>
         </div>
 
-        {/* ── Team result banner (2v2 only) ── */}
+        {/* -- Team result banner (2v2 only) -- */}
         {teamMode === '2v2' && winningTeam && (
           <div
             className="rounded-2xl p-4 text-center font-bold text-sm"
@@ -143,7 +159,7 @@ export default function MultiplayerResults({
           </div>
         )}
 
-        {/* ── My result card ── */}
+        {/* -- My result card -- */}
         {myResult && myRankCfg && (
           <div
             className="rounded-2xl p-5 space-y-4"
@@ -207,10 +223,16 @@ export default function MultiplayerResults({
                 </div>
               )
             })()}
+
+            {xpError && (
+              <p className="text-xs text-center" style={{ color: '#ff4f4f' }}>
+                {xpError}
+              </p>
+            )}
           </div>
         )}
 
-        {/* ── Full leaderboard ── */}
+        {/* -- Full leaderboard -- */}
         <div
           className="rounded-2xl overflow-hidden"
           style={{ border: '1px solid rgba(255,255,255,0.06)' }}
@@ -289,7 +311,7 @@ export default function MultiplayerResults({
           })}
         </div>
 
-        {/* ── Actions ── */}
+        {/* -- Actions -- */}
         <div className="grid grid-cols-2 gap-3 pb-6">
           <button
             type="button"
