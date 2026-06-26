@@ -29,6 +29,7 @@ import TwoTruthsOneFalse from './games/TwoTruthsOneFalse'
 import SpeedMath from './games/SpeedMath'
 import LiarsGrid from './games/LiarsGrid'
 import Hangman from './games/Hangman'
+import CloseCall from './games/CloseCall'
 
 // ─── Constants ───────────────────────────────────────────────
 const MAX_PLAYS    = 7
@@ -42,6 +43,7 @@ type GameId =
   | 'trivia-clash' | 'tac-zone' | 'flag-rush'
   | 'two-truths' | 'speed-math' | 'liars-grid'
   | 'hangman'
+  | 'close-call'
 
 interface GameMeta {
   id: GameId
@@ -64,13 +66,14 @@ const GAMES: GameMeta[] = [
   { id: 'two-truths',     dbKey: 'two_truths',     name: 'Two Truths, One False', tagline: 'Spot the lie among three claims.',                accent: '#9b6dff', icon: Eye          },
   { id: 'speed-math',     dbKey: 'speed_math',     name: 'Speed Math',            tagline: 'Solve as many equations as you can.',             accent: '#3ecf8e', icon: Calculator   },
   { id: 'liars-grid',     dbKey: 'liars_grid',     name: "Liar's Grid",           tagline: 'Find the one wrong equation. One is lying.',      accent: '#ff4f4f', icon: LayoutGrid   },
-  { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash, sessionCost: 3 },
+  { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash,   sessionCost: 3 },
+  { id: 'close-call',     dbKey: 'close_call',     name: 'Close Call',            tagline: 'Type the closest answer you can. Fast.',          accent: '#ff4d8b', icon: Target, sessionCost: 4 },
 ]
 
 
 // ─── Lobby Card ───────────────────────────────────────────────
 function LobbyCard({
-  game, rank, streak, playsToday, globalCount, globalLimit, onPlay,
+  game, rank, streak, playsToday, globalCount, globalLimit, dataLoaded, onPlay,
 }: {
   game: GameMeta
   rank: GameRank
@@ -78,14 +81,17 @@ function LobbyCard({
   playsToday: number
   globalCount: number
   globalLimit: number
+  dataLoaded: boolean
   onPlay: () => void
 }) {
   const Icon = game.icon
   const rankCfg = getRankConfig(rank)
   const cost = game.sessionCost ?? 1
-  const maxed = !game.unlimitedPlays && playsToday >= MAX_PLAYS
-  const globalLimitReached = globalCount + cost > globalLimit
-  const locked = maxed || globalLimitReached
+  // Only lock after data has loaded — prevents false locks at 0/15
+  const maxed = dataLoaded && !game.unlimitedPlays && playsToday >= MAX_PLAYS
+  const notEnoughSessions = dataLoaded && (globalCount + cost > globalLimit)
+  const globalLimitReached = dataLoaded && (globalCount >= globalLimit)
+  const locked = maxed || notEnoughSessions
 
   return (
     <div
@@ -138,6 +144,7 @@ export default function Games() {
   const [streaks,     setStreaks]     = useState<Partial<Record<GameId, number>>>({})
   const [allTimeStreaks, setAllTimeStreaks] = useState<Partial<Record<GameId, number>>>({})
   const [results,     setResults]     = useState<GameEndPayload[]>([])
+  const [dataLoaded,  setDataLoaded]  = useState(false)
   const [globalCount, setGlobalCount] = useState(0)
   const [globalReset, setGlobalReset] = useState(0)
   const [sessionResetTime, setSessionResetTime] = useState('')
@@ -172,6 +179,7 @@ export default function Games() {
       const map: Partial<Record<GameId, number>> = {}
       GAMES.forEach((g, i) => { map[g.id] = counts[i] })
       setPlaysToday(map)
+      setDataLoaded(true)
     })
     getAllPlayerRanks(userId).then(allRanks => {
       const rankMap:     Partial<Record<GameId, GameRank>> = {}
@@ -201,19 +209,20 @@ export default function Games() {
 
     if (!userId) return
 
-    // Hangman costs 3 sessions — save 3 entries
     const cost = game.sessionCost ?? 1
-    for (let i = 0; i < cost; i++) {
-      await saveGameSession(userId, {
-        game: game.dbKey,
-        score: i === 0 ? payload.score : 0,
-        xpEarned: i === 0 ? payload.xpEarned : 0,
-        durationSec: i === 0 ? payload.durationSec : 0,
-        rank: payload.rank,
-        streak: payload.streak,
-        metadata: i === 0 ? (payload.detail as Record<string, unknown>) : {},
-      })
-    }
+    // Save one real DB entry but increment session counter by cost
+    await saveGameSession(userId, {
+      game: game.dbKey,
+      score: payload.score,
+      xpEarned: payload.xpEarned,
+      durationSec: payload.durationSec,
+      rank: payload.rank,
+      streak: payload.streak,
+      metadata: payload.detail as Record<string, unknown>,
+    })
+    // Deduct the full session cost locally
+    const { incrementGlobalSession } = await import('../lib/gameSession')
+    incrementGlobalSession(userId, cost)
 
     await savePlayerRank(userId, game.dbKey, payload.rank, payload.streak,
       Math.max(payload.streak, allTimeStreaks[payload.gameId as GameId] ?? 0))
@@ -239,6 +248,7 @@ export default function Games() {
   if (activeGame === 'speed-math')     return <SpeedMath        {...gameProps} />
   if (activeGame === 'liars-grid')     return <LiarsGrid        {...gameProps} />
   if (activeGame === 'hangman')        return <Hangman          {...gameProps} />
+  if (activeGame === 'close-call')     return <CloseCall        {...gameProps} />
 
   return (
     <div>
@@ -249,6 +259,16 @@ export default function Games() {
       </div>
 
       <div style={{ maxWidth:720, margin:'0 auto', paddingBottom:48 }}>
+
+        {/* Low session warning — 4 or fewer left */}
+        {!globalLimitReached && dataLoaded && (GLOBAL_LIMIT - globalCount) <= 4 && (GLOBAL_LIMIT - globalCount) > 0 && (
+          <div style={{ background:'rgba(245,197,66,0.08)', border:'1px solid rgba(245,197,66,0.25)', borderRadius:16, padding:'12px 16px', marginBottom:12, display:'flex', alignItems:'center', gap:10 }}>
+            <Clock size={16} style={{ color:'#f5c542', flexShrink:0 }} />
+            <p style={{ fontSize:13, fontWeight:700, color:'#f5c542' }}>
+              {GLOBAL_LIMIT - globalCount} session{(GLOBAL_LIMIT - globalCount) === 1 ? '' : 's'} left till session limit
+            </p>
+          </div>
+        )}
 
         {/* Global limit banner */}
         {globalLimitReached && (
@@ -298,6 +318,7 @@ export default function Games() {
                 playsToday={playsToday[game.id] ?? 0}
                 globalCount={globalCount}
                 globalLimit={GLOBAL_LIMIT}
+                dataLoaded={dataLoaded}
                 onPlay={() => setActiveGame(game.id)}
               />
             ))}
