@@ -5,6 +5,8 @@ import { useProfile } from "../hooks/useProfile";
    MILESTONES
 ═══════════════════════════════════════════════════ */
 const MILESTONES = [
+  { days: 1,   xp: 10   },
+  { days: 3,   xp: 30   },
   { days: 7,   xp: 100  },
   { days: 14,  xp: 200  },
   { days: 30,  xp: 400  },
@@ -19,18 +21,20 @@ const MILESTONES = [
 ═══════════════════════════════════════════════════ */
 function getMood(streak: number): string {
   if (streak <= 0)  return "dead";
-  if (streak < 7)   return "sad";
+  if (streak < 3)   return "spark";
+  if (streak < 7)   return "rising";
   if (streak < 30)  return "neutral";
   if (streak < 100) return "good";
   return "blazing";
 }
 
 const MOOD_META: Record<string, { label: string; sub: string; color: string; glow: string }> = {
-  dead:    { label: "Flame's out",       sub: "Start today to relight it.",          color: "#555566", glow: "rgba(85,85,102,0.25)"   },
-  sad:     { label: "Barely hanging on", sub: "Keep going — don't lose this one.",   color: "#888899", glow: "rgba(136,136,153,0.3)"  },
-  neutral: { label: "Steady",            sub: "You're building something real.",     color: "#ff9a3c", glow: "rgba(255,154,60,0.35)"  },
-  good:    { label: "On fire",           sub: "This streak has real heat now.",      color: "#ff6b00", glow: "rgba(255,107,0,0.4)"    },
-  blazing: { label: "Legendary",         sub: "Untouchable. Keep the halo lit.",     color: "#f5c542", glow: "rgba(245,197,66,0.45)"  },
+  dead:    { label: "Flame's out",      sub: "Start today to relight it.",           color: "#555566", glow: "rgba(85,85,102,0.25)"   },
+  spark:   { label: "Spark ignited",    sub: "Day 1 counts. Keep showing up.",       color: "#ff9a3c", glow: "rgba(255,154,60,0.35)"  },
+  rising:  { label: "Rising up",        sub: "You're building momentum. Don't stop.",color: "#ff7a1a", glow: "rgba(255,122,26,0.38)"  },
+  neutral: { label: "Steady",           sub: "You're building something real.",      color: "#ff6b00", glow: "rgba(255,107,0,0.4)"    },
+  good:    { label: "On fire",          sub: "This streak has real heat now.",       color: "#ff4500", glow: "rgba(255,69,0,0.45)"    },
+  blazing: { label: "Legendary",        sub: "Untouchable. Keep the halo lit.",      color: "#f5c542", glow: "rgba(245,197,66,0.45)"  },
 };
 
 /* ═══════════════════════════════════════════════════
@@ -49,13 +53,22 @@ function Face({ mood }: { mood: string }) {
       <svg style={mouthBase} viewBox="0 0 18 9"><path d="M2,3 Q9,0 16,3" stroke="#1a1108" strokeWidth="1.6" fill="none" strokeLinecap="round" /></svg>
     </>
   );
-  if (mood === "sad") return (
+  if (mood === "spark") return (
     <>
       <div style={eyeBase}>
-        <div style={{ width:7, height:7, borderRadius:"50% 50% 50% 0%", background:"#1a1108", transform:"rotate(20deg)" }} />
-        <div style={{ width:7, height:7, borderRadius:"50% 50% 50% 0%", background:"#1a1108", transform:"scaleX(-1) rotate(20deg)" }} />
+        <div style={{ width:7, height:7, borderRadius:"50%", background:"#1a1108" }} />
+        <div style={{ width:7, height:7, borderRadius:"50%", background:"#1a1108" }} />
       </div>
-      <svg style={mouthBase} viewBox="0 0 18 9"><path d="M2,6 Q9,1 16,6" stroke="#1a1108" strokeWidth="1.6" fill="none" strokeLinecap="round" /></svg>
+      <svg style={mouthBase} viewBox="0 0 18 9"><line x1="3" y1="3" x2="15" y2="3" stroke="#1a1108" strokeWidth="1.6" strokeLinecap="round" /></svg>
+    </>
+  );
+  if (mood === "rising") return (
+    <>
+      <div style={eyeBase}>
+        <div style={{ width:7, height:7, borderRadius:"50%", background:"#1a1108" }} />
+        <div style={{ width:7, height:7, borderRadius:"50%", background:"#1a1108" }} />
+      </div>
+      <svg style={mouthBase} viewBox="0 0 18 9"><path d="M2,4 Q9,8 16,4" stroke="#1a1108" strokeWidth="1.6" fill="none" strokeLinecap="round" /></svg>
     </>
   );
   if (mood === "neutral") return (
@@ -94,14 +107,15 @@ function Mascot({ mood }: { mood: string }) {
   const meta = MOOD_META[mood];
   const flameColors: Record<string, { outer: string; inner: string }> = {
     dead:    { outer: "linear-gradient(180deg,#3a3a44,#26262e)", inner: "linear-gradient(180deg,#555566,#3a3a44)" },
-    sad:     { outer: "linear-gradient(180deg,#6b6b78,#4a4a55)", inner: "linear-gradient(180deg,#8a8a99,#6b6b78)" },
+    spark:   { outer: "linear-gradient(180deg,#ff9a3c,#cc5500)", inner: "linear-gradient(180deg,#ffc87a,#ff7a1a)" },
+    rising:  { outer: "linear-gradient(180deg,#ff8a2a,#ff5500)", inner: "linear-gradient(180deg,#ffcc5a,#ff9a3c)" },
     neutral: { outer: "linear-gradient(180deg,#ff9a3c,#ff6b00)", inner: "linear-gradient(180deg,#ffd27a,#ff9a3c)" },
     good:    { outer: "linear-gradient(180deg,#ff8a1f,#ff6b00)", inner: "linear-gradient(180deg,#ffdd6b,#ffae3c)" },
     blazing: { outer: "linear-gradient(180deg,#ffdd6b,#ff6b00)", inner: "linear-gradient(180deg,#fff3c2,#ffd24a)" },
   };
   const fc = flameColors[mood];
-  const scale = ({ dead:0.7, sad:0.82, neutral:1, good:1.12, blazing:1.28 } as Record<string,number>)[mood];
-  const flameAnim = mood === "dead" ? undefined : mood === "sad" ? "flameDroop 3s ease-in-out infinite" : mood === "neutral" ? "flameFlicker 3.2s ease-in-out infinite" : "flameBounce 2.4s ease-in-out infinite";
+  const scale = ({ dead:0.7, spark:0.88, rising:0.95, neutral:1, good:1.12, blazing:1.28 } as Record<string,number>)[mood];
+  const flameAnim = mood === "dead" ? undefined : (mood === "spark" || mood === "rising") ? "flameFlicker 3.2s ease-in-out infinite" : mood === "neutral" ? "flameFlicker 3.2s ease-in-out infinite" : "flameBounce 2.4s ease-in-out infinite";
 
   return (
     <div style={{ position:"relative", width:200, height:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
