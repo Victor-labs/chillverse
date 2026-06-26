@@ -74,25 +74,22 @@ export default function CreateRoom() {
 
       // -- Step 1: Insert the room -----------------------------------------
       // current_player_count starts at 1 (the host) — we do NOT rely on a
-      // DB trigger to increment it. The host row insert below keeps these in sync.
-      const { data: room, error: roomErr } = await supabase
-        .from('game_rooms')
-        .insert({
-          game_id:              selectedGame.id,
-          room_name:            finalName,
-          host_id:              userId,
-          is_private:           hasPassword,
-          password_hash:        passwordHash,
-          status:               'waiting',
-          max_player_count:     selectedGame.maxPlayers,
-          min_player_count:     selectedGame.minPlayers,
-          current_player_count: 1,  // host counts from the start
-          short_code:           shortCode,
-        })
-        .select('id, short_code')
-        .single()
-
-      if (roomErr || !room) throw new Error(roomErr?.message ?? 'Failed to create room')
+      // DB trigger to increment it. The host row insert below keeps these in sync.let room = null
+let roomErr = null
+for (let attempt = 0; attempt < 5; attempt++) {
+  const code = hasPassword ? generateShortCode() : ''
+  const result = await supabase
+    .from('game_rooms')
+    .insert({ ..., short_code: code })
+    .select('id, short_code')
+    .single()
+  if (!result.error) { room = result.data; break }
+  if (!result.error.message.includes('idx_game_rooms_short_code')) {
+    roomErr = result.error; break // Different error — stop retrying
+  }
+  // Short code collision — generate a new one and retry
+}
+if (!room) throw new Error(roomErr?.message ?? 'Failed to create room')
 
       // -- Step 2: Insert host as player ------------------------------------
       // is_host: true so RoomLobby renders the Crown and Start button.
