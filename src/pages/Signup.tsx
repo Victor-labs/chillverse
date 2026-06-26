@@ -141,7 +141,15 @@ export default function Signup() {
     return Object.keys(e).length === 0
   }
 
-  function goToStep2(e: FormEvent) { e.preventDefault(); if (validateStep1()) setStep(2) }
+  function goToStep2(e: FormEvent) {
+    e.preventDefault()
+    if (!legalChecked) {
+      showToast('Please accept the Terms & Conditions and Privacy Policy to continue.', 'err')
+      setErrors(prev => ({ ...prev, legal: 'You must accept the terms to continue' }))
+      return
+    }
+    if (validateStep1()) setStep(2)
+  }
   function goToStep3() { setStep(3) }
   function toggleInterest(tag: string) {
     setInterests(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])

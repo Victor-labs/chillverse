@@ -61,9 +61,25 @@ function IBtn({ onClick, children, style }: {
   )
 }
 
-function Avatar({ name, size = 40, radius = 13 }: { name: string; size?: number; radius?: number }) {
+function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; avatarUrl?: string | null; size?: number; radius?: number }) {
   const colors = ['#ff6b6b','#4f8ef7','#9b6dff','#3ecf8e','#f5c542','#ff4d8b','#ff9a3c','#00e5ff']
   const color = colors[(name.charCodeAt(0) || 0) % colors.length]
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={{ width:size, height:size, borderRadius:radius, objectFit:'cover', flexShrink:0, display:'block' }}
+        onError={e => {
+          // fall back to initials if image fails to load
+          const el = e.currentTarget
+          el.style.display = 'none'
+          const fallback = el.nextElementSibling as HTMLElement | null
+          if (fallback) fallback.style.display = 'flex'
+        }}
+      />
+    )
+  }
   return (
     <div style={{ width:size, height:size, borderRadius:radius, background:color, color:'#fff', fontWeight:700, fontSize:size*0.35, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
       {(name || '?').charAt(0).toUpperCase()}
@@ -136,7 +152,7 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat }: PlayerProfi
           <X size={16} />
         </button>
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, marginBottom:20 }}>
-          <Avatar name={displayLabel} size={64} radius={18} />
+          <Avatar name={displayLabel} avatarUrl={profile.avatar || null} size={64} radius={18} />
           <div style={{ textAlign:'center' }}>
             <div style={{ fontSize:16, fontWeight:700, color:'var(--text)' }}>{displayLabel}</div>
             <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>@{profile.username}</div>
@@ -186,6 +202,15 @@ export default function Chat() {
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [msgsLoading, setMsgsLoading] = useState(false)
+
+  // Own profile (avatar, display_name) — loaded once on mount
+  const [myProfile, setMyProfile] = useState<{ username: string; display_name: string | null; avatar: string | null } | null>(null)
+
+  useEffect(() => {
+    if (!myId) return
+    supabase.from('profiles').select('username, display_name, avatar').eq('id', myId).single()
+      .then(({ data }) => { if (data) setMyProfile(data) })
+  }, [myId])
 
   const [showConv, setShowConv] = useState(false)
   const [text, setText] = useState('')
@@ -592,16 +617,22 @@ export default function Chat() {
                 style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
             </div>
 
-            {/* Player search */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)', padding:'8px 12px' }}>
-              <Search size={14} style={{ color:'#4f8ef7', flexShrink:0 }} />
-              <input type="text" placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
-                style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
-              {playerSearch && (
-                <button type="button" onClick={() => { setPlayerSearch(''); setPlayerResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
-                  <X size={13} />
-                </button>
-              )}
+            {/* Player search — with chat icon + prompt */}
+            <div style={{ marginBottom: 4 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                <MessageCircle size={13} style={{ color:'#4f8ef7', flexShrink:0 }} />
+                <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>Start a chat — enter a username</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', borderRadius:12, border:'1px solid rgba(79,142,247,0.18)', padding:'8px 12px' }}>
+                <Search size={14} style={{ color:'#4f8ef7', flexShrink:0 }} />
+                <input type="text" placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
+                  style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
+                {playerSearch && (
+                  <button type="button" onClick={() => { setPlayerSearch(''); setPlayerResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -621,12 +652,16 @@ export default function Chat() {
                     style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 16px', width:'100%', background:'transparent', border:'none', cursor:'pointer', textAlign:'left', transition:'background 0.12s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                    <Avatar name={p.display_name || p.username} size={36} radius={10} />
+                    <Avatar name={p.display_name || p.username} avatarUrl={p.avatar || null} size={36} radius={10} />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
                       <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
                     </div>
-                    <ChevronRight size={13} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id); setPlayerSearch(''); setPlayerResults([]) }}
+                      title="Start chat"
+                      style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor:'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0 }}>
+                      <MessageCircle size={12} /> Chat
+                    </button>
                   </button>
                 ))
               )}
@@ -653,14 +688,15 @@ export default function Chat() {
                     style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', width:'100%', cursor:'pointer', background: activeRoom?.id === room.id && !isMobile ? 'rgba(79,142,247,0.08)' : isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent', border:'none', borderBottom: isGlobal ? '2px solid rgba(79,142,247,0.15)' : '1px solid rgba(255,255,255,0.04)', textAlign:'left', transition:'background 0.15s' }}
                     onMouseEnter={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.10)' : 'rgba(255,255,255,0.03)' }}
                     onMouseLeave={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent' }}>
-                    {/* Globe avatar for global chat, regular avatar for DMs */}
+                    {/* Globe avatar for global chat, real profile pic for DMs */}
                     {isGlobal ? (
                       <div style={{ width:44, height:44, borderRadius:13, flexShrink:0, background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, boxShadow:'0 0 14px rgba(79,142,247,0.35)' }}>
                         🌍
                       </div>
-                    ) : (
-                      <Avatar name={roomLabel(room)} size={44} />
-                    )}
+                    ) : (() => {
+                      const other = room.members.find(m => m.user_id !== myId)
+                      return <Avatar name={roomLabel(room)} avatarUrl={other?.profile?.avatar || null} size={44} />
+                    })()}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
@@ -699,9 +735,10 @@ export default function Chat() {
                     <div style={{ width:34, height:34, borderRadius:10, flexShrink:0, background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
                       🌍
                     </div>
-                  ) : (
-                    <Avatar name={roomLabel(activeRoom)} size={34} radius={10} />
-                  )}
+                  ) : (() => {
+                    const other = activeRoom.members.find(m => m.user_id !== myId)
+                    return <Avatar name={roomLabel(activeRoom)} avatarUrl={other?.profile?.avatar || null} size={34} radius={10} />
+                  })()}
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:14, fontWeight:700, color: activeRoom.type === 'global' ? '#4f8ef7' : 'var(--text)' }}>{roomLabel(activeRoom)}</div>
                     <div style={{ fontSize:11, color:'var(--text-muted)' }}>
@@ -726,6 +763,16 @@ export default function Chat() {
                   messages.map(msg => {
                     const isMine = msg.sender_id === myId
                     const senderLabel = isMine ? 'You' : (msg.senderName || 'Unknown')
+
+                    // Resolve avatar: own messages use myProfile, others look up in room members
+                    let avatarUrl: string | null = null
+                    if (isMine) {
+                      avatarUrl = myProfile?.avatar ?? null
+                    } else {
+                      const member = activeRoom?.members.find(mb => mb.user_id === msg.sender_id)
+                      avatarUrl = member?.profile?.avatar ?? null
+                    }
+
                     return (
                       <div key={msg.id} style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8, marginBottom:6 }}>
 
@@ -735,7 +782,7 @@ export default function Chat() {
                           onClick={() => openSenderProfile(msg)}
                           style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
                           title={senderLabel}>
-                          <Avatar name={senderLabel} size={30} radius={10} />
+                          <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
                         </button>
 
                         {/* Bubble + meta */}
