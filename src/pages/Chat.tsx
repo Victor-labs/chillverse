@@ -494,7 +494,7 @@ export default function Chat() {
 
     // Build the room object directly and open it — no setTimeout race
     const roomObj: ChatRoom = {
-      id: roomId,
+      id: roomId!,
       type: 'dm',
       name: null,
       members: [
