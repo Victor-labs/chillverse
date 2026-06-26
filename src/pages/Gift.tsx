@@ -1,5 +1,5 @@
 // src/pages/Gift.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Gift, Gem, X, Search, Check, AlertCircle, WifiOff, User } from 'lucide-react'
 import { ripple } from '../lib/ripple'
@@ -18,6 +18,23 @@ const RARITY_META: Record<MallRarity, { color: string; bg: string }> = {
   Rare:   { color: '#4f8ef7', bg: 'rgba(79,142,247,0.14)'  },
   Epic:   { color: '#9b6dff', bg: 'rgba(155,109,255,0.14)' },
   Mythic: { color: '#ff6b00', bg: 'rgba(255,107,0,0.14)'   },
+}
+
+// ─── Recipient search ───────────────────────────────────────────
+interface SearchedUser {
+  id: string
+  username: string
+  display_name: string | null
+}
+
+function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+  const colors = ['#ff6b6b','#4f8ef7','#9b6dff','#3ecf8e','#f5c542','#ff4d8b','#ff9a3c','#00e5ff']
+  const color = colors[(name.charCodeAt(0) || 0) % colors.length]
+  return (
+    <div style={{ width:size, height:size, borderRadius:size*0.32, background:color, color:'#fff', fontWeight:700, fontSize:size*0.4, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+      {(name || '?').charAt(0).toUpperCase()}
+    </div>
+  )
 }
 
 // ─── Toast ────────────────────────────────────────────────────
@@ -49,36 +66,52 @@ function SendModal({ item, senderName, onClose, onSent }: {
 }) {
   const { user } = useAuth()
   const { wallet } = useWallet()
-  const [username, setUsername] = useState('')
+  const [query, setQuery]       = useState('')
+  const [selected, setSelected] = useState<SearchedUser | null>(null)
+  const [results, setResults]   = useState<SearchedUser[]>([])
+  const [searching, setSearching] = useState(false)
   const [sending, setSending]   = useState(false)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const price = item.price_gems ?? 0
   const canAfford = (wallet?.gem_balance ?? 0) >= price
+  const hasValidPick = !!selected && selected.username === query.trim().toLowerCase()
+
+  function onQueryChange(value: string) {
+    setQuery(value)
+    if (selected && value.trim().toLowerCase() !== selected.username) setSelected(null)
+    setResults([])
+  }
+
+  // Live search on `profiles.username`, case-insensitive
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    const q = query.trim()
+    if (!q || hasValidPick) { setResults([]); setSearching(false); return }
+    setSearching(true)
+    searchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .ilike('username', `%${q}%`)
+        .limit(6)
+      setResults((data as SearchedUser[]) ?? [])
+      setSearching(false)
+    }, 350)
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current) }
+  }, [query, hasValidPick])
+
+  function pickUser(u: SearchedUser) {
+    setSelected(u)
+    setQuery(u.username)
+    setResults([])
+  }
 
   async function handleGift() {
-    if (!username.trim() || !user || sending) return
+    if (!hasValidPick || !selected || !user || sending) return
     setSending(true)
 
-    // 1. Find recipient
-    const { data: recipientData, error: recipErr } = await supabase
-      .from('profiles')
-      .select('id, username, display_name')
-      .eq('username', username.trim().toLowerCase())
-      .maybeSingle()
-
-    if (recipErr) {
-      setSending(false)
-      onSent('__network_error__')
-      return
-    }
-
-    if (!recipientData) {
-      setSending(false)
-      onSent('__not_found__')
-      return
-    }
-
-    if (recipientData.id === user.id) {
+    if (selected.id === user.id) {
       setSending(false)
       onSent('__self__')
       return
@@ -99,7 +132,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
 
     // 3. Insert into recipient inventory
     await supabase.from('user_inventory').insert({
-      user_id:     recipientData.id,
+      user_id:     selected.id,
       item_id:     item.id,
       is_equipped: false,
       quantity:    1,
@@ -108,7 +141,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
     // 4. Insert gift record
     await supabase.from('gifts').insert({
       sender_id:    user.id,
-      recipient_id: recipientData.id,
+      recipient_id: selected.id,
       item_id:      item.id,
       item_name:    item.name,
       status:       'delivered',
@@ -116,7 +149,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
 
     // 5. Send notification to recipient
     await supabase.from('notifications').insert({
-      user_id:    recipientData.id,
+      user_id:    selected.id,
       type:       'gift',
       title:      'You received a gift! 🎁',
       body:       `${senderName} gifted you "${item.name}"`,
@@ -126,7 +159,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
     })
 
     setSending(false)
-    onSent(recipientData.display_name || recipientData.username)
+    onSent(selected.display_name || selected.username)
   }
 
   const rarityMeta = RARITY_META[item.rarity]
@@ -180,18 +213,51 @@ function SendModal({ item, senderName, onClose, onSent }: {
             </div>
           </div>
 
-          {/* Username input */}
+          {/* Recipient search */}
           <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', letterSpacing:'0.8px', textTransform:'uppercase', marginBottom:8 }}>Recipient</div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'10px 13px', marginBottom:6, boxShadow:'inset 2px 2px 6px var(--neu-dark)' }}>
-            <User size={14} color="var(--text-muted)" />
-            <input
-              type="text"
-              placeholder="Enter username…"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleGift() }}
-              style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13.5, color:'var(--text)', fontFamily:'inherit' }}
-            />
+          <div style={{ position:'relative', marginBottom:6 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'10px 13px', boxShadow:'inset 2px 2px 6px var(--neu-dark)' }}>
+              {hasValidPick ? <Check size={14} color="#3ecf8e" style={{ flexShrink:0 }} /> : <User size={14} color="var(--text-muted)" style={{ flexShrink:0 }} />}
+              <input
+                type="text"
+                placeholder="Search by username…"
+                value={query}
+                onChange={e => onQueryChange(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && hasValidPick) handleGift() }}
+                style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13.5, color:'var(--text)', fontFamily:'inherit' }}
+              />
+              {query && (
+                <button type="button" onClick={() => { setQuery(''); setSelected(null); setResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex', flexShrink:0 }}>
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Live results dropdown */}
+            {query.trim() && !hasValidPick && (
+              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:20, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:14, boxShadow:'0 16px 40px rgba(0,0,0,0.55)', maxHeight:220, overflowY:'auto' }}>
+                {searching ? (
+                  <div style={{ display:'flex', justifyContent:'center', padding:14 }}>
+                    <span style={{ width:18, height:18, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                  </div>
+                ) : results.length === 0 ? (
+                  <div style={{ padding:'12px 14px', fontSize:12, color:'var(--text-muted)' }}>No players found</div>
+                ) : (
+                  results.map(u => (
+                    <button key={u.id} type="button" onClick={() => pickUser(u)}
+                      style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 13px', width:'100%', background:'transparent', border:'none', cursor:'pointer', textAlign:'left' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                      <Avatar name={u.display_name || u.username} size={30} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:12.5, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.display_name || u.username}</div>
+                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{u.username}</div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Balance warning */}
@@ -204,9 +270,9 @@ function SendModal({ item, senderName, onClose, onSent }: {
           {/* Gift button */}
           <button
             onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); handleGift() }}
-            disabled={!username.trim() || !canAfford || sending}
+            disabled={!hasValidPick || !canAfford || sending}
             className="ripple-wrap"
-            style={{ width:'100%', padding:'13px', borderRadius:14, border:'none', cursor: !username.trim() || !canAfford || sending ? 'not-allowed' : 'pointer', background: !username.trim() || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)', color: !username.trim() || !canAfford || sending ? 'var(--text-muted)' : '#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow: username.trim() && canAfford && !sending ? '0 4px 20px rgba(255,107,0,0.35)' : 'none', transition:'all 0.2s', marginTop:4 }}>
+            style={{ width:'100%', padding:'13px', borderRadius:14, border:'none', cursor: !hasValidPick || !canAfford || sending ? 'not-allowed' : 'pointer', background: !hasValidPick || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)', color: !hasValidPick || !canAfford || sending ? 'var(--text-muted)' : '#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow: hasValidPick && canAfford && !sending ? '0 4px 20px rgba(255,107,0,0.35)' : 'none', transition:'all 0.2s', marginTop:4 }}>
             {sending ? (
               <><span style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }} /> Sending…</>
             ) : (
