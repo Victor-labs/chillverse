@@ -391,27 +391,19 @@ export default function Mall() {
   useEffect(() => {
     if (!items.length) return
     // Initial load
-    // Count how many users have wishlisted each item
-    supabase.from('wishlist').select('item_id')
-      .then(({ data }) => {
-        const counts: Record<string, number> = {}
-        for (const row of (data ?? [])) {
-          counts[row.item_id as string] = (counts[row.item_id as string] ?? 0) + 1
-        }
-        setLikeCounts(counts)
-      })
-    // Realtime — when anyone wishlists an item, counter goes up live
-    const channel = supabase.channel('wishlist-counts-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wishlist' }, (p) => {
-        const id = (p.new as { item_id: string }).item_id
-        setLikeCounts(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'wishlist' }, (p) => {
-        const id = (p.old as { item_id: string }).item_id
-        setLikeCounts(prev => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }))
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Load counts from public view + poll every 30s for cross-user live updates
+    async function loadCounts() {
+      const { data } = await supabase.from('wishlist_counts').select('item_id, count')
+      if (!data) return
+      const counts: Record<string, number> = {}
+      for (const row of data) {
+        counts[row.item_id as string] = row.count as number
+      }
+      setLikeCounts(counts)
+    }
+    loadCounts()
+    const poll = setInterval(loadCounts, 30_000)
+    return () => clearInterval(poll)
   }, [items.length])
 
   // Load existing wishlist ids
