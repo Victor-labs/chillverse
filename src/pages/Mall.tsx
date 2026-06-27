@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ChevronRight, Image as ImageIcon, Shirt, Zap,
-  Gem, Lock, Star, X, ShoppingBag, Heart, Diamond,
+  Gem, Lock, Star, X, ShoppingBag, Heart,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
