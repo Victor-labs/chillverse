@@ -191,19 +191,31 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
             }
 
             if (hasChildren && collapsed) {
-              // ── Collapsible group (collapsed sidebar) — show parent icon, navigate to /mall ──
+              // ── Collapsible group (collapsed sidebar) — expand sidebar + open group ──
               return (
                 <button
                   key={item.label}
                   type="button"
-                  onClick={(e) => handleNavClick(e, item.to)}
-                  title={item.label}
+                  onClick={(e) => {
+                    ripple(e)
+                    onToggleCollapse()
+                    setOpenGroups(prev => new Set([...prev, item.label]))
+                  }}
+                  title={`${item.label} (expand)`}
                   className={`ripple-wrap flex items-center cursor-pointer w-full border transition-all duration-200 justify-center rounded-[12px] p-[11px] ${
                     groupActive ? 'nav-item-active' : 'border-transparent'
                   }`}
-                  style={{ fontSize: 14, fontWeight: 500, color: groupActive ? '#fff' : 'var(--text-dim)', background: groupActive ? undefined : 'transparent', minWidth: 0 }}
+                  style={{ fontSize: 14, fontWeight: 500, color: groupActive ? '#fff' : 'var(--text-dim)', background: groupActive ? undefined : 'transparent', minWidth: 0, position: 'relative' }}
                 >
                   <span className="nav-icon-wrap" style={{ flexShrink: 0 }}><Icon size={16} /></span>
+                  <span style={{
+                    position: 'absolute', bottom: 5, right: 5,
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: 'var(--surface3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <ChevronRight size={7} style={{ color: 'var(--text-muted)' }} />
+                  </span>
                 </button>
               )
             }
