@@ -28,6 +28,7 @@ const BuyDiamonds        = lazy(() => import('./pages/BuyDiamonds'))
 const Achievements       = lazy(() => import('./pages/Achievements'))
 const Notifications      = lazy(() => import('./pages/Notifications'))
 const Inventory          = lazy(() => import('./pages/Inventory'))
+const WeeklyMissions     = lazy(() => import('./pages/WeeklyMissions'))
 // Multiplayer imports removed — files deleted, will be restored when rebuilt
 // const MultiplayerHome    = lazy(() => import('./pages/multiplayer/MultiplayerHome'))
 // const BrowseRooms        = lazy(() => import('./pages/multiplayer/BrowseRooms'))
@@ -104,6 +105,7 @@ export default function App() {
         <Route path="/achievements"                     element={<Suspense fallback={<Fallback />}><Achievements /></Suspense>} />
         <Route path="/notifications"                    element={<Suspense fallback={<Fallback />}><Notifications /></Suspense>} />
         <Route path="/inventory"                        element={<Suspense fallback={<Fallback />}><Inventory /></Suspense>} />
+        <Route path="/weekly-missions"                  element={<Suspense fallback={<Fallback />}><WeeklyMissions /></Suspense>} />
         {/* Multiplayer routes removed — will be restored when rebuilt */}
         {/* <Route path="/multiplayer"                      element={<Suspense fallback={<Fallback />}><MultiplayerHome /></Suspense>} /> */}
         {/* <Route path="/multiplayer/browse"               element={<Suspense fallback={<Fallback />}><BrowseRooms /></Suspense>} /> */}
