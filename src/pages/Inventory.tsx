@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Package, Shirt, Zap, Image as ImageIcon,
-  BookImage, X, CheckCircle2, CircleDashed,
+  X, CheckCircle2, CircleDashed,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
