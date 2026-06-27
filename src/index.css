@@ -389,3 +389,51 @@
     transform: translateX(0) !important;
   }
 }
+
+/* ── Sheet → Modal on desktop ───────────────────────────────── */
+/* Mobile/tablet: classic bottom sheet */
+.sheet-or-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+.sheet-or-modal-inner {
+  border-radius: 28px 28px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Desktop (lg+): centered modal instead of bottom sheet */
+@media (min-width: 1024px) {
+  .sheet-or-modal {
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    max-width: 95vw;
+  }
+  .sheet-or-modal-inner {
+    border-radius: 20px !important;
+    border-top: none !important;
+    border: 1px solid rgba(255,255,255,0.08);
+    transform: none !important;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+}
+
+/* ── Collapsed sidebar — icon-only nav ──────────────────────── */
+@media (min-width: 1024px) {
+  .sidebar-shell {
+    transition: width 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+  }
+}
+
+/* ── PC back button spacing fix ─────────────────────────────── */
+@media (min-width: 1024px) {
+  .cv-main-inner {
+    padding-top: 8px;
+  }
+}
