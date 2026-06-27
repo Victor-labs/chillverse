@@ -4,6 +4,7 @@ import { Outlet, useLocation, useSearchParams, useNavigate } from 'react-router-
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import AchievementToast from './AchievementToast'
+import NotificationToastRenderer from './NotificationToastRenderer'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
