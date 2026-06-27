@@ -1,5 +1,9 @@
 import { ArrowLeft, Zap, Lock, Check, Flame } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useProfile } from "../hooks/useProfile";
+import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabase";
+import { updateStreak } from "../lib/auth";
 
 /* ═══════════════════════════════════════════════════
    MILESTONES
@@ -148,6 +152,40 @@ interface StreakProps {
 
 export default function Streak({ onBack }: StreakProps) {
   const { profile, loading } = useProfile();
+  const { user } = useAuth();
+  const [liveStreak, setLiveStreak] = useState<number | null>(null);
+
+  // On mount: run streak update then refetch the live value
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      await updateStreak(user.id);
+      const { data } = await supabase
+        .from("profiles")
+        .select("streak")
+        .eq("id", user.id)
+        .single();
+      if (data) setLiveStreak(data.streak ?? 0);
+    })();
+  }, [user?.id]);
+
+  // Subscribe to realtime changes on this user's profile streak
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`streak-live:${user.id}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "profiles",
+        filter: `id=eq.${user.id}`,
+      }, (payload) => {
+        const updated = payload.new as { streak: number };
+        if (typeof updated.streak === "number") setLiveStreak(updated.streak);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -158,7 +196,7 @@ export default function Streak({ onBack }: StreakProps) {
     );
   }
 
-  const streak = profile?.streak ?? 0;
+  const streak = liveStreak ?? profile?.streak ?? 0;
   const mood = getMood(streak);
   const meta = MOOD_META[mood];
   const nextMilestone = MILESTONES.find(m => m.days > streak);
