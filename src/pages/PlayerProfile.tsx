@@ -141,7 +141,6 @@ export default function PlayerProfile() {
 
   const [player, setPlayer] = useState<PlayerData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [xpBarWidth, setXpBarWidth] = useState(0)
   const [followers, setFollowers] = useState<number>(0)
   const [following, setFollowing] = useState<number>(0)
   const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
@@ -189,16 +188,6 @@ export default function PlayerProfile() {
         setLoading(false)
       })
   }, [userId])
-
-  // Animate XP bar
-  useEffect(() => {
-    if (!player) return
-    setXpBarWidth(0)
-    const t = setTimeout(() => {
-      setXpBarWidth(Math.min(100, Math.round(((player.xp % 1000) / 1000) * 100)))
-    }, 120)
-    return () => clearTimeout(t)
-  }, [player?.xp])
 
   // Load follower counts
   useEffect(() => {
