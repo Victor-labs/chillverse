@@ -94,8 +94,6 @@ export async function resendConfirmationEmail(email: string) {
  *  - Older than yesterday → reset streak to 1 (missed a day)
  */
 export async function updateStreak(userId: string) {
-  const { default: supabase } = await import('./supabase')
-
   // Fetch current streak state
   const { data, error } = await supabase
     .from('profiles')
