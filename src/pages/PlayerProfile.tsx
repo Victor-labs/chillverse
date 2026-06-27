@@ -318,7 +318,7 @@ export default function PlayerProfile() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
 
       {/* ── Banner ── */}
-      <div style={{ position: 'relative', width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>
         {bannerUrl && <img src={bannerUrl} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.6) 100%)' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
@@ -332,7 +332,7 @@ export default function PlayerProfile() {
       </div>
 
       {/* ── Profile pic + name row ── */}
-      <div style={{ padding: '0 20px', marginTop: -44, marginBottom: 16 }}>
+      <div style={{ padding: '0 20px', marginTop: -44, marginBottom: 16, position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
           <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ width: 80, height: 80, borderRadius: 20, padding: 3, background: `linear-gradient(135deg, ${rank.color}, #4f8ef7)`, boxShadow: `0 0 20px ${rank.color}55`, border: '3px solid var(--bg)' }}>
