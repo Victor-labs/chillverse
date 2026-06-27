@@ -25,9 +25,6 @@ function saveSeenWords(seen: Set<string>) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])) } catch {}
 }
 
-function clearSeenWords() {
-  try { localStorage.removeItem(SEEN_KEY) } catch {}
-}
 
 interface WordEntry { word: string; hint: string; difficulty: 'easy' | 'medium' | 'hard' | 'impossible' }
 
