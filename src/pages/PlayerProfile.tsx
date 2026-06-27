@@ -10,6 +10,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { ripple } from '../lib/ripple'
+import { notifyFollow, notifyProfileView, notifyProfileLike } from '../lib/achievements'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LucideIcon = React.ComponentType<any>
@@ -254,6 +255,7 @@ export default function PlayerProfile() {
       setFollowers(f => Math.max(0, f - 1))
     } else {
       await supabase.from('follows').insert({ follower_id: myId, following_id: userId })
+      await notifyFollow(myId, userId)
       setFollowStatus('following')
       setFollowers(f => f + 1)
     }

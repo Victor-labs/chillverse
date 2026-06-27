@@ -231,20 +231,29 @@ export default function Ranks() {
   const nextTier = getNextRankTier(userTier)
   const { pct, xpIntoTier, xpNeeded } = getRankProgress(userXp)
 
-  // Load leaderboard when that tab is opened
+  // Load leaderboard — only people in the same rank tier as the user
   useEffect(() => {
     if (!showLeaderboard) return
     setLbLoading(true)
+    // Find user's rank tier bounds
+    const tier = getUserRankTier(userXp)
     supabase
       .from('profiles')
       .select('id, display_name, username, xp, level, streak, avatar')
+      .gte('xp', tier.xpRequired)
       .order('xp', { ascending: false })
-      .limit(50)
+      .limit(100)
       .then(({ data }) => {
-        setLeaderboard((data as LeaderboardEntry[]) ?? [])
+        const all = (data ?? []) as LeaderboardEntry[]
+        // filter to only this tier (xp < next tier threshold)
+        const nextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
+        const sameRank = nextTier
+          ? all.filter(p => p.xp < nextTier.xpRequired)
+          : all
+        setLeaderboard(sameRank)
         setLbLoading(false)
       })
-  }, [showLeaderboard])
+  }, [showLeaderboard, userXp])
 
   // Which tiers has the user unlocked
   const unlockedIds = new Set(RANK_TIERS.filter(t => userXp >= t.xpRequired).map(t => t.id))

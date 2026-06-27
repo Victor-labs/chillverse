@@ -87,7 +87,7 @@ function getLockInfo(item: MallItem, hasOwnedRequirement: boolean): LockInfo {
 /* ══════════════════════════════════════════════════════
    CARD COMPONENTS
 ══════════════════════════════════════════════════════ */
-function SquareCard({ item, onSelect, onWishlist, wishlisted }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean }) {
+function SquareCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean; likeCount?: number }) {
   const lock = getLockInfo(item, false)
   const isMythic = item.rarity === 'Mythic'
 
@@ -120,8 +120,9 @@ function SquareCard({ item, onSelect, onWishlist, wishlisted }: { item: MallItem
           ) : null}
           {!lock.locked && onWishlist && (
             <button type="button" onClick={e => { e.stopPropagation(); onWishlist(item) }}
-              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: wishlisted ? '#ff4d8b' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: wishlisted ? '#ff4d8b' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
               <Heart size={13} style={{ fill: wishlisted ? '#ff4d8b' : 'none' }} />
+              {likeCount > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: wishlisted ? '#ff4d8b' : 'var(--text-muted)' }}>{likeCount}</span>}
             </button>
           )}
         </div>
@@ -133,7 +134,7 @@ function SquareCard({ item, onSelect, onWishlist, wishlisted }: { item: MallItem
   )
 }
 
-function RectCard({ item, onSelect, onWishlist, wishlisted }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean }) {
+function RectCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean; likeCount?: number }) {
   const lock = getLockInfo(item, false)
   const isMythic = item.rarity === 'Mythic'
 
@@ -170,8 +171,9 @@ function RectCard({ item, onSelect, onWishlist, wishlisted }: { item: MallItem; 
           ) : null}
           {!lock.locked && onWishlist && (
             <button type="button" onClick={e => { e.stopPropagation(); onWishlist(item) }}
-              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: wishlisted ? '#ff4d8b' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: wishlisted ? '#ff4d8b' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
               <Heart size={13} style={{ fill: wishlisted ? '#ff4d8b' : 'none' }} />
+              {likeCount > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: wishlisted ? '#ff4d8b' : 'var(--text-muted)' }}>{likeCount}</span>}
             </button>
           )}
         </div>
@@ -277,7 +279,7 @@ function SubPage({ title, onBack, children }: { title: string; onBack: () => voi
 /* ══════════════════════════════════════════════════════
    PROFILE PICS SUB-PAGE
 ══════════════════════════════════════════════════════ */
-function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string> }) {
+function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
   const profilePics = items.filter(i => i.category === 'profile_pic')
   return (
     <SubPage title="Profile Pics" onBack={onBack}>
@@ -285,7 +287,7 @@ function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { 
         <EmptyState label="No profile pics available yet." />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 11 }}>
-          {profilePics.map(item => <SquareCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} />)}
+          {profilePics.map(item => <SquareCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} likeCount={likeCounts?.[item.id] ?? 0} />)}
         </div>
       )}
     </SubPage>
@@ -297,7 +299,7 @@ function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { 
 ══════════════════════════════════════════════════════ */
 const AVATAR_SUB_CATEGORIES = ['Models and brand', 'Others', 'Power up characters']
 
-function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string> }) {
+function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
   const [activeTab, setActiveTab] = useState(AVATAR_SUB_CATEGORIES[0])
   const avatars = items.filter(i => i.category === 'avatar_skin' && i.sub_category === activeTab)
 
@@ -326,7 +328,7 @@ function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { item
         <EmptyState label={`No avatars in "${activeTab}" yet.`} />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-          {avatars.map(item => <RectCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} />)}
+          {avatars.map(item => <RectCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} likeCount={likeCounts?.[item.id] ?? 0} />)}
         </div>
       )}
     </SubPage>
@@ -336,7 +338,7 @@ function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted }: { item
 /* ══════════════════════════════════════════════════════
    CONSUMABLES SUB-PAGE
 ══════════════════════════════════════════════════════ */
-function ConsumablesPage({ items, onBack, onSelect, onWishlist, wishlisted }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string> }) {
+function ConsumablesPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
   const consumables = items.filter(i => i.category === 'xp_booster' || i.is_consumable)
   return (
     <SubPage title="Consumables" onBack={onBack}>
@@ -344,7 +346,7 @@ function ConsumablesPage({ items, onBack, onSelect, onWishlist, wishlisted }: { 
         <EmptyState label="No consumables available yet." />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-          {consumables.map(item => <RectCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} />)}
+          {consumables.map(item => <RectCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} likeCount={likeCounts?.[item.id] ?? 0} />)}
         </div>
       )}
     </SubPage>
@@ -382,7 +384,34 @@ export default function Mall() {
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
   const diamondBalance = wallet?.gem_balance ?? 0
+
+  // Load like counts for all visible items + subscribe to realtime changes
+  useEffect(() => {
+    if (!items.length) return
+    // Initial load
+    supabase.from('item_likes').select('item_id')
+      .then(({ data }) => {
+        const counts: Record<string, number> = {}
+        for (const row of (data ?? [])) {
+          counts[row.item_id as string] = (counts[row.item_id as string] ?? 0) + 1
+        }
+        setLikeCounts(counts)
+      })
+    // Realtime
+    const channel = supabase.channel('item-likes-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'item_likes' }, (p) => {
+        const id = (p.new as { item_id: string }).item_id
+        setLikeCounts(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'item_likes' }, (p) => {
+        const id = (p.old as { item_id: string }).item_id
+        setLikeCounts(prev => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [items.length])
 
   // Load existing wishlist ids
   useEffect(() => {
@@ -500,9 +529,9 @@ export default function Mall() {
       </div>
 
       {/* Sub-pages */}
-      {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} />}
-      {openSection === 'avatars'      && <AvatarsPage      items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} />}
-      {openSection === 'consumables'  && <ConsumablesPage  items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} />}
+      {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
+      {openSection === 'avatars'      && <AvatarsPage      items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
+      {openSection === 'consumables'  && <ConsumablesPage  items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
 
       {/* Detail / confirm modal */}
       {selectedItem && (
