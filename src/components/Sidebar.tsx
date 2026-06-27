@@ -1,9 +1,11 @@
 // src/components/Sidebar.tsx
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
   User, Settings, Zap, X, ChevronLeft, ChevronRight,
+  Package, ChevronDown,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 
@@ -12,13 +14,23 @@ interface NavItem {
   to: string
   icon: LucideIcon
   badge?: number | null
+  children?: { label: string; to: string; icon: LucideIcon }[]
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',    to: '/dashboard',   icon: Home,        badge: null },
   { label: 'Streak',       to: '/streak',       icon: Flame,       badge: null },
   { label: 'Games',        to: '/games',        icon: Gamepad2,    badge: null },
-  { label: 'Mall',         to: '/mall',         icon: ShoppingBag, badge: null },
+  {
+    label: 'Mall',
+    to: '/mall',
+    icon: ShoppingBag,
+    badge: null,
+    children: [
+      { label: 'Shop',      to: '/mall',       icon: ShoppingBag },
+      { label: 'Inventory', to: '/inventory',  icon: Package     },
+    ],
+  },
   { label: 'Gift',         to: '/gift',         icon: Gift,        badge: null },
   { label: 'Ranks',        to: '/ranks',        icon: Trophy,      badge: null },
   { label: 'Achievements', to: '/achievements', icon: Zap,         badge: null },
@@ -26,7 +38,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Settings',     to: '/settings',     icon: Settings,    badge: null },
 ]
 
-function isItemActive(item: NavItem, pathname: string): boolean {
+function isGroupActive(item: NavItem, pathname: string): boolean {
+  if (item.children) return item.children.some(c => pathname === c.to)
   return pathname === item.to
 }
 
@@ -41,6 +54,21 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
+  // Track which collapsible groups are open; default Mall open if active
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const s = new Set<string>()
+    if (pathname === '/mall' || pathname === '/inventory') s.add('Mall')
+    return s
+  })
+
+  function toggleGroup(label: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev)
+      next.has(label) ? next.delete(label) : next.add(label)
+      return next
+    })
+  }
+
   function handleNavClick(e: React.MouseEvent<HTMLButtonElement>, to: string) {
     ripple(e)
     navigate(to)
@@ -51,7 +79,6 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
 
   return (
     <>
-      {/* Mobile/tablet overlay */}
       {open && (
         <div
           className="fixed inset-0 z-[340] lg:hidden"
@@ -77,25 +104,13 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
               Chillverse
             </span>
           )}
-
-          {/* Mobile close button */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="lg:hidden ml-auto"
-            style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          >
+          <button type="button" onClick={onClose} className="lg:hidden ml-auto"
+            style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <X size={14} />
           </button>
-
-          {/* Desktop collapse toggle */}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="hidden lg:flex"
+          <button type="button" onClick={onToggleCollapse} className="hidden lg:flex"
             style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0, flexShrink: 0 }}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
         </div>
@@ -103,8 +118,98 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
         {/* Nav */}
         <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto overflow-x-hidden">
           {NAV_ITEMS.map((item) => {
-            const active = isItemActive(item, pathname)
+            const groupActive = isGroupActive(item, pathname)
             const Icon = item.icon
+            const hasChildren = !!item.children
+            const isExpanded = openGroups.has(item.label)
+
+            if (hasChildren && !collapsed) {
+              // ── Collapsible group (expanded sidebar) ──
+              return (
+                <div key={item.label}>
+                  {/* Group header */}
+                  <button
+                    type="button"
+                    onClick={(e) => { ripple(e); toggleGroup(item.label) }}
+                    className={`ripple-wrap flex items-center cursor-pointer w-full border transition-all duration-200 gap-3 px-[13px] py-[11px] rounded-[12px] text-left ${
+                      groupActive && !isExpanded ? 'nav-item-active' : 'border-transparent'
+                    }`}
+                    style={{
+                      fontSize: 14, fontWeight: 500,
+                      color: groupActive ? '#fff' : 'var(--text-dim)',
+                      background: 'transparent', minWidth: 0,
+                    }}
+                    onMouseEnter={e => { if (!groupActive || isExpanded) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text)' } }}
+                    onMouseLeave={e => { if (!groupActive || isExpanded) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = groupActive ? '#fff' : 'var(--text-dim)' } }}
+                  >
+                    <span className="nav-icon-wrap" style={{ flexShrink: 0 }}><Icon size={16} /></span>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    <ChevronDown
+                      size={13}
+                      style={{
+                        transition: 'transform 0.22s',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        color: 'var(--text-muted)',
+                        flexShrink: 0,
+                      }}
+                    />
+                  </button>
+
+                  {/* Children */}
+                  <div style={{
+                    overflow: 'hidden',
+                    maxHeight: isExpanded ? `${item.children!.length * 48}px` : '0px',
+                    transition: 'max-height 0.25s cubic-bezier(0.4,0,0.2,1)',
+                  }}>
+                    {item.children!.map(child => {
+                      const childActive = pathname === child.to
+                      const ChildIcon = child.icon
+                      return (
+                        <button
+                          key={child.to}
+                          type="button"
+                          onClick={(e) => handleNavClick(e, child.to)}
+                          className={`ripple-wrap flex items-center cursor-pointer w-full border transition-all duration-200 gap-3 pl-[36px] pr-[13px] py-[9px] rounded-[12px] text-left ${
+                            childActive ? 'nav-item-active' : 'border-transparent'
+                          }`}
+                          style={{
+                            fontSize: 13, fontWeight: 500,
+                            color: childActive ? '#fff' : 'var(--text-dim)',
+                            background: 'transparent', minWidth: 0, marginTop: 1,
+                          }}
+                          onMouseEnter={e => { if (!childActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text)' } }}
+                          onMouseLeave={e => { if (!childActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)' } }}
+                        >
+                          <ChildIcon size={14} style={{ flexShrink: 0, opacity: 0.75 }} />
+                          <span className="flex-1 truncate">{child.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+
+            if (hasChildren && collapsed) {
+              // ── Collapsible group (collapsed sidebar) — show parent icon, navigate to /mall ──
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={(e) => handleNavClick(e, item.to)}
+                  title={item.label}
+                  className={`ripple-wrap flex items-center cursor-pointer w-full border transition-all duration-200 justify-center rounded-[12px] p-[11px] ${
+                    groupActive ? 'nav-item-active' : 'border-transparent'
+                  }`}
+                  style={{ fontSize: 14, fontWeight: 500, color: groupActive ? '#fff' : 'var(--text-dim)', background: groupActive ? undefined : 'transparent', minWidth: 0 }}
+                >
+                  <span className="nav-icon-wrap" style={{ flexShrink: 0 }}><Icon size={16} /></span>
+                </button>
+              )
+            }
+
+            // ── Regular item ──
+            const active = pathname === item.to
             return (
               <button
                 key={item.label}
@@ -129,7 +234,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
           })}
         </nav>
 
-        {/* Premium box — hidden when collapsed */}
+        {/* Premium box */}
         {!collapsed && (
           <div className="p-3 pb-5">
             <button
@@ -152,7 +257,6 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
           </div>
         )}
 
-        {/* Collapsed premium — just a zap icon */}
         {collapsed && (
           <div className="p-3 pb-5 flex justify-center">
             <button
