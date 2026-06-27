@@ -491,13 +491,22 @@ export default function Profile() {
   }, [profile?.id])
 
   async function handleLike() {
-    if (!profile?.id || liked || liking) return
+    if (!profile?.id || liking) return
     setLiking(true)
-    const { error } = await supabase.from('profile_likes').insert({ profile_id: profile.id, liker_id: profile.id })
-    if (!error) {
-      setLiked(true)
-      setLikeCount(c => c + 1)
-      setLikeToast('Like added ❤️')
+    if (liked) {
+      const { error } = await supabase.from('profile_likes').delete().eq('profile_id', profile.id).eq('liker_id', profile.id)
+      if (!error) {
+        setLiked(false)
+        setLikeCount(c => Math.max(0, c - 1))
+        setLikeToast('Like removed')
+      }
+    } else {
+      const { error } = await supabase.from('profile_likes').insert({ profile_id: profile.id, liker_id: profile.id })
+      if (!error) {
+        setLiked(true)
+        setLikeCount(c => c + 1)
+        setLikeToast('Like added ❤️')
+      }
     }
     setLiking(false)
   }
@@ -564,9 +573,9 @@ export default function Profile() {
               </div>
             </div>
             {/* Like — below avatar, left side. Self-likes count too, once. */}
-            <button type="button" onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); handleLike() }} disabled={liking || liked}
+            <button type="button" onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); handleLike() }} disabled={liking}
               className="ripple-wrap"
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.1)'}`, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', cursor: liked ? 'default' : 'pointer', boxShadow: '2px 2px 6px var(--neu-dark)' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.1)'}`, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', cursor: liking ? 'default' : 'pointer', boxShadow: '2px 2px 6px var(--neu-dark)' }}>
               <Heart size={14} color={liked ? '#ff4d8b' : 'var(--text-muted)'} style={{ fill: liked ? '#ff4d8b' : 'none' }} />
               <span style={{ fontSize: 12, fontWeight: 700, color: liked ? '#ff4d8b' : 'var(--text-dim)' }}>{likeCount}</span>
             </button>
