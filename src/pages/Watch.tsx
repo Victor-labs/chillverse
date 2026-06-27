@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Film, Baby, Users, Clock, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Category = 'kids' | 'adult'
@@ -435,6 +436,8 @@ function Bubbles() {
 // ── Root page ─────────────────────────────────────────────────────────────────
 export default function Watch() {
   const navigate = useNavigate()
+  const { session } = useAuth()
+  const myId = session?.user?.id ?? null
   const [open, setOpen] = useState(isMovieOpen())
   const [screen, setScreen] = useState<Screen>('category')
   const [category, setCategory] = useState<Category | null>(null)
@@ -442,8 +445,40 @@ export default function Watch() {
   const [sourcesByCategory, setSourcesByCategory] = useState<Record<Category, MovieSource[]>>({ kids: [], adult: [] })
   const [sourcesLoaded, setSourcesLoaded] = useState(false)
   const refreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Presence channel ref — kept so we can remove it on unmount
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const goToDashboard = () => navigate('/dashboard')
+
+  // ── Broadcast "watching movie" presence for the live ticker on other
+  //    users' profiles. Uses Supabase Realtime Presence so it is:
+  //      • Instant — no DB poll delay
+  //      • Automatic — disappears the moment the tab closes / user leaves
+  //      • Zero DB writes — purely in-memory on the Supabase realtime server
+  useEffect(() => {
+    if (!myId) return
+
+    const channel = supabase.channel(`user-activity:${myId}`, {
+      config: { presence: { key: myId } },
+    })
+
+    channel
+      .on('presence', { event: 'sync' }, () => {}) // required to activate
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ activity: 'watching_movie', since: Date.now() })
+        }
+      })
+
+    presenceChannelRef.current = channel
+
+    // When the user leaves the Watch page, presence is automatically
+    // cleared — Supabase removes it when the channel is unsubscribed.
+    return () => {
+      channel.untrack().then(() => supabase.removeChannel(channel))
+      presenceChannelRef.current = null
+    }
+  }, [myId])
 
   // Load active movie sources from Supabase once
   useEffect(() => {

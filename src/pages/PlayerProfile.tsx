@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, UserPlus, UserCheck, ShieldOff, Swords, X,
   MessageCircle, Zap, Flame, Sprout, Shield, Heart,
-  Moon, Crown, Sword, Gamepad2, Trophy, Users, ImageIcon,
+  Moon, Crown, Sword, Gamepad2, Trophy, Users, ImageIcon, Film,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -112,6 +112,7 @@ export default function PlayerProfile() {
   const [presence, setPresence] = useState<Presence>('offline')
   const [lbPosition, setLbPosition] = useState<number | null>(null)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
+  const [watchingMovie, setWatchingMovie] = useState(false)
   const [equippedAvatar, setEquippedAvatar] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
   const [albumPics, setAlbumPics] = useState<AlbumPic[]>([])
@@ -196,13 +197,35 @@ export default function PlayerProfile() {
       })
   }, [userId])
 
-  // Check if currently playing a game (active session in last 5 mins)
+  // ── Live activity via Realtime Presence ─────────────────────
+  // Subscribes to the viewed user's presence channel.
+  // Watch.tsx broadcasts { activity: 'watching_movie' } when they're
+  // in the movie area. Games broadcast { activity: 'playing', game: '...' }.
+  // This gives us instant, accurate status — no polling delay.
   useEffect(() => {
     if (!userId) return
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    supabase.from('game_sessions').select('game').eq('user_id', userId)
-      .gte('played_at', fiveMinAgo).order('played_at', { ascending: false }).limit(1)
-      .then(({ data }) => { if (data && data.length > 0) setCurrentlyPlaying(data[0].game as string) })
+
+    const channel = supabase.channel(`user-activity:${userId}`, {
+      config: { presence: { key: userId } },
+    })
+
+    function syncActivity() {
+      const state = channel.presenceState<{ activity: string; game?: string }>()
+      const entries = Object.values(state).flat()
+      const movieEntry = entries.find(e => e.activity === 'watching_movie')
+      const gameEntry  = entries.find(e => e.activity === 'playing' && e.game)
+
+      setWatchingMovie(!!movieEntry)
+      setCurrentlyPlaying(gameEntry?.game ?? null)
+    }
+
+    channel
+      .on('presence', { event: 'sync' },  syncActivity)
+      .on('presence', { event: 'join' },  syncActivity)
+      .on('presence', { event: 'leave' }, syncActivity)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [userId])
 
   // Load equipped avatar + banner + album pics
@@ -378,9 +401,20 @@ export default function PlayerProfile() {
         </div>
       </div>
 
-      {/* ── Currently playing ── */}
+      {/* ── Currently watching movie ── */}
+      {watchingMovie && (
+        <div style={{ margin: '0 20px 10px', padding: '10px 14px', borderRadius: 14, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.28)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          <Film size={14} style={{ color: '#ff9a3c', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+            Watching <strong style={{ color: '#ff9a3c' }}>Chillverse Movies</strong>
+          </span>
+        </div>
+      )}
+
+      {/* ── Currently playing game ── */}
       {currentlyPlaying && (
-        <div style={{ margin: '0 20px 16px', padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ margin: `0 20px ${watchingMovie ? '6px' : '16px'}`, padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite' }} />
           <Gamepad2 size={14} style={{ color: '#4f8ef7', flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
