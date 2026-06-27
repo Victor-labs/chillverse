@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
+import { updateMissionProgress } from '../lib/weeklyMissions'
 import { useAuth } from '../hooks/useAuth'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -541,6 +542,8 @@ export default function Chat() {
     if (replyTo) payload.reply_to_id = replyTo.id
     const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, reply_to_id').single()
     if (!error && inserted) {
+      // Weekly mission: messages_sent
+      if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
       // Optimistically add own message immediately without waiting for realtime
       const myMember = activeRoom.members.find(mb => mb.user_id === myId)
       const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'

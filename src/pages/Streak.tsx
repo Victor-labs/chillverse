@@ -4,6 +4,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
 import { updateStreak } from "../lib/auth";
+import { updateMissionProgress } from "../lib/weeklyMissions";
 
 /* ═══════════════════════════════════════════════════
    MILESTONES
@@ -165,7 +166,15 @@ export default function Streak({ onBack }: StreakProps) {
         .select("streak")
         .eq("id", user.id)
         .single();
-      if (data) setLiveStreak(data.streak ?? 0);
+      if (data) {
+        const currentStreak = data.streak ?? 0;
+        setLiveStreak(currentStreak);
+        // Weekly mission: streak_days — set progress to the actual streak count
+        // We use the absolute value so the mission resolves correctly at 3/5/7
+        if (currentStreak > 0) {
+          updateMissionProgress(user.id, 'streak_days', currentStreak, true).catch(console.error);
+        }
+      }
     })();
   }, [user?.id]);
 

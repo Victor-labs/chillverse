@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Gamepad2, ShoppingBag, Film, Swords,
+  Gamepad2, ShoppingBag, Film, Swords, Sparkles,
   Brain, Bot, Flame, Zap, User, ChevronRight,
 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
@@ -315,10 +315,10 @@ export default function Dashboard() {
         <p className="section-label">Explore Chillverse</p>
         <div className="grid grid-cols-2 gap-4">
           {[
-            { label: 'Profile',      desc: 'Your stats, rank & showcase', icon: User,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/profile' },
-            { label: 'Games',        desc: 'Quick-fire mini games',        icon: Gamepad2, iconBg: 'rgba(79,142,247,0.12)',  iconColor: '#4f8ef7', to: '/games'   },
-            { label: 'Trivia Night', desc: 'Weekly live trivia rooms',     icon: Brain,    iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/games'   },
-            { label: 'Ranks',        desc: 'See where you stand globally', icon: Swords,   iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/ranks'   },
+            { label: 'Profile',         desc: 'Your stats, rank & showcase',   icon: User,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/profile'         },
+            { label: 'Games',             desc: 'Quick-fire mini games',          icon: Gamepad2, iconBg: 'rgba(79,142,247,0.12)',  iconColor: '#4f8ef7', to: '/games'           },
+            { label: 'Weekly Missions',   desc: 'Complete missions, earn XP',     icon: Sparkles, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/weekly-missions' },
+            { label: 'Ranks',             desc: 'See where you stand globally',   icon: Swords,   iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/ranks'           },
           ].map((tile) => {
             const Icon = tile.icon
             return (

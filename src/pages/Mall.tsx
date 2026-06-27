@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
+import { updateMissionProgress } from '../lib/weeklyMissions'
 import { useAuth } from '../hooks/useAuth'
 import { useMallItems } from '../hooks/useMallItems'
 import { useWallet } from '../hooks/useWallet'
@@ -427,6 +428,8 @@ export default function Mall() {
     }, { onConflict: 'user_id,item_id' })
     setWishlisted(prev => new Set([...prev, item.id]))
     setToast('This item has been added to your wishlist.')
+    // Weekly mission: wishlist_adds
+    if (userId) updateMissionProgress(userId, 'wishlist_adds', 1).catch(console.error)
   }, [userId, wishlisted])
 
   const featured = useMemo(
