@@ -12,6 +12,14 @@ export interface Profile {
   streak: number
   created_at: string
   connected_platform: string | null
+  // ── Edit Profile fields ──
+  bio: string | null
+  gender: string | null
+  play_time: 'morning' | 'night' | null
+  info_tags: string[]            // up to 2 of: 'gender' | 'play_time' | 'country' | 'presence'
+  favorite_game: string | null   // matches a game's dbKey
+  grid_cards: string[]           // up to 3 of: 'achievements' | 'rank' | 'leaderboard'
+  show_follow_counts: boolean
 }
 
 export interface SignupProfileInput {
@@ -73,6 +81,11 @@ export interface FeedItem {
 
 export type MallRarity = 'Common' | 'Rare' | 'Epic' | 'Mythic'
 export type MallItemCategory = 'avatar_skin' | 'profile_pic' | 'chat_theme' | 'xp_booster'
+
+/** user_items.item_type — broader than MallItemCategory since some items
+ *  (album pics, artifacts) are granted directly via rank rewards rather
+ *  than purchased through the Mall. */
+export type UserItemType = MallItemCategory | 'album_pic' | 'artifact'
 
 export interface MallItem {
   id: string
