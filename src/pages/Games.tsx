@@ -24,7 +24,6 @@ import PatternMemory from './games/PatternMemory'
 import RapidSort from './games/RapidSort'
 import TriviaClash from './games/TriviaClash'
 import TacZone from './games/TacZone'
-import FlagRush from './games/FlagRush'
 import TwoTruthsOneFalse from './games/TwoTruthsOneFalse'
 import SpeedMath from './games/SpeedMath'
 import LiarsGrid from './games/LiarsGrid'
@@ -208,7 +207,6 @@ export default function Games() {
       'hangman':        ['hangman_played'],
       'speed-math':     ['speed_math_played'],
       'pattern-memory': ['pattern_memory_played'],
-      'flag-rush':      ['flag_rush_played'],
     }
     const extraMetrics = gameMetricMap[payload.gameId as GameId]
     if (extraMetrics) {
@@ -228,10 +226,6 @@ export default function Games() {
 
     if (payload.gameId === 'pattern-memory' && payload.correct === payload.total && payload.total > 0) {
       updateMissionProgress(userId, 'pattern_memory_perfect', 1).catch(console.error)
-    }
-
-    if (payload.gameId === 'flag-rush' && payload.score > 0) {
-      updateMissionProgress(userId, 'flag_rush_won', 1).catch(console.error)
     }
 
     updateMissionProgress(userId, 'games_today', 1).catch(console.error)
@@ -256,7 +250,6 @@ export default function Games() {
   if (activeGame === 'rapid-sort')     return <RapidSort         {...gameProps} />
   if (activeGame === 'trivia-clash')   return <TriviaClash       {...gameProps} />
   if (activeGame === 'tac-zone')       return <TacZone           {...gameProps} />
-  if (activeGame === 'flag-rush')      return <FlagRush          {...gameProps} />
   if (activeGame === 'two-truths')     return <TwoTruthsOneFalse {...gameProps} />
   if (activeGame === 'speed-math')     return <SpeedMath         {...gameProps} />
   if (activeGame === 'liars-grid')     return <LiarsGrid         {...gameProps} />
