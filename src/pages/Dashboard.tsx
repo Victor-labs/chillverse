@@ -7,6 +7,7 @@ import {
   Bot, Flame, Zap, User, ChevronRight,
 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
+import { useHalo } from '../context/HaloContext'
 import { getUserRankTier, getNextRankTier, getRankProgress } from '../lib/ranks'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
@@ -109,6 +110,7 @@ function getStreakMessage(streak: number): { emoji: string; message: string; col
 export default function Dashboard() {
   const { profile, loading, error } = useProfile()
   const { session } = useAuth()
+  const { openHalo } = useHalo()
   const userId = session?.user?.id ?? ''
 
   const [onlineCount, setOnlineCount]      = useState<number | null>(null)
@@ -359,9 +361,8 @@ export default function Dashboard() {
       {/* ── Halo AI ── */}
       <section className="su" style={{ animationDelay: '0.35s', paddingBottom: 8 }}>
         <p className="section-label">Halo AI</p>
-        <Link
-          to="/coming-soon?feature=Halo%20AI"
-          onClick={(e) => ripple(e)}
+        <div
+          onClick={(e) => { ripple(e); openHalo(); }}
           className="neu-card ripple-wrap"
           style={{ display: 'block', padding: 20, cursor: 'pointer', border: '1px solid rgba(155,109,255,0.1)', position: 'relative', overflow: 'hidden' }}
         >
@@ -379,7 +380,7 @@ export default function Dashboard() {
               Ask Halo anything…
             </div>
           </div>
-        </Link>
+        </div>
       </section>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
