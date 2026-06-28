@@ -91,7 +91,6 @@ const MAP5_IMAGE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/p
 const AVATAR_PLACEHOLDER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/ac50a770bef6d3a9b94eac44e946924f.jpg'
 
 const MAX_ENERGY = 200
-const ENERGY_COST_PER_EXPLORE = 20
 // Refill: 29% of MAX (58 energy) per 50 minutes — hidden from UI
 const ENERGY_REFILL_RATE = (0.29 * MAX_ENERGY) / (50 * 60 * 1000) // energy per ms
 
@@ -555,13 +554,12 @@ function ChamberRow({
 
 // ── Map View ──────────────────────────────────────────────────
 function MapView({
-  map, energy, setEnergy, onBack, playerXP, userId,
+  map, energy, setEnergy, onBack, userId,
 }: {
   map: ExplorationMap
   energy: number
   setEnergy: React.Dispatch<React.SetStateAction<number>>
   onBack: () => void
-  playerXP: number
   userId: string | null
 }) {
   const [chamberStates, setChamberStates] = useState<Record<number, ChamberState>>({})
@@ -913,7 +911,6 @@ export default function Exploration() {
             energy={energy}
             setEnergy={setEnergy}
             onBack={() => setActiveMap(null)}
-            playerXP={playerXP}
             userId={userId}
           />
         ) : (
