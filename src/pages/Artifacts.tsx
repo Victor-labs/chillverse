@@ -109,10 +109,27 @@ function ArtifactModal({
             }}
           >
             {!isUnlocked ? (
-              <div style={{ textAlign: 'center' }}>
-                <Lock size={40} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 10 }} />
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontWeight: 600 }}>
-                  {isProGated ? 'PRO REQUIRED' : 'LOCKED'}
+              <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Blurred media teaser */}
+                {artifact.media_type === 'video' ? (
+                  <video
+                    src={artifact.media_url}
+                    autoPlay loop muted playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18, filter: 'grayscale(1)', opacity: 0.4 }}
+                  />
+                ) : (
+                  <img
+                    src={artifact.media_url}
+                    alt={artifact.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18, filter: 'grayscale(1)', opacity: 0.4 }}
+                  />
+                )}
+                {/* Lock overlay */}
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Lock size={40} style={{ color: 'rgba(255,255,255,0.75)' }} />
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: '0.1em' }}>
+                    {isProGated ? 'PRO REQUIRED' : 'LOCKED'}
+                  </div>
                 </div>
               </div>
             ) : artifact.media_type === 'video' ? (

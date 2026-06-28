@@ -323,7 +323,7 @@ export default function Dashboard() {
             { label: 'Profile',         desc: 'Your stats, rank & showcase',   icon: User,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/profile'         },
             { label: 'Games',             desc: 'Quick-fire mini games',          icon: Gamepad2, iconBg: 'rgba(79,142,247,0.12)',  iconColor: '#4f8ef7', to: '/games'           },
             { label: 'Weekly Missions', desc: 'Complete missions, earn XP',  icon: Sparkles, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/weekly-missions' },
-            { label: 'Artifacts',       desc: 'Collect & explore relics',    icon: Fan,      iconBg: 'rgba(79,142,247,0.12)',  iconColor: '#4f8ef7', to: '/artifacts'       },
+            { label: 'Artifacts',       desc: 'Collect & explore relics',    icon: Fan,      iconBg: 'rgba(239,68,68,0.12)',   iconColor: '#ef4444', to: '/artifacts'       },
           ].map((tile) => {
             const Icon = tile.icon
             return (
