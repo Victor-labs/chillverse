@@ -5,7 +5,6 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import AchievementToast from './AchievementToast'
 import NotificationToastRenderer from './NotificationToastRenderer'
-import HaloButton from './HaloAI/HaloButton'
 import HaloPanel from './HaloAI/HaloPanel'
 import { HaloProvider } from '../context/HaloContext'
 import { useProfile } from '../hooks/useProfile'
@@ -148,7 +147,6 @@ export default function AppLayout() {
           </div>
         </main>
 
-        <HaloButton />
         <HaloPanel playerCtx={playerCtx} />
       </div>
     </HaloProvider>
