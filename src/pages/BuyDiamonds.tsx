@@ -745,7 +745,10 @@ export default function BuyDiamonds() {
         <PurchaseModal
           kind={modal}
           pack={activePack}
-          onClose={() => setModal(null)}
+          onClose={() => {
+            setModal(null)
+            if (modal === 'success') navigate('/wallet')
+          }}
           onRetry={modal === 'cancelled' ? handleRetry : undefined}
         />
       )}
