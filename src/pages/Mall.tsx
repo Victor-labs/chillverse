@@ -187,11 +187,92 @@ function RectCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { i
 }
 
 /* ══════════════════════════════════════════════════════
+   PURCHASE TOAST
+══════════════════════════════════════════════════════ */
+function PurchaseToast({ message, onDone }: { message: string; onDone: () => void }) {
+  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t) }, [])
+  return (
+    <div style={{
+      position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9999, background: 'rgba(17,17,19,0.97)',
+      border: '1px solid rgba(255,107,0,0.4)',
+      borderRadius: 14, padding: '11px 18px',
+      display: 'flex', alignItems: 'center', gap: 9,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)',
+      animation: 'feedIn 0.25s ease-out both', whiteSpace: 'nowrap',
+    }}>
+      <ShoppingBag size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{message}</span>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
    DETAIL / CONFIRM MODAL
 ══════════════════════════════════════════════════════ */
-function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBalance: number; onClose: () => void }) {
+function ItemModal({
+  item, walletBalance, userId, onClose, onPurchased,
+}: {
+  item: MallItem
+  walletBalance: number
+  userId: string | null
+  onClose: () => void
+  onPurchased: (item: MallItem) => void
+}) {
   const lock = getLockInfo(item, false)
   const canAfford = item.price_gems != null && walletBalance >= item.price_gems
+  const [buying, setBuying] = useState(false)
+  const [alreadyOwned, setAlreadyOwned] = useState(false)
+  const [checkingOwn, setCheckingOwn] = useState(true)
+
+  // Check if user already owns this item
+  useEffect(() => {
+    if (!userId || !item.id) { setCheckingOwn(false); return }
+    supabase.from('user_inventory').select('id').eq('user_id', userId).eq('item_id', item.id).maybeSingle()
+      .then(({ data }) => { setAlreadyOwned(!!data); setCheckingOwn(false) })
+  }, [userId, item.id])
+
+  async function handleBuy() {
+    if (!userId || buying || !canAfford || alreadyOwned) return
+    setBuying(true)
+    try {
+      // 1. Deduct diamonds
+      const { error: walletErr } = await supabase
+        .from('user_wallets')
+        .update({ gem_balance: walletBalance - item.price_gems! })
+        .eq('user_id', userId)
+      if (walletErr) throw walletErr
+
+      // 2. Add to inventory (upsert: consumables stack quantity, others are unique)
+      if (item.is_consumable) {
+        const { data: existing } = await supabase
+          .from('user_inventory').select('id, quantity').eq('user_id', userId).eq('item_id', item.id).maybeSingle()
+        if (existing) {
+          await supabase.from('user_inventory').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id)
+        } else {
+          await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, is_equipped: false, quantity: 1 })
+        }
+      } else {
+        await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, is_equipped: false, quantity: 1 })
+      }
+
+      // 3. Log diamond spend
+      await supabase.from('diamond_transactions').insert({
+        user_id: userId,
+        amount: -(item.price_gems!),
+        description: `Purchased: ${item.name}`,
+        pack_id: item.id,
+      })
+
+      onPurchased(item)
+      onClose()
+    } catch (err) {
+      console.error('purchase error:', err)
+      alert('Purchase failed. Please try again.')
+    } finally {
+      setBuying(false)
+    }
+  }
 
   return (
     <div
@@ -226,6 +307,10 @@ function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBal
           <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface2)', borderRadius: 12, fontSize: 12, color: 'var(--text-muted)' }}>
             <Lock size={14} style={{ marginBottom: 4 }} /> {lock.reason}
           </div>
+        ) : alreadyOwned && !item.is_consumable ? (
+          <div style={{ textAlign: 'center', padding: 12, background: 'rgba(62,207,142,0.08)', borderRadius: 12, fontSize: 12, color: '#3ecf8e', fontWeight: 700, border: '1px solid rgba(62,207,142,0.2)' }}>
+            ✓ Already in your inventory
+          </div>
         ) : (
           <>
             {item.price_gems != null && (
@@ -239,18 +324,20 @@ function ItemModal({ item, walletBalance, onClose }: { item: MallItem; walletBal
               </div>
             )}
             <button
-              disabled={item.price_gems != null && !canAfford}
-              onClick={(e) => { ripple(e as any) /* TODO: wire real purchase via secure server-side function */ }}
+              disabled={checkingOwn || buying || (item.price_gems != null && !canAfford)}
+              onClick={(e) => { ripple(e as any); handleBuy() }}
               className="ripple-wrap"
               style={{
-                width: '100%', padding: 13, borderRadius: 14, border: 'none', cursor: item.price_gems != null && !canAfford ? 'not-allowed' : 'pointer',
-                background: item.price_gems != null && !canAfford ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)',
-                color: item.price_gems != null && !canAfford ? 'var(--text-muted)' : '#fff',
+                width: '100%', padding: 13, borderRadius: 14, border: 'none',
+                cursor: buying || (item.price_gems != null && !canAfford) ? 'not-allowed' : 'pointer',
+                background: buying || (item.price_gems != null && !canAfford) ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)',
+                color: buying || (item.price_gems != null && !canAfford) ? 'var(--text-muted)' : '#fff',
                 fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                boxShadow: item.price_gems != null && !canAfford ? 'none' : '0 4px 16px rgba(255,107,0,0.35)',
+                boxShadow: buying || (item.price_gems != null && !canAfford) ? 'none' : '0 4px 16px rgba(255,107,0,0.35)',
+                transition: 'all 0.2s',
               }}
             >
-              <ShoppingBag size={14} /> {item.price_gems != null ? 'Buy' : 'Unlock'}
+              <ShoppingBag size={14} /> {buying ? 'Buying…' : item.price_gems != null ? 'Buy' : 'Unlock'}
             </button>
           </>
         )}
@@ -354,7 +441,22 @@ function ConsumablesPage({ items, onBack, onSelect, onWishlist, wishlisted, like
   )
 }
 
-function EmptyState({ label }: { label: string }) {
+function BannersPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
+  const banners = items.filter(i => i.sub_category === 'album' || i.category === 'banner')
+  return (
+    <SubPage title="Banners" onBack={onBack}>
+      {banners.length === 0 ? (
+        <EmptyState label="No banners available yet." />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          {banners.map(item => <RectCard key={item.id} item={item} onSelect={onSelect} onWishlist={onWishlist} wishlisted={wishlisted?.has(item.id)} likeCount={likeCounts?.[item.id] ?? 0} />)}
+        </div>
+      )}
+    </SubPage>
+  )
+}
+
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
       <ShoppingBag size={28} style={{ opacity: 0.35 }} />
@@ -367,9 +469,10 @@ function EmptyState({ label }: { label: string }) {
    TOP-LEVEL SECTION MENU CONFIG
 ══════════════════════════════════════════════════════ */
 const SECTIONS = [
-  { id: 'profile_pics', label: 'Profile Pics', sub: 'Square cards, no sub-categories', Icon: ImageIcon, iconBg: 'rgba(79,142,247,0.15)', iconColor: '#4f8ef7' },
+  { id: 'profile_pics', label: 'Profile Pics', sub: 'Square cards, no sub-categories', Icon: ImageIcon, iconBg: 'rgba(79,142,247,0.15)',  iconColor: '#4f8ef7' },
   { id: 'avatars',      label: 'Avatars',      sub: 'Models, Others, Power up',        Icon: Shirt,     iconBg: 'rgba(255,77,139,0.15)', iconColor: '#ff4d8b' },
   { id: 'consumables',  label: 'Consumables',  sub: 'XP boosters and more',             Icon: Zap,       iconBg: 'rgba(245,197,66,0.15)', iconColor: '#f5c542' },
+  { id: 'banners',      label: 'Banners',       sub: 'Profile banner images',            Icon: ImageIcon, iconBg: 'rgba(155,109,255,0.15)', iconColor: '#9b6dff' },
 ] as const
 
 /* ══════════════════════════════════════════════════════
@@ -378,13 +481,14 @@ const SECTIONS = [
 export default function Mall() {
   const navigate = useNavigate()
   const { items, loading: itemsLoading } = useMallItems()
-  const { wallet } = useWallet()
+  const { wallet, refetch: refetchWallet } = useWallet()
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
+  const [purchaseToast, setPurchaseToast] = useState<string | null>(null)
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
   const diamondBalance = wallet?.gem_balance ?? 0
 
@@ -432,10 +536,19 @@ export default function Mall() {
     if (userId) updateMissionProgress(userId, 'wishlist_adds', 1).catch(console.error)
   }, [userId, wishlisted])
 
-  const featured = useMemo(
-    () => items.filter(i => i.rarity === 'Mythic').slice(0, 6),
-    [items]
-  )
+  // Featured: 3 items picked pseudo-randomly, rotating every 2 days
+  // Seed changes every 2 days so the same 3 show for all users that day
+  const featured = useMemo(() => {
+    if (!items.length) return []
+    const twoDayEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 2))
+    // Simple seeded shuffle — deterministic for the same epoch
+    const seeded = [...items].sort((a, b) => {
+      const ha = (a.id + twoDayEpoch).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+      const hb = (b.id + twoDayEpoch).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+      return ha - hb
+    })
+    return seeded.slice(0, 3)
+  }, [items])
 
 
   return (
@@ -455,44 +568,6 @@ export default function Mall() {
             💎 {diamondBalance.toLocaleString()} Diamonds
           </div>
         </div>
-
-        {/* Featured carousel */}
-        {featured.length > 0 && (
-          <div style={{ marginBottom: 26 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>Featured</div>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6 }}>
-              {featured.map(item => (
-                <div
-                  key={item.id}
-                  onClick={(e) => { ripple(e); setSelectedItem(item) }}
-                  className="ripple-wrap"
-                  style={{
-                    flex: '0 0 auto', width: 200, background: 'var(--surface)', border: '1px solid rgba(255,107,0,0.2)',
-                    borderRadius: 18, padding: 14, cursor: 'pointer',
-                    boxShadow: '5px 5px 14px var(--neu-dark),-3px -3px 10px var(--neu-light)',
-                  }}
-                >
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,var(--accent),#f5c542)', color: '#1a1108', fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>
-                    <Star size={10} /> Featured
-                  </div>
-                  <div style={{
-                    width: '100%', height: 90, borderRadius: 13, marginBottom: 10,
-                    background: item.image_url ? `url(${item.image_url}) center/cover` : 'var(--surface2)',
-                  }} />
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{item.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <RarityBadge rarity={item.rarity} />
-                    {item.price_gems != null && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
-                        💎 {item.price_gems.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Buy Diamonds row */}
         <div
@@ -545,17 +620,66 @@ export default function Mall() {
         {itemsLoading && (
           <div style={{ textAlign: 'center', padding: 20, fontSize: 12, color: 'var(--text-muted)' }}>Loading catalog…</div>
         )}
+
+        {/* Featured — 3 items, rotates every 2 days */}
+        {featured.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>Featured</div>
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6 }}>
+              {featured.map(item => (
+                <div
+                  key={item.id}
+                  onClick={(e) => { ripple(e); setSelectedItem(item) }}
+                  className="ripple-wrap"
+                  style={{
+                    flex: '0 0 auto', width: 200, background: 'var(--surface)', border: '1px solid rgba(255,107,0,0.2)',
+                    borderRadius: 18, padding: 14, cursor: 'pointer',
+                    boxShadow: '5px 5px 14px var(--neu-dark),-3px -3px 10px var(--neu-light)',
+                  }}
+                >
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,var(--accent),#f5c542)', color: '#1a1108', fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>
+                    <Star size={10} /> Featured
+                  </div>
+                  <div style={{
+                    width: '100%', height: 90, borderRadius: 13, marginBottom: 10,
+                    background: item.image_url ? `url(${item.image_url}) center/cover` : 'var(--surface2)',
+                  }} />
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{item.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <RarityBadge rarity={item.rarity} />
+                    {item.price_gems != null && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
+                        💎 {item.price_gems.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sub-pages */}
       {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
       {openSection === 'avatars'      && <AvatarsPage      items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
       {openSection === 'consumables'  && <ConsumablesPage  items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
+      {openSection === 'banners'      && <BannersPage       items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
 
       {/* Detail / confirm modal */}
       {selectedItem && (
-        <ItemModal item={selectedItem} walletBalance={diamondBalance} onClose={() => setSelectedItem(null)} />
+        <ItemModal
+          item={selectedItem}
+          walletBalance={diamondBalance}
+          userId={userId}
+          onClose={() => setSelectedItem(null)}
+          onPurchased={(item) => {
+            setPurchaseToast(`${item.name} added to your inventory!`)
+            refetchWallet?.()
+          }}
+        />
       )}
+      {purchaseToast && <PurchaseToast message={purchaseToast} onDone={() => setPurchaseToast(null)} />}
 
       {/* Wishlist toast */}
       {toast && <WishlistToast message={toast} onDone={() => setToast(null)} />}

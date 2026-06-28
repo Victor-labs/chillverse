@@ -330,31 +330,58 @@ export default function Inventory() {
   const [toast, setToast]       = useState<ToastMsg | null>(null)
 
   const equip = useCallback(async (entry: InventoryEntry) => {
-    // Optimistic update
-    setInventory(prev => prev.map(e => {
-      if (e.item.category !== entry.item.category) return e
-      return { ...e, is_equipped: e.id === entry.id }
-    }))
-    setToast({ text: `Equipped ${entry.item.name}`, equipped: true })
+    const { item } = entry
+
+    // Optimistic: unequip all in same category, equip this one
+    setInventory(prev => prev.map(e => ({
+      ...e,
+      is_equipped: e.item.category === item.category ? e.id === entry.id : e.is_equipped,
+    })))
+    setToast({ text: `Equipped ${item.name}`, equipped: true })
     setSelected(null)
-    // Persist: unequip all same-category first, then equip chosen
+
+    // Persist inventory state
     const sameCategory = inventory
-      .filter(e => e.item.category === entry.item.category && e.is_equipped && e.id !== entry.id)
+      .filter(e => e.item.category === item.category && e.is_equipped && e.id !== entry.id)
       .map(e => e.id)
     if (sameCategory.length) {
       await supabase.from('user_inventory').update({ is_equipped: false }).in('id', sameCategory)
     }
     await supabase.from('user_inventory').update({ is_equipped: true }).eq('id', entry.id)
-  }, [inventory, setInventory])
+
+    // Apply to profile
+    if (!userId) return
+    if (item.category === 'profile_pic' && item.sub_category !== 'album') {
+      // Sets actual profile picture (avatar field stores emoji OR image URL)
+      await supabase.from('profiles').update({ avatar: item.image_url ?? item.name }).eq('id', userId)
+    } else if (item.category === 'avatar_skin') {
+      // Stores the equipped avatar skin name/url on profiles
+      await supabase.from('profiles').update({ equipped_avatar: item.image_url ?? item.name }).eq('id', userId)
+    } else if (item.sub_category === 'album') {
+      // Albums set as banner
+      await supabase.from('profiles').update({ banner_url: item.image_url }).eq('id', userId)
+    }
+    // consumables: no profile change — timer handled separately
+  }, [inventory, setInventory, userId])
 
   const unequip = useCallback(async (entry: InventoryEntry) => {
-    setInventory(prev => prev.map(e =>
-      e.id === entry.id ? { ...e, is_equipped: false } : e
-    ))
-    setToast({ text: `Unequipped ${entry.item.name}`, equipped: false })
+    const { item } = entry
+    setInventory(prev => prev.map(e => e.id === entry.id ? { ...e, is_equipped: false } : e))
+    setToast({ text: `Unequipped ${item.name}`, equipped: false })
     setSelected(null)
+
     await supabase.from('user_inventory').update({ is_equipped: false }).eq('id', entry.id)
-  }, [setInventory])
+
+    // Revert profile fields
+    if (!userId) return
+    if (item.category === 'profile_pic' && item.sub_category !== 'album') {
+      await supabase.from('profiles').update({ avatar: '🧑‍🚀' }).eq('id', userId)
+    } else if (item.category === 'avatar_skin') {
+      await supabase.from('profiles').update({ equipped_avatar: null }).eq('id', userId)
+    } else if (item.sub_category === 'album') {
+      await supabase.from('profiles').update({ banner_url: null }).eq('id', userId)
+    }
+  }, [setInventory, userId])
 
   const avatars     = inventory.filter(e => e.item.category === 'avatar_skin')
   const consumables = inventory.filter(e => e.item.category === 'xp_booster' || e.item.is_consumable)
