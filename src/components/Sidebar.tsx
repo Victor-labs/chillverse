@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
   User, Settings, Zap, X, ChevronLeft, ChevronRight,
-  Package, ChevronDown, Wallet,
+  Package, ChevronDown, Wallet, GamepadIcon, Compass,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 
@@ -20,7 +20,16 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',    to: '/dashboard',   icon: Home,        badge: null },
   { label: 'Streak',       to: '/streak',       icon: Flame,       badge: null },
-  { label: 'Games',        to: '/games',        icon: Gamepad2,    badge: null },
+  {
+    label: 'Games',
+    to: '/games',
+    icon: Gamepad2,
+    badge: null,
+    children: [
+      { label: 'Play Games',   to: '/games',       icon: GamepadIcon },
+      { label: 'Exploration',  to: '/exploration', icon: Compass     },
+    ],
+  },
   {
     label: 'Mall',
     to: '/mall',
@@ -68,6 +77,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
     const s = new Set<string>()
     if (pathname === '/mall' || pathname === '/inventory') s.add('Mall')
     if (pathname === '/profile' || pathname === '/wallet') s.add('Profile')
+    if (pathname === '/games' || pathname === '/exploration') s.add('Games')
     return s
   })
 
