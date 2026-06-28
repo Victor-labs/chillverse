@@ -22,6 +22,7 @@ const TYPE_COLOR: Record<string, string> = {
   streak:           '#ff4d8b',
   message:          '#4f8ef7',
   level_up:         '#9b6dff',
+  artifact:         '#9b6dff',
 }
 
 export function useNotificationToast() {
