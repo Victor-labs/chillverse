@@ -7,7 +7,7 @@ import {
   Bot, Flame, Zap, User, ChevronRight,
 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
-import { useHalo } from '../context/HaloContext'
+// HaloAI now lives at /halo — no panel context needed from Dashboard
 import { getUserRankTier, getNextRankTier, getRankProgress } from '../lib/ranks'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
@@ -110,7 +110,7 @@ function getStreakMessage(streak: number): { emoji: string; message: string; col
 export default function Dashboard() {
   const { profile, loading, error } = useProfile()
   const { session } = useAuth()
-  const { openHalo } = useHalo()
+  // Halo navigates to /halo page — no panel open needed
   const userId = session?.user?.id ?? ''
 
   const [onlineCount, setOnlineCount]      = useState<number | null>(null)
@@ -361,10 +361,11 @@ export default function Dashboard() {
       {/* ── Halo AI ── */}
       <section className="su" style={{ animationDelay: '0.35s', paddingBottom: 8 }}>
         <p className="section-label">Halo AI</p>
-        <div
-          onClick={(e) => { ripple(e); openHalo(); }}
+        <Link
+          to="/halo"
+          onClick={(e) => ripple(e)}
           className="neu-card ripple-wrap"
-          style={{ display: 'block', padding: 20, cursor: 'pointer', border: '1px solid rgba(155,109,255,0.1)', position: 'relative', overflow: 'hidden' }}
+          style={{ display: 'block', padding: 20, cursor: 'pointer', border: '1px solid rgba(155,109,255,0.1)', position: 'relative', overflow: 'hidden', textDecoration: 'none' }}
         >
           <div style={{ position: 'absolute', bottom: -20, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(155,109,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--purple)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -380,7 +381,7 @@ export default function Dashboard() {
               Ask Halo anything…
             </div>
           </div>
-        </div>
+        </Link>
       </section>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
