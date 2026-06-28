@@ -129,48 +129,33 @@ function SendModal({ item, senderName, onClose, onSent }: {
       return
     }
 
-    // 2. Deduct gems from sender
-    const newBalance = (wallet?.gem_balance ?? 0) - price
-    const { error: walletErr } = await supabase
-      .from('user_wallets')
-      .update({ gem_balance: newBalance })
-      .eq('user_id', user.id)
-
-    if (walletErr) {
-      setSending(false)
-      onSent('__network_error__')
-      return
-    }
-
-    // 3. Insert into recipient inventory
-    await supabase.from('user_inventory').insert({
-      user_id:     selected.id,
-      item_id:     item.id,
-      is_equipped: false,
-      quantity:    1,
-    })
-
-    // 4. Insert gift record
-    await supabase.from('gifts').insert({
-      sender_id:    user.id,
-      recipient_id: selected.id,
-      item_id:      item.id,
-      item_name:    item.name,
-      status:       'delivered',
-    })
-
-    // 5. Send notification to recipient
-    await supabase.from('notifications').insert({
-      user_id:    selected.id,
-      type:       'gift',
-      title:      'You received a gift! 🎁',
-      body:       `${senderName} gifted you "${item.name}"`,
-      icon:       'gem',
-      read:       false,
-      meta:       { sender: senderName, item_id: item.id, item_name: item.name, item_image: item.image_url },
+    // Whole gift transaction (wallet deduction, inventory credit,
+    // gift record, notification) runs server-side via RPC so it isn't
+    // blocked by `user_inventory` RLS (which only allows a user to
+    // insert rows for themselves — the sender can't write directly into
+    // the recipient's inventory). See migration 0005_gift_rpc_and_wishlist_cleanup.sql.
+    const { error: giftErr } = await supabase.rpc('send_gift', {
+      p_recipient_id: selected.id,
+      p_item_id:      item.id,
+      p_item_name:    item.name,
+      p_sender_name:  senderName,
+      p_price:        price,
     })
 
     setSending(false)
+
+    if (giftErr) {
+      console.error('send_gift error:', giftErr)
+      if (giftErr.message?.includes('already owns')) {
+        onSent('__already_owned__')
+      } else if (giftErr.message?.includes('Insufficient')) {
+        onSent('__insufficient__')
+      } else {
+        onSent('__network_error__')
+      }
+      return
+    }
+
     onSent(selected.display_name || selected.username)
   }
 
@@ -418,6 +403,10 @@ export default function GiftPage() {
       setToast({ msg: 'Network error. Please try again.', kind: 'warn' })
     } else if (result === '__self__') {
       setToast({ msg: "You can't gift yourself 😅", kind: 'error' })
+    } else if (result === '__already_owned__') {
+      setToast({ msg: 'That player already owns this item.', kind: 'error' })
+    } else if (result === '__insufficient__') {
+      setToast({ msg: 'Not enough diamonds for this gift.', kind: 'error' })
     } else {
       setToast({ msg: `Gift sent to ${result}! 🎁`, kind: 'success' })
     }

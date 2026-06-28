@@ -676,6 +676,12 @@ export default function Mall() {
           onClose={() => setSelectedItem(null)}
           onPurchased={(item) => {
             setPurchaseToast(`${item.name} added to your inventory!`)
+            setWishlisted(prev => {
+              if (!prev.has(item.id)) return prev
+              const next = new Set(prev)
+              next.delete(item.id)
+              return next
+            })
             refetchWallet?.()
           }}
         />
