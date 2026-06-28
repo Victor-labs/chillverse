@@ -188,7 +188,7 @@ export default function Dashboard() {
 
   const displayName = profile?.display_name || profile?.username || ''
   const { current, max } = getXpProgress(profile?.xp ?? 0)
-  const xpPct = Math.min(100, Math.round((current / max) * 100))
+  const xpPct = Math.max(0, Math.min(100, Math.round((current / max) * 100)))
   const streakInfo = getStreakMessage(profile?.streak ?? 0)
 
   const QUICK_ACTIONS: QuickAction[] = [
