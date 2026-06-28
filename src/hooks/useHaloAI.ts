@@ -30,6 +30,21 @@ interface GeminiResponse {
   candidates?: GeminiCandidate[]
 }
 
+// Dedicated type for the system_instruction field (no role required)
+interface GeminiSystemInstruction {
+  parts: GeminiPart[]
+}
+
+interface GeminiRequestBody {
+  system_instruction: GeminiSystemInstruction
+  contents: GeminiContent[]
+  generationConfig: {
+    temperature: number
+    maxOutputTokens: number
+    topP: number
+  }
+}
+
 function makeId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -39,7 +54,12 @@ function makeId(): string {
 
 /**
  * Core hook managing Halo AI message history, Gemini API calls, loading
- * state, and graceful fallback routing. Consumed by HaloPanel.
+ * state, and graceful fallback routing. Consumed by HaloAIPage.
+ *
+ * FIX: The knowledge base system prompt is now sent via the dedicated
+ * `system_instruction` field instead of being smuggled as a fake user/model
+ * turn. This ensures Gemini treats it as authoritative grounding context
+ * rather than just another message in the conversation history.
  */
 export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
   const [messages, setMessages] = useState<HaloMessage[]>([])
@@ -63,20 +83,27 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           throw new Error('Missing VITE_GEMINI_API_KEY')
         }
 
+        // Build the full knowledge base + player context system prompt
         const systemPrompt = buildHaloSystemPrompt(playerCtx)
 
+        // Map prior chat history into Gemini's content format
         const priorContents: GeminiContent[] = messages.map(msg => ({
           role: msg.role === 'halo' ? 'model' : 'user',
           parts: [{ text: msg.content }],
         }))
 
-        const body = {
+        // ✅ FIXED: system prompt goes in `system_instruction`, NOT as a fake
+        // user turn. This gives Gemini the knowledge base as authoritative
+        // grounding that persists across the entire conversation without
+        // competing with or getting buried by message history.
+        const body: GeminiRequestBody = {
+          system_instruction: {
+            parts: [{ text: systemPrompt }],
+          },
           contents: [
-            { role: 'user', parts: [{ text: systemPrompt }] },
-            { role: 'model', parts: [{ text: 'Got it.' }] },
             ...priorContents,
             { role: 'user', parts: [{ text }] },
-          ] satisfies GeminiContent[],
+          ],
           generationConfig: {
             temperature: 0.85,
             maxOutputTokens: 300,
@@ -111,6 +138,7 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
         }
         setMessages(prev => [...prev, haloMessage])
       } catch {
+        // Graceful fallback — always responds even without a valid API key
         const fallbackText = haloFallback(text, playerCtx)
         const haloMessage: HaloMessage = {
           id: makeId(),
