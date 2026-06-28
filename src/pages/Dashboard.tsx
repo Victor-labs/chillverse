@@ -7,7 +7,7 @@ import {
   Bot, Flame, Zap, User, ChevronRight,
 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
-import { getXpProgress } from '../lib/level'
+import { getUserRankTier, getNextRankTier, getRankProgress } from '../lib/ranks'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -187,8 +187,10 @@ export default function Dashboard() {
   }
 
   const displayName = profile?.display_name || profile?.username || ''
-  const { current, max } = getXpProgress(profile?.xp ?? 0)
-  const xpPct = Math.max(0, Math.min(100, Math.round((current / max) * 100)))
+  const _userXp   = profile?.xp ?? 0
+  const _userTier = getUserRankTier(_userXp)
+  const _nextTier = getNextRankTier(_userTier)
+  const { pct: xpPct, xpIntoTier: current, xpNeeded } = getRankProgress(_userXp)
   const streakInfo = getStreakMessage(profile?.streak ?? 0)
 
   const QUICK_ACTIONS: QuickAction[] = [
@@ -253,7 +255,7 @@ export default function Dashboard() {
       <section className="su d2" style={{ marginTop: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>
           <span>Level {profile.level} · XP</span>
-          <span>{current.toLocaleString()} / {max.toLocaleString()}</span>
+          <span>{_userXp.toLocaleString()} / {(_nextTier?.xpRequired ?? _userTier.xpRequired).toLocaleString()}</span>
         </div>
         <div className="xp-track">
           <div className="xp-fill" style={{ width: `${xpPct}%` }} />
