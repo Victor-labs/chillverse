@@ -9,6 +9,7 @@ interface UseProfileState {
   profile: Profile | null
   loading: boolean
   error: PostgrestError | null
+  refetch: () => void
 }
 
 /**
@@ -21,6 +22,9 @@ export function useProfile(): UseProfileState {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<PostgrestError | null>(null)
+  const [tick, setTick] = useState(0)
+
+  const refetch = () => setTick(t => t + 1)
 
   useEffect(() => {
     if (!user) {
@@ -48,7 +52,7 @@ export function useProfile(): UseProfileState {
     return () => {
       active = false
     }
-  }, [user])
+  }, [user, tick])
 
-  return { profile, loading, error }
+  return { profile, loading, error, refetch }
 }
