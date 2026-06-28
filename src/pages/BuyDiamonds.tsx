@@ -40,8 +40,8 @@ const PACKS: Pack[] = [
     id: 'starter',
     emoji: '🌱',
     label: 'Starter',
-    priceCents: 150000,
-    priceDisplay: '₦1,500',
+    priceCents: 100000,
+    priceDisplay: '₦1,000',
     diamonds: 100,
     accentColor: '#3ecf8e',
     borderColor: 'rgba(62,207,142,0.25)',
@@ -54,9 +54,9 @@ const PACKS: Pack[] = [
     emoji: '⭐',
     label: 'Popular',
     badge: 'POPULAR',
-    priceCents: 750000,
-    priceDisplay: '₦7,500',
-    diamonds: 600,
+    priceCents: 300000,
+    priceDisplay: '₦3,000',
+    diamonds: 310,
     accentColor: '#ff6b00',
     borderColor: 'rgba(255,107,0,0.3)',
     badgeBg: 'rgba(255,107,0,0.15)',
@@ -68,9 +68,9 @@ const PACKS: Pack[] = [
     emoji: '💎',
     label: 'Best Value',
     badge: 'BEST VALUE',
-    priceCents: 1500000,
-    priceDisplay: '₦15,000',
-    diamonds: 1300,
+    priceCents: 480000,
+    priceDisplay: '₦4,800',
+    diamonds: 520,
     accentColor: '#9b6dff',
     borderColor: 'rgba(155,109,255,0.3)',
     badgeBg: 'rgba(155,109,255,0.15)',
@@ -81,16 +81,44 @@ const PACKS: Pack[] = [
     id: 'mega',
     emoji: '🚀',
     label: 'Mega',
-    priceCents: 3000000,
-    priceDisplay: '₦30,000',
-    diamonds: 2800,
+    priceCents: 860000,
+    priceDisplay: '₦8,600',
+    diamonds: 1040,
     accentColor: '#f5c542',
     borderColor: 'rgba(245,197,66,0.25)',
     badgeBg: 'rgba(245,197,66,0.15)',
     image:
       'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Diamond%20purchase/file_0000000090c0724393707e2243921377.png',
   },
-] as unknown as Pack[]
+  {
+    id: 'ultimate',
+    emoji: '👑',
+    label: 'Ultimate',
+    badge: 'ULTIMATE',
+    priceCents: 1500000,
+    priceDisplay: '₦15,000',
+    diamonds: 2180,
+    accentColor: '#e040fb',
+    borderColor: 'rgba(224,64,251,0.3)',
+    badgeBg: 'rgba(224,64,251,0.15)',
+    image:
+      'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Diamond%20purchase/file_000000009fd071f4838edf08c8b4f12b.png',
+
+interface FlashPack {
+  id: string
+  diamonds: number
+  priceCents: number
+  priceDisplay: string
+  originalPriceCents: number
+  originalPriceDisplay: string
+}
+
+const FLASH_PACKS: FlashPack[] = [
+  { id: 'flash1', diamonds: 250,  priceCents:  80000, priceDisplay: '₦800',   originalPriceCents: 130000, originalPriceDisplay: '₦1,300' },
+  { id: 'flash2', diamonds: 450,  priceCents: 150000, priceDisplay: '₦1,500', originalPriceCents: 220000, originalPriceDisplay: '₦2,200' },
+  { id: 'flash3', diamonds: 650,  priceCents: 250000, priceDisplay: '₦2,500', originalPriceCents: 340000, originalPriceDisplay: '₦3,400' },
+  { id: 'flash4', diamonds: 800,  priceCents: 300000, priceDisplay: '₦3,000', originalPriceCents: 420000, originalPriceDisplay: '₦4,200' },
+]
 
 // ─── Pack Card ────────────────────────────────────────────────
 function PackCard({
@@ -731,6 +759,134 @@ export default function BuyDiamonds() {
               />
             </div>
           ))}
+        </div>
+
+        {/* ── Flash Sales ───────────────────────────────────── */}
+        <div style={{ marginTop: 36 }}>
+          {/* Header */}
+          <div style={{ marginBottom: 14, textAlign: 'center' }}>
+            <div
+              style={{
+                display: 'inline-block',
+                fontFamily: '"Georgia", "Times New Roman", serif',
+                fontSize: 22,
+                fontWeight: 700,
+                fontStyle: 'italic',
+                letterSpacing: '0.5px',
+                background: 'linear-gradient(135deg, #ff6b00, #f5c542)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              ⚡ Flash Sales
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+              Limited-time deals — grab them while they last
+            </div>
+          </div>
+
+          {/* Flash pack rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {FLASH_PACKS.map((fp, i) => (
+              <div
+                key={fp.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'var(--surface)',
+                  border: '1px solid rgba(255,107,0,0.2)',
+                  borderRadius: 14,
+                  padding: '12px 16px',
+                  gap: 12,
+                  animation: 'feedIn 0.35s ease-out both',
+                  animationDelay: `${i * 0.06}s`,
+                  boxShadow: '0 0 0 0 transparent',
+                }}
+              >
+                {/* Left — diamond amount */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(255,107,0,0.1)',
+                      border: '1px solid rgba(255,107,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 16,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ⚡
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                      {fp.diamonds.toLocaleString()} 💎
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      <span style={{ textDecoration: 'line-through' }}>{fp.originalPriceDisplay}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right — price button */}
+                <button
+                  onClick={(e) => {
+                    ripple(e as Parameters<typeof ripple>[0])
+                    if (!session?.user?.email || !user || !window.PaystackPop) return
+                    const ref = `cv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+                    window.PaystackPop.setup({
+                      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string,
+                      email: session.user.email,
+                      amount: fp.priceCents,
+                      currency: 'NGN',
+                      ref,
+                      metadata: { user_id: user.id, pack_id: fp.id, diamonds: fp.diamonds, is_first_purchase: false },
+                      callback: function (response: { reference: string }) {
+                        setLoading(true);
+                        (async () => {
+                          try {
+                            const { error } = await supabase.functions.invoke('credit-diamonds', {
+                              body: { reference: response.reference, user_id: user.id, diamonds: fp.diamonds, is_first_purchase: false },
+                            })
+                            if (error) throw error
+                            setModal('success')
+                          } catch (err) {
+                            console.error('flash credit error:', err)
+                            setModal('error')
+                          } finally {
+                            setLoading(false)
+                          }
+                        })()
+                      },
+                      onClose: () => setModal('cancelled'),
+                    }).openIframe()
+                  }}
+                  disabled={loading}
+                  className="ripple-wrap"
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: 11,
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    background: loading ? 'var(--surface3)' : 'linear-gradient(135deg,#ff6b00,#f5c542)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    fontFamily: 'inherit',
+                    flexShrink: 0,
+                    boxShadow: loading ? 'none' : '0 4px 14px rgba(255,107,0,0.35)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {fp.priceDisplay}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Footer note */}
