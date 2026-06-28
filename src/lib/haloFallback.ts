@@ -34,6 +34,10 @@ function findGameTip(msg: string): string | null {
  * Synchronous, never-throwing keyword-match fallback for Halo AI.
  * Used whenever the Gemini API key is missing or any API call fails,
  * so the assistant always has something useful and accurate to say.
+ *
+ * FIX #3: Broadened XP/level keyword matching. Previously `msg.includes('increase')`
+ * was required alongside 'xp', so "how do I get xp" / "earn xp" / "farm xp"
+ * all fell through to the generic default. Now any XP-intent verb triggers it.
  */
 export function haloFallback(userMessage: string, ctx: HaloPlayerContext): string {
   const msg = userMessage.toLowerCase()
@@ -42,12 +46,20 @@ export function haloFallback(userMessage: string, ctx: HaloPlayerContext): strin
   const gameTip = findGameTip(msg)
   if (gameTip) return gameTip
 
-  if (msg.includes('increase') && (msg.includes('xp') || msg.includes('level'))) {
-    return `Fastest way to stack XP: play games that match your skill for higher scores, grind Tac Zone (unlimited, free) once your sessions run low, keep your ${ctx.streakDays}-day streak alive for the bonus, and clear your Weekly Missions for extra XP.`
+  // FIX #3: Broadened XP matching — any intent verb now triggers the tip,
+  // not just "increase". Catches "how do I get xp", "earn xp", "farm xp", etc.
+  if (msg.includes('xp') || msg.includes('experience points')) {
+    const hasIntent = msg.includes('get') || msg.includes('earn') || msg.includes('increase') ||
+                      msg.includes('farm') || msg.includes('how') || msg.includes('more') ||
+                      msg.includes('boost') || msg.includes('stack') || msg.includes('gain')
+    if (hasIntent) {
+      return `Fastest way to stack XP: play games that match your skill for higher scores, grind Tac Zone (unlimited, free) once your sessions run low, keep your ${ctx.streakDays}-day streak alive for the bonus, and clear your Weekly Missions for extra XP.`
+    }
+    return `You're at ${ctx.rankEmoji} ${ctx.rankName} with ${ctx.xp.toLocaleString()} XP (Level ${ctx.level}).`
   }
 
   if (msg.includes('rank') || msg.includes('level')) {
-    return `You're at ${ctx.rankEmoji} ${ctx.rankName} with ${ctx.xp} XP (Level ${ctx.level}). Keep grinding — the next rank is closer than you think!`
+    return `You're at ${ctx.rankEmoji} ${ctx.rankName} with ${ctx.xp.toLocaleString()} XP (Level ${ctx.level}). Keep grinding — the next rank is closer than you think!`
   }
 
   if (msg.includes('streak')) {
