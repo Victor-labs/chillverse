@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import Landing from './pages/Landing'
@@ -31,21 +32,12 @@ const Notifications      = lazy(() => import('./pages/Notifications'))
 const Inventory          = lazy(() => import('./pages/Inventory'))
 const Wallet             = lazy(() => import('./pages/Wallet'))
 const WeeklyMissions     = lazy(() => import('./pages/WeeklyMissions'))
-// Multiplayer imports removed — files deleted, will be restored when rebuilt
-// const MultiplayerHome    = lazy(() => import('./pages/multiplayer/MultiplayerHome'))
-// const BrowseRooms        = lazy(() => import('./pages/multiplayer/BrowseRooms'))
-// const CreateRoom         = lazy(() => import('./pages/multiplayer/CreateRoom'))
-// const RoomLobby          = lazy(() => import('./pages/multiplayer/RoomLobby'))
-// const MultiplayerGameShell = lazy(() => import('./pages/multiplayer/MultiplayerGameShell'))
+const HaloAI             = lazy(() => import('./pages/HaloAI'))   // ← ADD THIS
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
 )
 
-// Only redirect to /dashboard when the user is on a public page.
-// Supabase fires SIGNED_IN on every silent token refresh (~every 1hr).
-// Without this guard that refresh triggers navigate('/dashboard') which
-// unmounts the current page mid-render and leaves a black screen.
 const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/privacy', '/terms']
 
 export default function App() {
@@ -53,14 +45,6 @@ export default function App() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // SIGNED_IN fires on both real logins AND silent token refreshes (~every 1hr).
-      // We must not run streak/achievement logic on token refreshes — that would
-      // allow a streak increment every time midnight passes mid-session.
-      //
-      // Strategy: only run on SIGNED_IN, and guard with a sessionStorage flag so
-      // that a hard page reload within the same browser session doesn't re-fire.
-      // (The DB RPC is also idempotent — it is safe to call multiple times per day —
-      // but the sessionStorage guard avoids unnecessary round-trips on every reload.)
       if (event === 'SIGNED_IN' && session) {
         const flagKey = `streak_done_${session.user.id}`
         const alreadyRanThisSession = sessionStorage.getItem(flagKey)
@@ -88,13 +72,13 @@ export default function App() {
       <Route path="/privacy"         element={<Privacy />} />
       <Route path="/terms"           element={<Terms />} />
 
-      {/* Standalone full-screen experience — no sidebar/topbar chrome */}
       <Route path="/watch" element={<ProtectedRoute><Suspense fallback={<Fallback />}><Watch /></Suspense></ProtectedRoute>} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard"                        element={<Dashboard />} />
         <Route path="/coming-soon"                      element={<ComingSoon />} />
         <Route path="/games"                            element={<Games />} />
+        <Route path="/halo"                             element={<Suspense fallback={<Fallback />}><HaloAI /></Suspense>} /> {/* ← ADD THIS */}
         <Route path="/mall"                             element={<Suspense fallback={<Fallback />}><Mall /></Suspense>} />
         <Route path="/gift"                             element={<Suspense fallback={<Fallback />}><GiftPage /></Suspense>} />
         <Route path="/buy-diamonds"                     element={<Suspense fallback={<Fallback />}><BuyDiamonds /></Suspense>} />
@@ -110,12 +94,6 @@ export default function App() {
         <Route path="/inventory"                        element={<Suspense fallback={<Fallback />}><Inventory /></Suspense>} />
         <Route path="/wallet"                           element={<Suspense fallback={<Fallback />}><Wallet /></Suspense>} />
         <Route path="/weekly-missions"                  element={<Suspense fallback={<Fallback />}><WeeklyMissions /></Suspense>} />
-        {/* Multiplayer routes removed — will be restored when rebuilt */}
-        {/* <Route path="/multiplayer"                      element={<Suspense fallback={<Fallback />}><MultiplayerHome /></Suspense>} /> */}
-        {/* <Route path="/multiplayer/browse"               element={<Suspense fallback={<Fallback />}><BrowseRooms /></Suspense>} /> */}
-        {/* <Route path="/multiplayer/create"               element={<Suspense fallback={<Fallback />}><CreateRoom /></Suspense>} /> */}
-        {/* <Route path="/multiplayer/room/:roomId"         element={<Suspense fallback={<Fallback />}><RoomLobby /></Suspense>} /> */}
-        {/* <Route path="/multiplayer/game/:gameId/:roomId" element={<Suspense fallback={<Fallback />}><MultiplayerGameShell /></Suspense>} /> */}
       </Route>
     </Routes>
   )
