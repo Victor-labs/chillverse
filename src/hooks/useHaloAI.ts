@@ -30,13 +30,7 @@ interface GeminiResponse {
   candidates?: GeminiCandidate[]
 }
 
-// Dedicated type for the system_instruction field (no role required)
-interface GeminiSystemInstruction {
-  parts: GeminiPart[]
-}
-
 interface GeminiRequestBody {
-  system_instruction: GeminiSystemInstruction
   contents: GeminiContent[]
   generationConfig: {
     temperature: number
@@ -56,10 +50,12 @@ function makeId(): string {
  * Core hook managing Halo AI message history, Gemini API calls, loading
  * state, and graceful fallback routing. Consumed by HaloAIPage.
  *
- * FIX: The knowledge base system prompt is now sent via the dedicated
- * `system_instruction` field instead of being smuggled as a fake user/model
- * turn. This ensures Gemini treats it as authoritative grounding context
- * rather than just another message in the conversation history.
+ * FIX #1: system_instruction is NOT used — it requires billing-enabled projects
+ * on the Gemini API. Instead, the knowledge base is injected as a synthetic
+ * first user/model turn, which works identically on the free tier.
+ *
+ * FIX #2: catch block now logs errors to console so failures are visible
+ * in DevTools instead of being silently swallowed.
  */
 export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
   const [messages, setMessages] = useState<HaloMessage[]>([])
@@ -92,15 +88,20 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           parts: [{ text: msg.content }],
         }))
 
-        // ✅ FIXED: system prompt goes in `system_instruction`, NOT as a fake
-        // user turn. This gives Gemini the knowledge base as authoritative
-        // grounding that persists across the entire conversation without
-        // competing with or getting buried by message history.
+        // FIX #1: Inject knowledge base as a synthetic first turn pair instead
+        // of system_instruction. The free-tier Gemini API blocks system_instruction,
+        // causing a silent 400 error that routes every message to haloFallback().
+        // This approach is functionally identical and works across all API tiers.
         const body: GeminiRequestBody = {
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
-          },
           contents: [
+            {
+              role: 'user',
+              parts: [{ text: `SYSTEM INSTRUCTIONS & KNOWLEDGE BASE:\n${systemPrompt}\n\nAcknowledge you understand your role and are ready.` }],
+            },
+            {
+              role: 'model',
+              parts: [{ text: `Understood. I'm Halo, the Chillverse AI companion. I have full knowledge of the platform and ${playerCtx.displayName}'s live stats. Ready to help.` }],
+            },
             ...priorContents,
             { role: 'user', parts: [{ text }] },
           ],
@@ -120,7 +121,8 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
         })
 
         if (!response.ok) {
-          throw new Error(`Gemini API error: ${response.status}`)
+          const errBody = await response.text()
+          throw new Error(`Gemini API error ${response.status}: ${errBody}`)
         }
 
         const data = (await response.json()) as GeminiResponse
@@ -137,7 +139,11 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, haloMessage])
-      } catch {
+      } catch (err) {
+        // FIX #2: Log the actual error so you can diagnose failures in DevTools
+        // instead of getting a silent fallback with no indication of what broke.
+        console.error('[HaloAI] Gemini call failed:', err)
+
         // Graceful fallback — always responds even without a valid API key
         const fallbackText = haloFallback(text, playerCtx)
         const haloMessage: HaloMessage = {
