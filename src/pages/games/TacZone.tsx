@@ -53,8 +53,15 @@ function getBestMove(board: TacCell[], mode: TacMode): number {
   return move
 }
 
-// XP per win by mode (max 3 XP per win)
-const MODE_XP: Record<TacMode, number> = { easy: 0.5, hard: 1.0, expert: 1.5 }
+// Base XP per win, scaled by current game rank (no streak multiplier for TacZone)
+const RANK_XP: Record<GameRank, number> = {
+  beginner:     25,
+  intermediate: 27,
+  advanced:     29,
+  master:       31,
+}
+
+const SESSION_XP_CAP = 300
 
 interface Props {
   rank: GameRank
@@ -77,6 +84,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
 
   const startRef = useRef(Date.now())
   const moveCountRef = useRef(0)
+  const sessionXpRef = useRef(0)
 
   function newGame() {
     setBoard(Array(9).fill(null))
@@ -88,6 +96,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
   function start() {
     setSessionScores({ W: 0, D: 0, L: 0 })
     setTotalXP(0)
+    sessionXpRef.current = 0
     setResult(null)
     startRef.current = Date.now()
     newGame()
@@ -100,11 +109,10 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
     if (res.winner || isDraw) {
       setGameResult(isDraw ? { winner: null, line: null } : res)
       if (res.winner === 'X') {
-        // Player wins — calculate XP with speed bonus
-        const baseXP = MODE_XP[mode]
-        const speedMult = moveCountRef.current <= 3 ? 2.0 : moveCountRef.current <= 5 ? 1.5 : 1.0
-        const earnedXP = Math.min(3, parseFloat((baseXP * speedMult).toFixed(1)))
-        setTotalXP(x => x + earnedXP)
+        // Player wins — flat XP based on current game rank, no multiplier
+        const earnedXP = RANK_XP[rankState.rank]
+        sessionXpRef.current += earnedXP
+        setTotalXP(sessionXpRef.current)
         setSessionScores(s => ({ ...s, W: s.W + 1 }))
       } else if (res.winner === 'O') {
         setSessionScores(s => ({ ...s, L: s.L + 1 }))
@@ -137,7 +145,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
   function endSession() {
     const dur = Math.floor((Date.now() - startRef.current) / 1000)
     const total = sessionScores.W + sessionScores.D + sessionScores.L
-    const xpRounded = Math.min(70, Math.round(totalXP))
+    const xpRounded = Math.min(sessionXpRef.current, SESSION_XP_CAP)
     const payload: GameEndPayload = {
       gameId: GAME_ID,
       gameName: 'Tac Zone',
@@ -157,7 +165,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
 
   const rules = [
     { icon: '🧠', text: 'You are X — get three in a row to win' },
-    { icon: '⚡', text: 'Faster wins = more XP (max 3 XP per win)' },
+    { icon: '⚡', text: 'XP per win scales with your current game rank' },
     { icon: '♾️', text: 'Unlimited plays — no daily limit' },
     { icon: '🤖', text: 'AI difficulty: Easy / Hard / Expert' },
   ]
@@ -185,7 +193,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
                 boxShadow: mode === m ? `0 0 12px ${ACCENT}30` : '2px 2px 6px var(--neu-dark)',
                 textTransform: 'capitalize',
               }}>
-              {m} · {MODE_XP[m]}xp
+              {m}
             </button>
           ))}
         </div>
@@ -229,7 +237,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack }: Props) {
 
         {/* XP earned this session */}
         <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-          Session XP: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>+{totalXP.toFixed(1)}</span>
+          Session XP: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>+{totalXP}</span>
         </div>
 
         {/* Board */}
