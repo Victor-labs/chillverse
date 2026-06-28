@@ -1,5 +1,8 @@
 // src/lib/games.ts
 // ─── Shared, lightweight game catalog ───────────────────────────
+// Pulled out of Games.tsx so other pages (Edit Profile, leaderboards,
+// etc.) can reference game metadata — name, icon, accent color, dbKey —
+// without importing the full game lobby page and its game components.
 import {
   Move, Brain, Layers, BookOpen, Grid3X3,
   Eye, Calculator, LayoutGrid, Hash, Target,
@@ -25,6 +28,7 @@ export interface GameMeta {
   icon: LucideIcon
 }
 
+// Standard games — default session cost (1)
 const STANDARD_GAMES: GameMeta[] = [
   { id: 'arrow-dash',     dbKey: 'arrow_dash',     name: 'Arrow Dash',            tagline: 'Tap the arrow direction. Fast.',                  accent: '#4f8ef7', icon: Move         },
   { id: 'pattern-memory', dbKey: 'pattern_memory', name: 'Pattern Memory',        tagline: 'Watch the sequence, then repeat it.',             accent: '#9b6dff', icon: Brain        },
@@ -35,6 +39,7 @@ const STANDARD_GAMES: GameMeta[] = [
   { id: 'liars-grid',     dbKey: 'liars_grid',     name: "Liar's Grid",           tagline: 'Find the one wrong equation. One is lying.',      accent: '#ff4f4f', icon: LayoutGrid   },
 ]
 
+// Higher session games — cost more sessions
 const PREMIUM_GAMES: GameMeta[] = [
   { id: 'trivia-clash',   dbKey: 'trivia_clash',   name: 'Trivia Clash',          tagline: 'Drop knowledge. Wreck the scoreboard.',           accent: '#ff9a3c', icon: BookOpen, sessionCost: 6 },
   { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash,     sessionCost: 3 },
@@ -45,4 +50,4 @@ export const GAMES: GameMeta[] = [...STANDARD_GAMES, ...PREMIUM_GAMES]
 
 export function getGameMeta(dbKey: string): GameMeta | undefined {
   return GAMES.find(g => g.dbKey === dbKey)
-  }
+}

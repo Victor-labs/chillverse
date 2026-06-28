@@ -125,7 +125,7 @@ export async function checkAndUnlockAchievements(payload: AchievementCheckPayloa
 
   // ── First plays ──
   const GAME_MAP: Record<string, string> = {
-    trivia_clash: 'play_trivia', flag_rush: 'play_flag',
+    trivia_clash: 'play_trivia',
     speed_math: 'play_speed_math', rapid_sort: 'play_rapid_sort',
     arrow_dash: 'play_arrow_dash', pattern_memory: 'play_pattern',
     two_truths: 'play_two_truths', tac_zone: 'play_tac_zone',

@@ -9,7 +9,6 @@ export type GameKey =
   | 'rapid_sort'
   | 'trivia_clash'
   | 'tac_zone'
-  | 'flag_rush'
   | 'two_truths'
   | 'speed_math'
   | 'liars_grid'
