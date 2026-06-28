@@ -9,6 +9,7 @@ interface UseWalletState {
   wallet: UserWallet | null
   loading: boolean
   error: PostgrestError | null
+  refetch: () => void
 }
 
 /**
@@ -29,6 +30,9 @@ export function useWallet(): UseWalletState {
   const [wallet, setWallet] = useState<UserWallet | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<PostgrestError | null>(null)
+  const [tick, setTick] = useState(0)
+
+  const refetch = () => setTick(t => t + 1)
 
   useEffect(() => {
     if (!user) {
@@ -56,7 +60,7 @@ export function useWallet(): UseWalletState {
     return () => {
       active = false
     }
-  }, [user])
+  }, [user, tick])
 
-  return { wallet, loading, error }
+  return { wallet, loading, error, refetch }
 }
