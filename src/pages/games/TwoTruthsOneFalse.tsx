@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Eye, Check, X } from 'lucide-react'
 import type { GameRank, GameEndPayload } from './types'
 import { useGamePresence } from '../../hooks/useGamePresence'
-import { getRankConfig, calcSessionXP } from './types'
+import { getRankConfig } from './types'
 import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal, TimerBar, useRankStreak } from './GameShell'
 import { TWO_TRUTHS_DATA } from './gameData'
 import { ripple } from '../../lib/ripple'
@@ -13,17 +13,40 @@ const GAME_ID = 'two-truths' as const
 
 interface RankTTConfig {
   rounds: number
-  perRoundSec: number
   difficulty: 'easy' | 'medium' | 'mixed'
   streakRequired: number
 }
 
 const RANK_CONFIG: Record<GameRank, RankTTConfig> = {
-  beginner:     { rounds: 2,  perRoundSec: 15, difficulty: 'easy',   streakRequired: 5 },
-  intermediate: { rounds: 2,  perRoundSec: 15, difficulty: 'mixed',  streakRequired: 5 },
-  advanced:     { rounds: 8,  perRoundSec: 15, difficulty: 'medium', streakRequired: 5 },
-  master:       { rounds: 10, perRoundSec: 13, difficulty: 'medium', streakRequired: 5 },
+  beginner:     { rounds: 2,  difficulty: 'easy',   streakRequired: 5 },
+  intermediate: { rounds: 2,  difficulty: 'mixed',  streakRequired: 5 },
+  advanced:     { rounds: 8,  difficulty: 'medium', streakRequired: 5 },
+  master:       { rounds: 10, difficulty: 'medium', streakRequired: 5 },
 }
+
+// Difficulty lever: reveal/decision timer duration only, scaled by current game rank
+const RANK_REVEAL_TIME: Record<GameRank, number> = {
+  beginner:     10,
+  intermediate: 8,
+  advanced:     6,
+  master:       4,
+}
+
+function getRevealTime(rank: GameRank): number {
+  return RANK_REVEAL_TIME[rank]
+}
+
+// Base XP per correct answer, scaled by current game rank
+const RANK_XP: Record<GameRank, number> = {
+  beginner:     18,
+  intermediate: 20,
+  advanced:     22,
+  master:       24,
+}
+
+const STREAK_THRESHOLD = 10
+const STREAK_MULTIPLIER = 1.5
+const SESSION_XP_CAP = 300
 
 interface Props {
   rank: GameRank
@@ -49,6 +72,8 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
   const correctRef = useRef(0)
   const qIdxRef = useRef(0)
   const startRef = useRef(Date.now())
+  const sessionXpRef = useRef(0)
+  const sessionStreakRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const advanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -61,13 +86,14 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
 
   function startTimer() {
     clearTimers()
-    const cfg = getRankCfg()
-    setTimeLeft(cfg.perRoundSec)
+    const revealTime = getRevealTime(rankState.rank)
+    setTimeLeft(revealTime)
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(timerRef.current!)
           // Time out — reveal and advance
+          sessionStreakRef.current = 0
           revealAndAdvance(-1)
           return 0
         }
@@ -99,13 +125,20 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
     clearTimers()
     const q = questions[qIdxRef.current]
     if (idx === q.falseIdx) {
-      const pts = 50 + Math.floor((timeLeft / getRankCfg().perRoundSec) * 20)
+      const pts = 50 + Math.floor((timeLeft / getRevealTime(rankState.rank)) * 20)
       scoreRef.current += pts; correctRef.current += 1
       setScore(scoreRef.current)
+      sessionStreakRef.current += 1
+      const baseXp = RANK_XP[rankState.rank]
+      const xpForAnswer = Math.round(
+        baseXp * (sessionStreakRef.current > STREAK_THRESHOLD ? STREAK_MULTIPLIER : 1)
+      )
+      sessionXpRef.current += xpForAnswer
       const { promoted: promo } = onCorrect(getRankConfig(rankState.rank).streakRequired)
       if (promo) setPromoted(promo)
     } else {
       onWrong()
+      sessionStreakRef.current = 0
     }
     revealAndAdvance(idx)
   }
@@ -114,7 +147,7 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
     clearTimers()
     const cfg = getRankCfg()
     const dur = Math.floor((Date.now() - startRef.current) / 1000)
-    const xp = calcSessionXP(correctRef.current, cfg.rounds, rankState.bestStreak, 5)
+    const xp = Math.min(sessionXpRef.current, SESSION_XP_CAP)
     const payload: GameEndPayload = {
       gameId: GAME_ID,
       gameName: 'Two Truths, One False',
@@ -144,6 +177,7 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
     setQIdx(0); setScore(0); setSelected(null); setRevealed(false)
     setPromoted(null); setResult(null)
     qIdxRef.current = 0; scoreRef.current = 0; correctRef.current = 0
+    sessionXpRef.current = 0; sessionStreakRef.current = 0
     startRef.current = Date.now()
     setPhase('play')
     startTimer()
@@ -154,14 +188,14 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack }: 
   const rankCfg = getRankConfig(rankState.rank)
   const cfg = getRankCfg()
   const q = questions[qIdx]
-  const timePct = (timeLeft / cfg.perRoundSec) * 100
+  const timePct = (timeLeft / getRevealTime(rankState.rank)) * 100
 
   const LABELS = ['A', 'B', 'C']
 
   const rules = [
     { icon: '🧠', text: 'Test your logical reasoning' },
     { icon: '⚠️', text: 'One statement is always false — find it' },
-    { icon: '⏱', text: `${cfg.perRoundSec}s per round · ${cfg.rounds} rounds (${rankCfg.label})` },
+    { icon: '⏱', text: `${getRevealTime(rankState.rank)}s per round · ${cfg.rounds} rounds (${rankCfg.label})` },
     { icon: '🔥', text: '5 correct in a row = rank up' },
   ]
 
