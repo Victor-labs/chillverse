@@ -6,6 +6,7 @@ import Topbar from './Topbar'
 import AchievementToast from './AchievementToast'
 import NotificationToastRenderer from './NotificationToastRenderer'
 import IncomingChallengeOverlay from './IncomingChallengeOverlay'
+import PromoOverlay from './PromoOverlay'
 import HaloPanel from './HaloAI/HaloPanel'
 import { HaloProvider } from '../context/HaloContext'
 import { useProfile } from '../hooks/useProfile'
@@ -14,6 +15,7 @@ import { supabase } from '../lib/supabase'
 import { getUserRankTier } from '../lib/ranks'
 import { getGlobalSessionInfo } from '../lib/gameSession'
 import { useChallengeListener } from '../hooks/useChallengeListener'
+import { usePromoNotifications } from '../hooks/usePromoNotifications'
 import type { IncomingChallenge } from '../hooks/useChallengeListener'
 import type { HaloPlayerContext } from '../types/halo'
 
@@ -103,6 +105,9 @@ export default function AppLayout() {
   // ── Challenge listener ──
   const { incoming, update, clearIncoming, clearUpdate } = useChallengeListener()
   const [rematchFrom, setRematchFrom] = useState<{ opponentId: string; opponentName: string; game: string } | null>(null)
+
+  // ── Promo / announcement overlay ──
+  const { active: activePromo, dismiss: dismissPromo } = usePromoNotifications(myId)
 
   // When challenger gets an "accepted" update → navigate to challenge page to start game
   useEffect(() => {
@@ -200,6 +205,14 @@ export default function AppLayout() {
             myId={myId}
             onAccept={handleAcceptIncoming}
             onDismiss={clearIncoming}
+          />
+        )}
+
+        {/* Promo / announcement overlay — never shows on top of an actual challenge invite */}
+        {activePromo && !incoming && (
+          <PromoOverlay
+            notification={activePromo}
+            onDismiss={dismissPromo}
           />
         )}
 
