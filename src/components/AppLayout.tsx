@@ -96,7 +96,7 @@ export default function AppLayout() {
   const { profile } = useProfile()
   const { user, session } = useAuth()
   const myId = session?.user?.id ?? null
-  const [wishlistNames, setWishlistNames] = useState<string[]>([])
+  const [_wishlistNames, setWishlistNames] = useState<string[]>([])
 
   // ── Challenge listener ──
   const { incoming, update, clearIncoming, clearUpdate } = useChallengeListener()
@@ -135,9 +135,9 @@ export default function AppLayout() {
   }, [user])
 
   const xp = profile?.xp ?? 0
-  const rankTier = getUserRankTier(xp)
-  const sessionInfo = user ? getGlobalSessionInfo(user.id) : { count: 0 }
-
+  const _rankTier = getUserRankTier(xp)
+const _sessionInfo = user ? getGlobalSessionInfo(user.id) : { count: 0 }
+  
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1279px)')
     setSidebarCollapsed(mq.matches)
