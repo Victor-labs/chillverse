@@ -14,6 +14,47 @@ import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import PageOnboarding from '../components/PageOnboarding'
 
+// ─── Username validation ───────────────────────────────────────────────────
+const RESERVED_WORDS = [
+  'admin', 'administrator', 'moderator', 'mod', 'staff', 'support',
+  'chillverse', 'official', 'system', 'bot', 'null', 'undefined',
+  'help', 'info', 'contact', 'abuse', 'root', 'superuser',
+]
+const BANNED_PATTERNS = [/nigger/i, /faggot/i, /retard/i, /spastic/i]
+
+function validateUsername(name: string): string | null {
+  const trimmed = name.trim()
+  if (trimmed.length < 3) return 'Username must be at least 3 characters.'
+  if (trimmed.length > 20) return 'Username must be 20 characters or fewer.'
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return 'Only letters, numbers, underscores and hyphens allowed.'
+  if (/^[_-]|[_-]$/.test(trimmed)) return 'Username can\'t start or end with _ or -.'
+  if (RESERVED_WORDS.includes(trimmed.toLowerCase())) return 'That username is reserved.'
+  if (BANNED_PATTERNS.some(p => p.test(trimmed))) return 'That username isn\'t allowed.'
+  return null
+}
+
+function generateSuggestions(base: string): string[] {
+  const clean = base.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'user'
+  const short = clean.slice(0, 14)
+  const suffixes = [
+    Math.floor(Math.random() * 900 + 100),
+    Math.floor(Math.random() * 900 + 100),
+    Math.floor(Math.random() * 900 + 100),
+  ]
+  return suffixes.map(n => `${short}${n}`)
+}
+
+// 30-day cooldown in milliseconds
+const USERNAME_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000
+
+function getDaysUntilUsernameChange(lastChangedAt: string | null | undefined): number | null {
+  if (!lastChangedAt) return null
+  const elapsed = Date.now() - new Date(lastChangedAt).getTime()
+  const remaining = USERNAME_COOLDOWN_MS - elapsed
+  if (remaining <= 0) return 0
+  return Math.ceil(remaining / (24 * 60 * 60 * 1000))
+}
+
 const PRESENCE_OPTIONS = [
   { id: 'online',    label: 'Online',    desc: 'Visible to everyone, shown as active.',     color: '#3ecf8e', Icon: Circle },
   { id: 'idle',      label: 'Idle',      desc: 'Visible, but marked as away.',              color: '#f5c542', Icon: Moon   },
@@ -114,6 +155,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState('')
 
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([])
+
   const [presence, setPresence] = useState('online')
   const [showFollowCounts, setShowFollowCounts] = useState(true)
   const [savingFollowToggle, setSavingFollowToggle] = useState(false)
@@ -148,12 +191,44 @@ export default function Settings() {
   }
 
   async function handleSaveUsername() {
-    if (!newUsername.trim() || !profile?.id) return
+    const trimmed = newUsername.trim()
+    if (!trimmed || !profile?.id) return
+
+    // 30-day cooldown check
+    const daysLeft = getDaysUntilUsernameChange((profile as any).username_changed_at)
+    if (daysLeft !== null && daysLeft > 0) {
+      setFeedback(`You can change your username again in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`)
+      return
+    }
+
+    // Validate format / content
+    const validationError = validateUsername(trimmed)
+    if (validationError) {
+      setFeedback(validationError)
+      setUsernameSuggestions(generateSuggestions(trimmed))
+      return
+    }
+
     setSaving(true)
-    const { error } = await supabase.from('profiles').update({ username: newUsername.trim() }).eq('id', profile.id)
+    setUsernameSuggestions([])
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: trimmed, username_changed_at: new Date().toISOString() })
+      .eq('id', profile.id)
     setSaving(false)
-    setFeedback(error ? 'Failed to update username.' : 'Username updated!')
-    setTimeout(() => { setFeedback(''); setModal(null) }, 1500)
+
+    if (error) {
+      // Supabase unique constraint → suggest alternatives
+      if (error.code === '23505') {
+        setFeedback('That username is already taken.')
+        setUsernameSuggestions(generateSuggestions(trimmed))
+      } else {
+        setFeedback('Failed to update username.')
+      }
+    } else {
+      setFeedback('Username updated!')
+      setTimeout(() => { setFeedback(''); setModal(null) }, 1500)
+    }
   }
 
   async function handleSaveEmail() {
@@ -244,11 +319,27 @@ export default function Settings() {
         </div>
 
         <SectionTitle>Profile</SectionTitle>
-        <Row icon={<Tag size={15} />} iconBg="rgba(79,142,247,0.12)" iconColor="#4f8ef7"
-          label="Username" value={profile?.username ?? '—'}
-          onClick={(e) => { ripple(e as any); setModal('username') }}
-          rightEl={<Edit2 size={13} color="var(--text-muted)" style={{ marginRight: 4 }} />}
-        />
+        {(() => {
+          const daysLeft = getDaysUntilUsernameChange((profile as any)?.username_changed_at)
+          const locked = daysLeft !== null && daysLeft > 0
+          return (
+            <>
+              <Row icon={<Tag size={15} />} iconBg="rgba(79,142,247,0.12)" iconColor="#4f8ef7"
+                label="Username" value={profile?.username ?? '—'}
+                onClick={(e) => { ripple(e as any); setModal('username') }}
+                rightEl={<Edit2 size={13} color="var(--text-muted)" style={{ marginRight: 4 }} />}
+              />
+              {locked && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: -4, marginBottom: 10, padding: '7px 12px', background: 'rgba(245,197,66,0.08)', border: '1px solid rgba(245,197,66,0.18)', borderRadius: 10 }}>
+                  <Calendar size={12} color="#f5c542" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 11.5, color: '#f5c542', fontWeight: 600 }}>
+                    Username can be changed again in <strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
+                  </span>
+                </div>
+              )}
+            </>
+          )
+        })()}
         <Row icon={<Mail size={15} />} iconBg="rgba(62,207,142,0.12)" iconColor="#3ecf8e"
           label="Email" value={userEmail ? userEmail.replace(/(.{2}).+(@.+)/, '$1…$2') : '—'}
           onClick={(e) => { ripple(e as any); setModal('email') }}
@@ -344,15 +435,60 @@ export default function Settings() {
         </Modal>
       )}
 
-      {modal === 'username' && (
-        <Modal title="Change Username" onClose={() => setModal(null)}>
-          <Input label="New username" value={newUsername} onChange={setNewUsername} placeholder="e.g. chillking99" />
-          {feedback && <p style={{ fontSize: 12, color: feedback.includes('!') ? '#3ecf8e' : '#ff6b6b', marginBottom: 12 }}>{feedback}</p>}
-          <button onClick={handleSaveUsername} disabled={saving} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </Modal>
-      )}
+      {modal === 'username' && (() => {
+        const daysLeft = getDaysUntilUsernameChange((profile as any)?.username_changed_at)
+        const locked = daysLeft !== null && daysLeft > 0
+        return (
+          <Modal title="Change Username" onClose={() => { setModal(null); setFeedback(''); setUsernameSuggestions([]) }}>
+            {locked ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '16px 0 8px', textAlign: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(245,197,66,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={22} color="#f5c542" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Username locked</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                    You changed your username recently.<br />
+                    You can change it again in <strong style={{ color: '#f5c542' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>.
+                  </div>
+                </div>
+                <button onClick={() => { setModal(null); setFeedback(''); setUsernameSuggestions([]) }} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--bg)', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Got it</button>
+              </div>
+            ) : (
+              <>
+                <Input label="New username" value={newUsername} onChange={(v) => { setNewUsername(v); setUsernameSuggestions([]) }} placeholder="e.g. chillking99" />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginBottom: 12, lineHeight: 1.5 }}>
+                  3–20 chars · letters, numbers, _ and - only · can only change once every 30 days
+                </div>
+                {feedback && (
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: feedback.includes('!') ? '#3ecf8e' : '#ff6b6b', marginBottom: usernameSuggestions.length ? 8 : 0 }}>{feedback}</p>
+                    {usernameSuggestions.length > 0 && (
+                      <div>
+                        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Try one of these instead:</p>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {usernameSuggestions.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => { setNewUsername(s); setUsernameSuggestions([]); setFeedback('') }}
+                              style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid rgba(79,142,247,0.35)', background: 'rgba(79,142,247,0.1)', color: '#4f8ef7', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button onClick={handleSaveUsername} disabled={saving} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </>
+            )}
+          </Modal>
+        )
+      })()}
 
       {modal === 'email' && (
         <Modal title="Change Email" onClose={() => setModal(null)}>
