@@ -23,7 +23,7 @@ interface Props {
   onDismiss: () => void
 }
 
-export default function IncomingChallengeOverlay({ challenge, myId, onAccept, onDismiss }: Props) {
+export default function IncomingChallengeOverlay({ challenge, onAccept, onDismiss }: Props) {
   const [timeLeft, setTimeLeft] = useState(10)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
