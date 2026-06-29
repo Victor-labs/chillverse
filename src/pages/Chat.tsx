@@ -231,6 +231,8 @@ export default function Chat() {
 
   // Player profile modal
   const [viewProfile, setViewProfile] = useState<SearchedProfile | null>(null)
+  // DM header options (tap avatar/name in DM to delete chat)
+  const [dmOptionsOpen, setDmOptionsOpen] = useState(false)
 
   const msgEnd = useRef<HTMLDivElement>(null)
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -340,7 +342,11 @@ export default function Chat() {
     const dmRooms = built.filter(r => r.type !== 'global')
     const sorted = globalRoom ? [globalRoom, ...dmRooms] : dmRooms
 
-    setRooms(sorted)
+    // Deduplicate by room id (guards against race between startDmWith + loadRooms)
+    const seen = new Set<string>()
+    const deduped = sorted.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true })
+
+    setRooms(deduped)
     setRoomsLoading(false)
   }
 
@@ -521,17 +527,23 @@ export default function Chat() {
       unread: 0,
     }
 
-    // Add to rooms list (or replace if already there) then open immediately
+    setPlayerSearch('')
+    setPlayerResults([])
+
+    // Add to rooms list (or skip if already there), then open
+    let roomToOpen = roomObj
     setRooms(prev => {
-      const exists = prev.find(r => r.id === roomId)
-      if (exists) return prev
+      const existing = prev.find(r => r.id === roomId)
+      if (existing) {
+        roomToOpen = existing
+        return prev
+      }
       const globalRoom = prev.find(r => r.type === 'global')
       const dms = prev.filter(r => r.type !== 'global')
       return globalRoom ? [globalRoom, roomObj, ...dms] : [roomObj, ...dms]
     })
-    setPlayerSearch('')
-    setPlayerResults([])
-    openRoom(roomObj)
+    // Small tick to ensure state is settled before opening
+    setTimeout(() => openRoom(roomToOpen), 0)
   }
 
   // ── Send ────────────────────────────────────────────────────
@@ -751,7 +763,9 @@ export default function Chat() {
                 <IBtn onClick={() => { setShowConv(false); if (!isMobile) setActiveRoom(null) }}>
                   <ArrowLeft size={15} />
                 </IBtn>
-                <div style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0,
+                  cursor: activeRoom.type === 'dm' ? 'pointer' : 'default' }}
+                  onClick={() => { if (activeRoom.type === 'dm') setDmOptionsOpen(true) }}>
                   {activeRoom.type === 'global' ? (
                     <div style={{ width:34, height:34, borderRadius:10, flexShrink:0, background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
                       🌍
@@ -762,9 +776,11 @@ export default function Chat() {
                   })()}
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:14, fontWeight:700, color: activeRoom.type === 'global' ? '#4f8ef7' : 'var(--text)' }}>{roomLabel(activeRoom)}</div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-                      {activeRoom.type === 'global' ? '🌐 Open to all Chillverse players' : `${activeRoom.members.length} members`}
-                    </div>
+                    {activeRoom.type === 'global' && (
+                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+                        🌐 Open to all Chillverse players
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -964,6 +980,32 @@ export default function Chat() {
           onClose={() => setViewProfile(null)}
           onStartChat={startDmWith}
         />
+      )}
+
+      {/* DM options modal — delete chat */}
+      {dmOptionsOpen && activeRoom && activeRoom.type === 'dm' && (
+        <>
+          <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(3px)' }} onClick={() => setDmOptionsOpen(false)} />
+          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:201, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:18, padding:'20px 20px 16px', width: Math.min(260, window.innerWidth - 32), boxShadow:'0 20px 60px rgba(0,0,0,0.7)' }}>
+            <button type="button" onClick={() => setDmOptionsOpen(false)} style={{ position:'absolute', top:12, right:12, background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)' }}>
+              <X size={15} />
+            </button>
+            <p style={{ fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:14 }}>Chat options</p>
+            <button type="button"
+              onClick={async () => {
+                if (!myId || !activeRoom) return
+                // Remove user from room (soft-leave by deleting membership)
+                await supabase.from('room_members').delete().eq('room_id', activeRoom.id).eq('user_id', myId)
+                setRooms(prev => prev.filter(r => r.id !== activeRoom.id))
+                setActiveRoom(null)
+                setShowConv(false)
+                setDmOptionsOpen(false)
+              }}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', width:'100%', borderRadius:11, border:'none', background:'rgba(255,107,107,0.1)', color:'#ff6b6b', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              <Trash2 size={14} /> Delete Chat
+            </button>
+          </div>
+        </>
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

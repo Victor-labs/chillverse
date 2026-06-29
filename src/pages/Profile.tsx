@@ -271,8 +271,8 @@ function FollowListSheet({ profileId, mode, onClose }: {
   return (
     <>
       <div className="overlay-backdrop" onClick={close} style={{ zIndex: 355 }} />
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 360 }}>
-        <div style={{ background: 'var(--surface2)', borderRadius: '28px 28px 0 0', padding: '24px 20px 36px', borderTop: '1px solid rgba(255,255,255,0.08)', transform: visible ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="sheet-or-modal" style={{ zIndex: 360 }}>
+        <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '24px 20px 36px', maxHeight: '75vh', display: 'flex', flexDirection: 'column', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{mode === 'followers' ? 'Followers' : 'Following'}</p>
             <button type="button" onClick={close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
