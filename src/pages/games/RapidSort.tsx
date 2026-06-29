@@ -188,7 +188,6 @@ export default function RapidSort({ rank: initialRank, onEnd, onBack }: Props) {
   const [qIdx, setQIdx]         = useState(0)
   const [lives, setLives]       = useState(3)
   const [streak, setStreak]     = useState(0)
-  const [correct, setCorrect]   = useState(0)
   const [score, setScore]       = useState(0)
   const [timeLeft, setTimeLeft] = useState(10)
   const [timeCap, setTimeCap]   = useState(10)
@@ -312,9 +311,9 @@ export default function RapidSort({ rank: initialRank, onEnd, onBack }: Props) {
       const newCorrect = correctRef.current + 1
       const points     = 100 + (timeLeft * 10) + (newStreak >= 3 ? 50 : 0)
       streakRef.current = newStreak; setStreak(newStreak)
-      correctRef.current = newCorrect; setCorrect(newCorrect)
+      correctRef.current = newCorrect
       scoreRef.current += points; setScore(s => s + points)
-      const promotion = onCorrect()
+      const { promoted: promotion } = onCorrect(rankCfg.streakRequired)
       if (promotion) setPromoted(promotion)
     } else {
       const newLives = livesRef.current - 1
