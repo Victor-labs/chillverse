@@ -7,8 +7,6 @@ import AchievementToast from './AchievementToast'
 import NotificationToastRenderer from './NotificationToastRenderer'
 import IncomingChallengeOverlay from './IncomingChallengeOverlay'
 import PromoOverlay from './PromoOverlay'
-import HaloPanel from './HaloAI/HaloPanel'
-import { HaloProvider } from '../context/HaloContext'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -17,7 +15,6 @@ import { getGlobalSessionInfo } from '../lib/gameSession'
 import { useChallengeListener } from '../hooks/useChallengeListener'
 import { usePromoNotifications } from '../hooks/usePromoNotifications'
 import type { IncomingChallenge } from '../hooks/useChallengeListener'
-import type { HaloPlayerContext } from '../types/halo'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard':  'Dashboard',
@@ -28,7 +25,6 @@ const ROUTE_TITLES: Record<string, string> = {
   '/mall':       'Mall',
   '/streak':     'Streak',
   '/settings':   'Settings',
-  '/halo':       'Halo AI',
   '/challenges': 'Challenges',
 }
 
@@ -142,18 +138,6 @@ export default function AppLayout() {
   const rankTier = getUserRankTier(xp)
   const sessionInfo = user ? getGlobalSessionInfo(user.id) : { count: 0 }
 
-  const playerCtx: HaloPlayerContext = {
-    displayName:   profile?.display_name ?? 'Player',
-    rankName:      rankTier.name,
-    rankEmoji:     rankTier.emoji,
-    streakDays:    profile?.streak ?? 0,
-    favoriteGame:  profile?.favorite_game ?? null,
-    wishlistItems: wishlistNames,
-    sessionsToday: sessionInfo.count,
-    xp,
-    level: profile?.level ?? 1,
-  }
-
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1279px)')
     setSidebarCollapsed(mq.matches)
@@ -171,7 +155,6 @@ export default function AppLayout() {
   const sidebarWidth = sidebarCollapsed ? 72 : 280
 
   return (
-    <HaloProvider>
       <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
         {/* Ambient bubbles */}
         <div className="bubble-bg">
@@ -247,9 +230,6 @@ export default function AppLayout() {
             </div>
           </div>
         </main>
-
-        <HaloPanel playerCtx={playerCtx} />
       </div>
-    </HaloProvider>
   )
 }
