@@ -216,7 +216,7 @@ export default function RapidSort({ rank: initialRank, onEnd, onBack }: Props) {
     livesRef.current  = LIVES[currentRank]
     setLives(LIVES[currentRank])
     streakRef.current = 0; setStreak(0)
-    correctRef.current = 0; setCorrect(0)
+    correctRef.current = 0
     scoreRef.current = 0; setScore(0)
     setQIdx(0)
     setAnswerState('idle')
