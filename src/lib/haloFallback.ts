@@ -84,6 +84,18 @@ export function haloFallback(userMessage: string, ctx: HaloPlayerContext): strin
     return 'Diamonds are Chillverse\'s premium currency, spent in the Mall on cosmetics. Earn them through missions and events, or pick some up on the Buy Diamonds page.'
   }
 
+  if (msg.includes('explor') || msg.includes('chamber') || msg.includes('energy')) {
+    return "Exploration lets you spend Energy on a map to run timed Chambers — they pay out huge XP (and sometimes a rare Artifact) when the timer finishes. Higher-tier maps need more total XP to unlock and cost more Energy, but pay way more. You'll need an avatar equipped first!"
+  }
+
+  if (msg.includes('artifact')) {
+    return 'Artifacts are rare collectibles you find through Exploration chambers — Common, Rare, Epic, or Mythic tier, each tied to a specific map location. Unlocking one gives bonus XP instantly. Check the Artifacts page to see what you still need.'
+  }
+
+  if (msg.includes('version') || msg.includes('upgrade')) {
+    return "Version upgrades are permanent account tiers (v1.0 → v5.0) you unlock in order on the Version page — each one needs Pro PLUS enough Diamonds. They unlock things like animations, more games, and a higher session cap."
+  }
+
   if (msg.includes('tip') || msg.includes('tips') || msg.includes('help') || msg.includes('advice') || msg.includes('efficient') || msg.includes('improve') || msg.includes('better')) {
     return 'My top tip: prioritize games with fewer sessions per play to stretch your daily 15. Tac Zone is free to play — infinite value! Ask me about a specific game for a deeper strategy tip.'
   }
