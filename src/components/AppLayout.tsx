@@ -91,7 +91,6 @@ export default function AppLayout() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { profile } = useProfile()
   const { user, session } = useAuth()
   const myId = session?.user?.id ?? null
   const [, setWishlistNames] = useState<string[]>([])
