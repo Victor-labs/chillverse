@@ -1,13 +1,13 @@
 // src/pages/Challenges.tsx
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Swords, Trophy, Clock, X, Crown, ArrowLeft,
+  Swords, Clock, X, Crown,
   Grid3X3, CheckCircle, XCircle, Zap,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { RANK_TIERS, getUserRankTier } from '../lib/ranks'
+import { getUserRankTier } from '../lib/ranks'
 
 // ── XP pool for winners ──────────────────────────────────────────
 const XP_POOL = [590, 490, 390]
@@ -409,7 +409,7 @@ function ChallengeFullModal({
   async function handlePickGame(game: string) {
     setGame(game)
     // Check if opponent is currently in a game
-    const { data: presData } = await supabase
+    await supabase
       .from('profiles')
       .select('id')
       .eq('id', opponentId)
@@ -813,7 +813,7 @@ function RecentActivity({ myId }: { myId: string }) {
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
       .limit(15)
-      .then(({ data }) => { setRows((data ?? []) as HistoryRow[]); setLoading(false) })
+      .then(({ data }) => { setRows((data ?? []) as unknown as HistoryRow[]); setLoading(false) })
   }, [myId])
 
   if (loading) return <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>
@@ -886,10 +886,10 @@ export default function Challenges() {
   const urlGame         = searchParams.get('game') ?? 'tictactoe'
 
   const [modalOpen, setModalOpen]       = useState(!!urlChallengeId)
-  const [modalOpponentId, setModalOpp]  = useState(urlOpponentId)
-  const [modalOpponentName, setModalOppName] = useState(urlOpponentName)
-  const [modalChallengeId, setModalCid] = useState(urlChallengeId)
-  const [modalGame, setModalGame]       = useState(urlGame)
+  const [modalOpponentId]  = useState(urlOpponentId)
+  const [modalOpponentName] = useState(urlOpponentName)
+  const [modalChallengeId] = useState(urlChallengeId)
+  const [modalGame]       = useState(urlGame)
 
   useEffect(() => {
     if (!myId) return
