@@ -1,7 +1,7 @@
 // src/hooks/useHaloAI.ts
 import { useCallback, useState } from 'react'
 import type { HaloMessage, HaloPlayerContext } from '../types/halo'
-import { buildHaloSystemPrompt } from '../lib/haloSystemPrompt'
+import { buildHaloSystemPrompt, getTopicSections } from '../lib/haloSystemPrompt'
 import { haloFallback } from '../lib/haloFallback'
 
 interface UseHaloAIState {
@@ -50,12 +50,16 @@ function makeId(): string {
  * Core hook managing Halo AI message history, Gemini API calls, loading
  * state, and graceful fallback routing. Consumed by HaloAIPage.
  *
- * FIX #1: system_instruction is NOT used — it requires billing-enabled projects
- * on the Gemini API. Instead, the knowledge base is injected as a synthetic
- * first user/model turn, which works identically on the free tier.
+ * ARCHITECTURE: Uses a two-part prompt strategy to stay well under free-tier
+ * token quotas:
+ *   1. buildHaloSystemPrompt → slim persona + player context (~500 tokens)
+ *   2. getTopicSections → targeted knowledge for THIS specific question (~200-800 tokens)
  *
- * FIX #2: catch block now logs errors to console so failures are visible
- * in DevTools instead of being silently swallowed.
+ * Total per-request tokens: ~1,400–1,800 vs the previous ~6,000+ token dump.
+ *
+ * ERROR CLASSIFICATION: Each error type is classified and logged with a distinct
+ * message so the dev can immediately identify the failure mode in DevTools Console
+ * without needing to inspect the Network tab.
  */
 export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
   const [messages, setMessages] = useState<HaloMessage[]>([])
@@ -79,8 +83,11 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           throw new Error('Missing VITE_GEMINI_API_KEY')
         }
 
-        // Build the full knowledge base + player context system prompt
-        const systemPrompt = buildHaloSystemPrompt(playerCtx)
+        // SLIM persona + player context (~500 tokens)
+        const slimSystemPrompt = buildHaloSystemPrompt(playerCtx)
+
+        // Targeted knowledge sections for THIS question (~200-800 tokens)
+        const topicSections = getTopicSections(text)
 
         // Map prior chat history into Gemini's content format
         const priorContents: GeminiContent[] = messages.map(msg => ({
@@ -88,25 +95,29 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           parts: [{ text: msg.content }],
         }))
 
-        // FIX #1: Inject knowledge base as a synthetic first turn pair instead
-        // of system_instruction. The free-tier Gemini API blocks system_instruction,
-        // causing a silent 400 error that routes every message to haloFallback().
-        // This approach is functionally identical and works across all API tiers.
         const body: GeminiRequestBody = {
           contents: [
             {
               role: 'user',
-              parts: [{ text: `SYSTEM INSTRUCTIONS & KNOWLEDGE BASE:\n${systemPrompt}\n\nAcknowledge you understand your role and are ready.` }],
+              parts: [{
+                text:
+                  `PERSONA + PLAYER CONTEXT:\n${slimSystemPrompt}\n\n` +
+                  `RELEVANT KNOWLEDGE FOR THIS QUESTION:\n${topicSections}\n\n` +
+                  `Rules: stay in character as Halo. Use the player context above. ` +
+                  `Keep replies to 1-4 sentences unless asked to elaborate. Acknowledge ready.`,
+              }],
             },
             {
               role: 'model',
-              parts: [{ text: `Understood. I'm Halo, the Chillverse AI companion. I have full knowledge of the platform and ${playerCtx.displayName}'s live stats. Ready to help.` }],
+              parts: [{
+                text: `Ready. I'm Halo — I have ${playerCtx.displayName}'s live stats and the relevant Chillverse knowledge for this question.`,
+              }],
             },
             ...priorContents,
             { role: 'user', parts: [{ text }] },
           ],
           generationConfig: {
-            temperature: 0.85,
+            temperature: 0.75,
             maxOutputTokens: 300,
             topP: 0.9,
           },
@@ -122,6 +133,7 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
 
         if (!response.ok) {
           const errBody = await response.text()
+          console.error('[HaloAI] Gemini HTTP error body:', errBody)
           throw new Error(`Gemini API error ${response.status}: ${errBody}`)
         }
 
@@ -139,13 +151,38 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, haloMessage])
-      } catch (err) {
-        // FIX #2: Log the actual error so you can diagnose failures in DevTools
-        // instead of getting a silent fallback with no indication of what broke.
-        console.error('[HaloAI] Gemini call failed:', err)
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        console.error('[HaloAI] Error:', errMsg)
 
-        // Graceful fallback — always responds even without a valid API key
-        const fallbackText = haloFallback(text, playerCtx)
+        let fallbackText: string
+
+        if (errMsg.includes('VITE_GEMINI_API_KEY')) {
+          // Key missing in environment — most common production issue
+          console.error(
+            '[HaloAI] ⚠️ VITE_GEMINI_API_KEY is not set. ' +
+            'Add it to your Vercel Environment Variables (Settings → Environment Variables) ' +
+            'then redeploy. Locally: add it to .env.local and restart the dev server.'
+          )
+          fallbackText =
+            `[Dev notice: VITE_GEMINI_API_KEY is not set in this environment. ` +
+            `Add it to your Vercel environment variables and redeploy.] ` +
+            haloFallback(text, playerCtx)
+        } else if (errMsg.includes('429') || errMsg.includes('quota')) {
+          // Rate limited — reduce prompt size or upgrade billing
+          console.error('[HaloAI] ⚠️ Gemini quota hit — prompt may be too large or requests too frequent.')
+          fallbackText =
+            haloFallback(text, playerCtx) +
+            ' (Tip for dev: Gemini quota hit — check your API quota in Google AI Studio.)'
+        } else if (errMsg.includes('Empty Gemini response')) {
+          // Safety filter or malformed response — try rephrasing
+          console.error('[HaloAI] ⚠️ Gemini returned an empty response (safety filter or malformed JSON).')
+          fallbackText = haloFallback(text, playerCtx)
+        } else {
+          console.error('[HaloAI] ⚠️ Unexpected error — check Network tab for details.')
+          fallbackText = haloFallback(text, playerCtx)
+        }
+
         const haloMessage: HaloMessage = {
           id: makeId(),
           role: 'halo',
