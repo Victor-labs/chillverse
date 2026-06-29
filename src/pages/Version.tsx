@@ -5,9 +5,7 @@ import { ArrowLeft, X, Lock, CheckCircle2 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 import { useWallet } from '../hooks/useWallet'
 import { supabase } from '../lib/supabase'
-
-
-// ─── Version data ────────────────────────────────────────────────────────────
+import PageOnboarding from '../components/PageOnboarding'
 
 interface VersionInfo {
   num: string
@@ -452,6 +450,7 @@ export default function Version() {
 
   return (
     <>
+      <PageOnboarding pageKey="version" />
       <style>{`
         @keyframes popIn { from { opacity:0; transform: scale(0.9) } to { opacity:1; transform: scale(1) } }
         @keyframes feedIn { from { opacity:0; transform: translateY(16px) } to { opacity:1; transform: translateY(0) } }

@@ -11,6 +11,7 @@ import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
 import { updateMissionProgress } from '../lib/weeklyMissions'
 import { useAuth } from '../hooks/useAuth'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ─── Types ──────────────────────────────────────────────────
 interface RoomMember {
@@ -628,6 +629,7 @@ export default function Chat() {
 
   return (
     <div style={{ display:'flex', height:'calc(100vh - 60px)', overflow:'hidden', background:'var(--bg)', position:'relative' }}>
+      <PageOnboarding pageKey="chat" />
 
       {/* ── Contact list + player search ── */}
       {showList && (

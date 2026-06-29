@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useWallet } from '../hooks/useWallet'
 import { useMallItems } from '../hooks/useMallItems'
 import type { MallItem, MallRarity } from '../types'
+import PageOnboarding from '../components/PageOnboarding'
 
 const SEND_IMG   = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/e0cda9106501f1ad6c3c37ff5c1cbe98.jpg'
 const RECV_IMG   = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/0eda2173d4487db6bf6c7868e62a00a3.webp.jpg'
@@ -414,6 +415,7 @@ export default function GiftPage() {
 
   return (
     <>
+      <PageOnboarding pageKey="gift" />
       <div style={{ maxWidth:800, margin:'0 auto', paddingBottom:48 }}>
 
         {/* Topbar */}

@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth'
 import { getAllAchievements, getPlayerAchievements } from '../lib/achievements'
 import type { Achievement, PlayerAchievement } from '../lib/achievements'
 import type React from 'react'
+import PageOnboarding from '../components/PageOnboarding'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LucideIcon = React.ComponentType<any>
@@ -109,6 +110,7 @@ export default function Achievements() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <PageOnboarding pageKey="achievements" />
 
       {/* Header */}
       <div style={{ padding: '20px 20px 0' }}>

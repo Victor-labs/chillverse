@@ -12,6 +12,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
+import PageOnboarding from '../components/PageOnboarding'
 
 const PRESENCE_OPTIONS = [
   { id: 'online',    label: 'Online',    desc: 'Visible to everyone, shown as active.',     color: '#3ecf8e', Icon: Circle },
@@ -206,6 +207,7 @@ export default function Settings() {
 
   return (
     <>
+      <PageOnboarding pageKey="settings" />
       <style>{`
         @keyframes popIn { from { opacity:0; transform: scale(0.92) } to { opacity:1; transform: scale(1) } }
         @keyframes feedIn { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform: translateY(0) } }

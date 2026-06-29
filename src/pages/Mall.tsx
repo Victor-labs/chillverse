@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useMallItems } from '../hooks/useMallItems'
 import { useWallet } from '../hooks/useWallet'
 import type { MallItem, MallRarity } from '../types'
+import PageOnboarding from '../components/PageOnboarding'
 
 
 /* ══════════════════════════════════════════════════════
@@ -554,6 +555,7 @@ export default function Mall() {
 
   return (
     <>
+      <PageOnboarding pageKey="mall" />
       <style>{`
         @keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }
         @keyframes feedIn { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform: translateY(0) } }

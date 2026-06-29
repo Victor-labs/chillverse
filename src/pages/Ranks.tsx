@@ -10,6 +10,7 @@ import {
   getRankProgress, fmtXP,
   type RankTier,
 } from '../lib/ranks'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ─── Tab type ────────────────────────────────────────
 type Tab = 'my-rank' | 'all-ranks'
@@ -265,6 +266,7 @@ export default function Ranks() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', paddingBottom: 48 }}>
+      <PageOnboarding pageKey="ranks" />
       <style>{`
         @keyframes rankGlow { 0%,100%{opacity:.7} 50%{opacity:1} }
         @keyframes feedIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }

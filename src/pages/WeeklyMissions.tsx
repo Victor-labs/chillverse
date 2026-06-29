@@ -4,6 +4,7 @@ import { Clock, Sparkles, Star } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { useWeeklyMissions } from '../hooks/useWeeklyMissions'
 import type { MissionWithProgress } from '../lib/weeklyMissions'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ── CountdownChip ─────────────────────────────────────────────────────────────
 
@@ -389,6 +390,7 @@ export default function WeeklyMissions() {
 
   return (
     <div style={{ padding: '20px 14px 48px', maxWidth: 680, margin: '0 auto' }}>
+      <PageOnboarding pageKey="weekly_missions" />
 
       {/* ── Header ── */}
       <div className="su" style={{

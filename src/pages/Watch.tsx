@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Film, Baby, Users, Clock, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Category = 'kids' | 'adult'
@@ -528,16 +529,24 @@ export default function Watch() {
   if (screen === 'refresh') return <RefreshScreen onDone={handleRefreshDone} />
   if (screen === 'player' && category) {
     return (
-      <PlayerScreen
-        key={refreshKey}
-        category={category}
-        sources={sourcesLoaded ? sourcesByCategory[category] : []}
-        onBack={() => setScreen('category')}
-        secsLeft={getSecondsUntilClose()}
-      />
+      <>
+        <PageOnboarding pageKey="watch" />
+        <PlayerScreen
+          key={refreshKey}
+          category={category}
+          sources={sourcesLoaded ? sourcesByCategory[category] : []}
+          onBack={() => setScreen('category')}
+          secsLeft={getSecondsUntilClose()}
+        />
+      </>
     )
   }
-  return <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} />
+  return (
+    <>
+      <PageOnboarding pageKey="watch" />
+      <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} />
+    </>
+  )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────

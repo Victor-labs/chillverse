@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { getAllArtifacts, getPlayerArtifacts } from '../lib/artifacts'
 import type { Artifact, PlayerArtifact } from '../lib/artifacts'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ── Tier config ───────────────────────────────────────────────
 const TIER_META: Record<string, { color: string; glow: string; label: string; bg: string }> = {
@@ -437,6 +438,7 @@ export default function Artifacts() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 100 }}>
+      <PageOnboarding pageKey="artifacts" />
 
       {/* Header */}
       <div style={{ padding: '20px 20px 0' }}>

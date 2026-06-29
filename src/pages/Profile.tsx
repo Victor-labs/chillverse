@@ -15,6 +15,7 @@ import { getUserRankTier, type RankTier } from '../lib/ranks'
 import { GAMES, getGameMeta } from '../lib/games'
 import { getAllPlayerRanks } from '../lib/gameSession'
 import EditProfileModal, { type EditProfileSavedFields } from '../components/EditProfileModal'
+import PageOnboarding from '../components/PageOnboarding'
 
 /** Use the real rank system (lib/ranks.ts) everywhere on this page —
  *  this used to be a hardcoded 7-tier placeholder ("Newcomer" etc).
@@ -722,6 +723,7 @@ export default function Profile() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 60 }}>
+      <PageOnboarding pageKey="profile" />
 
       {/* ── Banner ── */}
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>

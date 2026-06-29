@@ -13,6 +13,7 @@ import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { getGlobalSessionInfo } from '../lib/gameSession'
+import PageOnboarding from '../components/PageOnboarding'
 
 interface QuickAction {
   label: string
@@ -207,6 +208,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col max-w-[800px] mx-auto">
+      <PageOnboarding pageKey="dashboard" />
 
       {/* ── Welcome card ── */}
       <section className="su d1">

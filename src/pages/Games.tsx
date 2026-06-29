@@ -17,6 +17,7 @@ import { updateMissionProgress } from '../lib/weeklyMissions'
 import type { GameRank } from './games/types'
 import { getRankConfig, RankProgressBar } from './games/GameShell'
 import type { GameEndPayload } from './games/types'
+import PageOnboarding from '../components/PageOnboarding'
 
 // ── Game imports ─────────────────────────────────────────────
 import ArrowDash from './games/ArrowDash'
@@ -258,6 +259,7 @@ export default function Games() {
 
   return (
     <div>
+      <PageOnboarding pageKey="games" />
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
         <button type="button" onClick={() => navigate('/dashboard')} style={{ width:34, height:34, borderRadius:10, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'2px 2px 6px var(--neu-dark)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
           <ArrowLeft size={15} />
