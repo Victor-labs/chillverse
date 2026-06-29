@@ -1,10 +1,10 @@
 // src/hooks/useHaloAI.ts
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HaloMessage, HaloPlayerContext } from '../types/halo'
 import { buildHaloSystemPrompt, getTopicSections } from '../lib/haloSystemPrompt'
 import { haloFallback } from '../lib/haloFallback'
 
-interface UseHaloAIState {
+export interface UseHaloAIState {
   messages: HaloMessage[]
   isLoading: boolean
   sendMessage: (text: string) => Promise<void>
@@ -30,7 +30,16 @@ interface GeminiResponse {
   candidates?: GeminiCandidate[]
 }
 
+/**
+ * GeminiRequestBody now includes systemInstruction — the correct way to pass
+ * a system prompt to Gemini 2.x. This is a top-level field, NOT a contents entry.
+ * Using it this way means Gemini processes it as actual instructions rather than
+ * as a fake user message, which was causing unpredictable behavior previously.
+ */
 interface GeminiRequestBody {
+  systemInstruction: {
+    parts: GeminiPart[]
+  }
   contents: GeminiContent[]
   generationConfig: {
     temperature: number
@@ -47,23 +56,41 @@ function makeId(): string {
 }
 
 /**
- * Core hook managing Halo AI message history, Gemini API calls, loading
- * state, and graceful fallback routing. Consumed by HaloAIPage.
+ * Core hook managing Halo AI message history, Gemini API calls, loading state,
+ * and graceful fallback routing.
  *
- * ARCHITECTURE: Uses a two-part prompt strategy to stay well under free-tier
- * token quotas:
- *   1. buildHaloSystemPrompt → slim persona + player context (~500 tokens)
- *   2. getTopicSections → targeted knowledge for THIS specific question (~200-800 tokens)
+ * FIXES APPLIED IN THIS VERSION:
  *
- * Total per-request tokens: ~1,400–1,800 vs the previous ~6,000+ token dump.
+ * FIX 1 — Model: gemini-1.5-flash → gemini-2.0-flash
+ *   The 1.5 endpoint returns 404 on many free-tier projects due to Google's model
+ *   deprecation cycle. 2.0-flash is the stable current free-tier model.
  *
- * ERROR CLASSIFICATION: Each error type is classified and logged with a distinct
- * message so the dev can immediately identify the failure mode in DevTools Console
- * without needing to inspect the Network tab.
+ * FIX 2 — systemInstruction (real system prompt, not fake conversation turn)
+ *   Previous approach injected a fake user/model exchange as the first contents entry.
+ *   Gemini 2.x supports systemInstruction as a top-level field — this is processed
+ *   as actual instructions, not conversation history. Removed the fake "Ready. I'm Halo"
+ *   model prefill entirely (it confused the model's response generation).
+ *
+ * FIX 3 — messagesRef for stale closure fix
+ *   useCallback with [messages] in deps caused the closure to capture a stale snapshot
+ *   of messages state on every call — meaning priorContents was always missing the most
+ *   recent turn. A ref that stays in sync with state fixes this without re-creating
+ *   sendMessage on every message, which caused its own re-render cascade.
+ *
+ * FIX 4 — Full error object logged (not just message string)
+ *   console.error('[HaloAI] FULL ERROR', err) instead of String(err) — surfaces
+ *   HTTP status codes, stack traces, and Gemini's actual error body in DevTools.
  */
 export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
   const [messages, setMessages] = useState<HaloMessage[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading]  = useState(false)
+
+  // FIX 3: Keep a ref in sync so sendMessage always reads current history
+  // without needing messages in its dependency array (which caused stale closures).
+  const messagesRef = useRef<HaloMessage[]>(messages)
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -83,36 +110,30 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           throw new Error('Missing VITE_GEMINI_API_KEY')
         }
 
-        // SLIM persona + player context (~500 tokens)
-        const slimSystemPrompt = buildHaloSystemPrompt(playerCtx)
+        // FIX 2: Build the real systemInstruction from slim persona + player context
+        // and targeted topic knowledge — two separate concerns composed cleanly here.
+        const slimPersona    = buildHaloSystemPrompt(playerCtx)
+        const topicKnowledge = getTopicSections(text)
 
-        // Targeted knowledge sections for THIS question (~200-800 tokens)
-        const topicSections = getTopicSections(text)
+        const systemText =
+          `${slimPersona}\n\n` +
+          `RELEVANT KNOWLEDGE FOR THIS QUESTION:\n${topicKnowledge}\n\n` +
+          `Keep replies to 1-4 sentences unless asked to elaborate. ` +
+          `Use gaming slang naturally. Never break character.`
 
-        // Map prior chat history into Gemini's content format
-        const priorContents: GeminiContent[] = messages.map(msg => ({
+        // FIX 3: Use the ref — always current, never stale
+        const priorContents: GeminiContent[] = messagesRef.current.map(msg => ({
           role: msg.role === 'halo' ? 'model' : 'user',
           parts: [{ text: msg.content }],
         }))
 
+        // FIX 2: systemInstruction is top-level, NOT a contents entry.
+        // FIX 2: No fake user/model exchange prefill — contents is clean history + current turn.
         const body: GeminiRequestBody = {
+          systemInstruction: {
+            parts: [{ text: systemText }],
+          },
           contents: [
-            {
-              role: 'user',
-              parts: [{
-                text:
-                  `PERSONA + PLAYER CONTEXT:\n${slimSystemPrompt}\n\n` +
-                  `RELEVANT KNOWLEDGE FOR THIS QUESTION:\n${topicSections}\n\n` +
-                  `Rules: stay in character as Halo. Use the player context above. ` +
-                  `Keep replies to 1-4 sentences unless asked to elaborate. Acknowledge ready.`,
-              }],
-            },
-            {
-              role: 'model',
-              parts: [{
-                text: `Ready. I'm Halo — I have ${playerCtx.displayName}'s live stats and the relevant Chillverse knowledge for this question.`,
-              }],
-            },
             ...priorContents,
             { role: 'user', parts: [{ text }] },
           ],
@@ -123,7 +144,10 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           },
         }
 
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+        // FIX 1: gemini-1.5-flash → gemini-2.0-flash (stable free-tier endpoint)
+        const endpoint =
+          `https://generativelanguage.googleapis.com/v1beta/models/` +
+          `gemini-2.0-flash:generateContent?key=${apiKey}`
 
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -151,35 +175,43 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, haloMessage])
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        console.error('[HaloAI] Error:', errMsg)
 
+      } catch (err: unknown) {
+        // FIX 4: Log the full object so DevTools shows status codes + stack traces
+        console.error('[HaloAI] FULL ERROR', err)
+
+        const errMsg = err instanceof Error ? err.message : String(err)
         let fallbackText: string
 
         if (errMsg.includes('VITE_GEMINI_API_KEY')) {
-          // Key missing in environment — most common production issue
           console.error(
-            '[HaloAI] ⚠️ VITE_GEMINI_API_KEY is not set. ' +
-            'Add it to your Vercel Environment Variables (Settings → Environment Variables) ' +
-            'then redeploy. Locally: add it to .env.local and restart the dev server.'
+            '[HaloAI] ⚠️  VITE_GEMINI_API_KEY is not configured.\n' +
+            '  LOCAL: add VITE_GEMINI_API_KEY=<your_key> to .env.local and restart dev server.\n' +
+            '  VERCEL: Settings → Environment Variables → add for Production → Redeploy.'
           )
           fallbackText =
-            `[Dev notice: VITE_GEMINI_API_KEY is not set in this environment. ` +
-            `Add it to your Vercel environment variables and redeploy.] ` +
+            '[Dev: VITE_GEMINI_API_KEY missing — set it in Vercel env vars and redeploy.] ' +
             haloFallback(text, playerCtx)
+
+        } else if (errMsg.includes('404')) {
+          console.error(
+            '[HaloAI] ⚠️  404 — model endpoint not found. ' +
+            'The gemini-2.0-flash model may require a different API version prefix. ' +
+            'Check https://ai.google.dev/gemini-api/docs/models for current model names.'
+          )
+          fallbackText = haloFallback(text, playerCtx)
+
         } else if (errMsg.includes('429') || errMsg.includes('quota')) {
-          // Rate limited — reduce prompt size or upgrade billing
-          console.error('[HaloAI] ⚠️ Gemini quota hit — prompt may be too large or requests too frequent.')
+          console.error('[HaloAI] ⚠️  Gemini quota hit. Check quota at https://ai.google.dev/gemini-api/docs/quota')
           fallbackText =
             haloFallback(text, playerCtx) +
-            ' (Tip for dev: Gemini quota hit — check your API quota in Google AI Studio.)'
+            ' (Dev: Gemini rate limit hit — check your quota in Google AI Studio.)'
+
         } else if (errMsg.includes('Empty Gemini response')) {
-          // Safety filter or malformed response — try rephrasing
-          console.error('[HaloAI] ⚠️ Gemini returned an empty response (safety filter or malformed JSON).')
+          console.error('[HaloAI] ⚠️  Empty response — likely a safety filter block. Try rephrasing the prompt.')
           fallbackText = haloFallback(text, playerCtx)
+
         } else {
-          console.error('[HaloAI] ⚠️ Unexpected error — check Network tab for details.')
           fallbackText = haloFallback(text, playerCtx)
         }
 
@@ -190,14 +222,19 @@ export function useHaloAI(playerCtx: HaloPlayerContext): UseHaloAIState {
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, haloMessage])
+
       } finally {
         setIsLoading(false)
       }
     },
-    [messages, playerCtx]
+    // FIX 3: playerCtx only — messages read from ref, not closure
+    [playerCtx]
   )
 
-  const clearMessages = useCallback(() => setMessages([]), [])
+  const clearMessages = useCallback(() => {
+    setMessages([])
+    messagesRef.current = []
+  }, [])
 
   return { messages, isLoading, sendMessage, clearMessages }
 }
