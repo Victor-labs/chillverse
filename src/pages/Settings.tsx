@@ -5,7 +5,7 @@ import {
   ArrowLeft, ChevronRight, Trash2,
   Calendar, Tag, Lock, Eye,
   Circle, Moon, EyeOff, Check, Mail, Key,
-  AlertTriangle, Edit2, X, LogOut,
+  AlertTriangle, Edit2, X, LogOut, Layers,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { useProfile } from '../hooks/useProfile'
@@ -292,6 +292,13 @@ export default function Settings() {
         <Row icon={<Calendar size={15} />} iconBg="var(--surface2)" iconColor="var(--text-dim)"
           label="Date joined"
           value={profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+        />
+
+        <SectionTitle>Chillverse</SectionTitle>
+        <Row icon={<Layers size={15} />} iconBg="rgba(155,109,255,0.12)" iconColor="#9b6dff"
+          label="Version"
+          value="v1.0"
+          onClick={(e) => { ripple(e as any); navigate('/version') }}
         />
 
         <SectionTitle>Danger zone</SectionTitle>
