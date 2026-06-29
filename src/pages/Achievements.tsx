@@ -6,6 +6,9 @@ import {
   Flag, Plus, ArrowRight, Grid, Search, Brain, Award, Settings,
   CheckCircle, Rocket, Eye, Gem, MessageCircle, UserPlus, Heart,
   Mail, Sprout, User, Home, BarChart2,
+  ShoppingBag, Tag, Clapperboard, Gift, Zap as FlashZap,
+  Tv2, UserCheck, Repeat2, Package, Swords, Film,
+  ShoppingCart, Wifi, Sparkle, Image,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -29,6 +32,12 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'home': Home, 'message-circle': MessageCircle, 'user-plus': UserPlus,
   'users': Users, 'heart': Heart, 'mail': Mail, 'sprout': Sprout,
   'user': User, 'bar-chart': BarChart2,
+  // ── New achievement icons ──
+  'shopping-bag': ShoppingBag, 'tag': Tag, 'clapperboard': Clapperboard,
+  'gift': Gift, 'tv-2': Tv2, 'user-check': UserCheck, 'repeat-2': Repeat2,
+  'package': Package, 'swords': Swords, 'film': Film, 'hand-coins': Gift,
+  'shopping-cart': ShoppingCart, 'wifi': Wifi, 'sparkle': Sparkle,
+  'image': Image, 'flash-zap': FlashZap,
 }
 
 function AchIcon({ iconKey, size = 22, color }: { iconKey: string; size?: number; color?: string }) {
@@ -37,12 +46,15 @@ function AchIcon({ iconKey, size = 22, color }: { iconKey: string; size?: number
 }
 
 const CATEGORY_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
-  xp:      { label: 'XP & Levels', icon: Zap,      color: '#f5c542' },
-  streak:  { label: 'Streaks',     icon: Flame,     color: '#ff6b00' },
-  games:   { label: 'Games',       icon: Gamepad2,  color: '#4f8ef7' },
-  rank:    { label: 'Ranks',       icon: Shield,    color: '#9b6dff' },
-  social:  { label: 'Social',      icon: Users,     color: '#3ecf8e' },
-  special: { label: 'Special',     icon: Sparkles,  color: '#ff4d8b' },
+  xp:      { label: 'XP & Levels', icon: Zap,         color: '#f5c542' },
+  streak:  { label: 'Streaks',     icon: Flame,        color: '#ff6b00' },
+  games:   { label: 'Games',       icon: Gamepad2,     color: '#4f8ef7' },
+  rank:    { label: 'Ranks',       icon: Shield,       color: '#9b6dff' },
+  social:  { label: 'Social',      icon: Users,        color: '#3ecf8e' },
+  special: { label: 'Special',     icon: Sparkles,     color: '#ff4d8b' },
+  mall:    { label: 'Mall',        icon: ShoppingBag,  color: '#f97316' },
+  premium: { label: 'Premium',     icon: Gem,          color: '#06b6d4' },
+  cinema:  { label: 'Cinema',      icon: Film,         color: '#a855f7' },
 }
 
 const RARITY_COLOR: Record<string, string> = {
@@ -199,6 +211,16 @@ export default function Achievements() {
                   {catMeta && (
                     <span style={{ fontSize: 10, color: catMeta.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                       <catMeta.icon size={9} /> {catMeta.label}
+                    </span>
+                  )}
+                  {ach.reward_type === 'profile_pic' && (
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 6, background: 'rgba(168,85,247,0.18)', color: '#a855f7', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Image size={8} /> PROF PIC
+                    </span>
+                  )}
+                  {ach.reward_type === 'banner' && (
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 6, background: 'rgba(6,182,212,0.18)', color: '#06b6d4', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Sparkle size={8} /> BANNER
                     </span>
                   )}
                   {isUnlocked && unlockedAt && (
