@@ -73,7 +73,7 @@ function cumulativeCostUpTo(targetIdx: number): number {
   return total
 }
 
- ──────────────────────────────────────────────────────────
+// ─── PRO-GATE MODAL ──────────────────────────────────────────────────────────
 
 function ProGateModal({ onClose }: { onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
