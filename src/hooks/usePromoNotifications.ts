@@ -50,11 +50,12 @@ export function usePromoNotifications(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return
+    const uid: string = userId
     let cancelled = false
 
     async function checkAll() {
       // 1. No game played today
-      const playedToday = await hasPlayedToday(userId)
+      const playedToday = await hasPlayedToday(uid)
       if (!cancelled && !playedToday) {
         setActive({
           id: 'no_game_today',
@@ -69,9 +70,9 @@ export function usePromoNotifications(userId: string | null) {
       }
 
       // 2. No premium subscription — show once every 3 days
-      const premium = await hasPremium(userId)
+      const premium = await hasPremium(uid)
       if (!cancelled && !premium) {
-        const last = getLastSeen(userId, 'no_premium')
+        const last = getLastSeen(uid, 'no_premium')
         if (daysSince(last) >= 3) {
           setActive({
             id: 'no_premium',
@@ -87,9 +88,9 @@ export function usePromoNotifications(userId: string | null) {
       }
 
       // 3. Multiplayer not unlocked — show once every 5 days
-      const multiplayer = await hasMultiplayerUnlocked(userId)
+      const multiplayer = await hasMultiplayerUnlocked(uid)
       if (!cancelled && !multiplayer) {
-        const last = getLastSeen(userId, 'no_multiplayer')
+        const last = getLastSeen(uid, 'no_multiplayer')
         if (daysSince(last) >= 5) {
           setActive({
             id: 'no_multiplayer',
