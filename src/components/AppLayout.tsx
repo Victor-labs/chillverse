@@ -10,8 +10,6 @@ import PromoOverlay from './PromoOverlay'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
-import { getUserRankTier } from '../lib/ranks'
-import { getGlobalSessionInfo } from '../lib/gameSession'
 import { useChallengeListener } from '../hooks/useChallengeListener'
 import { usePromoNotifications } from '../hooks/usePromoNotifications'
 import type { IncomingChallenge } from '../hooks/useChallengeListener'
@@ -135,8 +133,6 @@ export default function AppLayout() {
   }, [user])
 
   const xp = profile?.xp ?? 0
-  const _rankTier = getUserRankTier(xp)
-  const _sessionInfo = user ? getGlobalSessionInfo(user.id) : { count: 0 }
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1279px)')
@@ -232,4 +228,5 @@ export default function AppLayout() {
         </main>
       </div>
   )
-}
+    }
+          
