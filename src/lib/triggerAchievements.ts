@@ -207,7 +207,43 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    // ── 15. Fire the check ──
+    // ── 15. UNO sessions (wins + fastest win) ──
+    // UNO doesn't set game_sessions.result (always 'completed'), so we read
+    // the win/loss flag out of the metadata blob saved by Uno.tsx's finishGame().
+    const { data: unoSessions } = await supabase
+      .from('game_sessions')
+      .select('duration_sec, metadata')
+      .eq('user_id', userId)
+      .eq('game', 'uno')
+
+    const unoWins = (unoSessions ?? []).filter(
+      s => (s.metadata as { Result?: string } | null)?.Result === 'Win'
+    )
+    const unoMatchesWon = unoWins.length
+    const unoFastestWinSec = unoWins.reduce(
+      (min, s) => Math.min(min, s.duration_sec ?? Infinity), Infinity
+    )
+
+    // ── 16. Pattern King sessions (fastest clear) ──
+    // Pattern King stores progress as "x/y" under metadata['Patterns Found'];
+    // a clear/"win" is when matched === required and required > 0.
+    const { data: pkSessions } = await supabase
+      .from('game_sessions')
+      .select('duration_sec, metadata')
+      .eq('user_id', userId)
+      .eq('game', 'pattern_king')
+
+    const pkWins = (pkSessions ?? []).filter(s => {
+      const raw = (s.metadata as Record<string, unknown> | null)?.['Patterns Found']
+      if (typeof raw !== 'string') return false
+      const [matched, required] = raw.split('/').map(Number)
+      return Number.isFinite(matched) && Number.isFinite(required) && required > 0 && matched === required
+    })
+    const patternKingFastestWinSec = pkWins.reduce(
+      (min, s) => Math.min(min, s.duration_sec ?? Infinity), Infinity
+    )
+
+    // ── 17. Fire the check ──
     await checkAndUnlockAchievements({
       userId,
       xp,
@@ -240,6 +276,9 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
       moviesWatched: moviesWatchedCount ?? 0,
       giftsGiven: giftsGivenCount ?? 0,
       flashSalesUsed: flashSalesUsedCount ?? 0,
+      unoMatchesWon,
+      unoFastestWinSec,
+      patternKingFastestWinSec,
     })
   } catch (err) {
     // Non-critical — never let achievement errors bubble up and break the app

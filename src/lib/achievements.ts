@@ -97,6 +97,10 @@ export interface AchievementCheckPayload {
   moviesWatched: number          // movies watched count
   giftsGiven: number             // gifts sent to other users
   flashSalesUsed: number         // flash sale purchases made
+  // ── UNO / Pattern King ──
+  unoMatchesWon: number          // total UNO wins
+  unoFastestWinSec: number       // fastest UNO win, in seconds (Infinity if none)
+  patternKingFastestWinSec: number // fastest Pattern King clear, in seconds (Infinity if none)
 }
 
 export async function checkAndUnlockAchievements(payload: AchievementCheckPayload) {
@@ -147,6 +151,7 @@ export async function checkAndUnlockAchievements(payload: AchievementCheckPayloa
     arrow_dash: 'play_arrow_dash', pattern_memory: 'play_pattern',
     two_truths: 'play_two_truths', tac_zone: 'play_tac_zone',
     liars_grid: 'play_liars_grid',
+    uno: 'uno_first_draw', pattern_king: 'pk_memory_rookie',
   }
   for (const [game, achId] of Object.entries(GAME_MAP)) {
     if (payload.gamesPlayed.has(game)) await tryUnlock(achId)
@@ -224,6 +229,16 @@ export async function checkAndUnlockAchievements(payload: AchievementCheckPayloa
 
   // ── Shop / Sales ──
   if (payload.flashSalesUsed >= 5)    await tryUnlock('smart_sim')
+
+  // ── UNO ──
+  if (payload.unoMatchesWon >= 1)              await tryUnlock('uno_beginners_luck')
+  if (payload.unoFastestWinSec <= 120)         await tryUnlock('uno_speed_demon')
+  if (payload.unoMatchesWon >= 5)              await tryUnlock('uno_fire')
+  if (payload.unoMatchesWon >= 30)             await tryUnlock('uno_master')
+
+  // ── Pattern King ──
+  if (payload.patternKingFastestWinSec <= 30)  await tryUnlock('pk_quick_thinker')
+  if (payload.gameRanks['pattern_king'] === 'master') await tryUnlock('pk_memory_genius')
 }
 
 // ── Notification helpers ──────────────────────────────────────
