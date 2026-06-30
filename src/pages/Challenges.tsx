@@ -407,7 +407,7 @@ function GamesTab({ myId, onRoomCreated }: GamesTabProps) {
       const teamCode = Math.floor(10000 + Math.random() * 90000).toString()
       const isPrivate = visibility === 'private'
 
-      // Build insert payload — omit team_code if column doesn't exist yet
+      // Build insert payload
       const payload: Record<string, unknown> = {
         game_id: selected.id,
         room_name: `${selected.label} Room`,
@@ -418,7 +418,7 @@ function GamesTab({ myId, onRoomCreated }: GamesTabProps) {
         max_player_count: selected.maxPlayers,
         min_player_count: selected.minPlayers,
         current_player_count: 0,
-        team_code: teamCode,
+        short_code: teamCode,
       }
 
       const { data: room, error } = await supabase
@@ -513,7 +513,7 @@ function GamesTab({ myId, onRoomCreated }: GamesTabProps) {
 // ═══════════════════════════════════════════════════════════════════
 // Rooms Tab — browse public rooms + join by team code
 // ═══════════════════════════════════════════════════════════════════
-interface RoomRow { id: string; game_id: string; room_name: string; host_id: string; is_private: boolean; status: string; current_player_count: number; max_player_count: number; min_player_count: number; team_code: string; created_at: string }
+interface RoomRow { id: string; game_id: string; room_name: string; host_id: string; is_private: boolean; status: string; current_player_count: number; max_player_count: number; min_player_count: number; short_code: string; created_at: string }
 
 interface RoomsTabProps { myId: string; onJoinRoom: (roomId: string) => void }
 
@@ -545,7 +545,7 @@ function RoomsTab({ myId, onJoinRoom }: RoomsTabProps) {
     const code = codeInput.trim()
     if (code.length !== 5) { showToast('Enter a 5-digit code', <Search size={13} />); return }
     setSearching(true); setFoundRoom(null)
-    const { data } = await supabase.from('game_rooms').select('*').eq('team_code', code).eq('status', 'waiting').maybeSingle()
+    const { data } = await supabase.from('game_rooms').select('*').eq('short_code', code).eq('status', 'waiting').maybeSingle()
     setSearching(false)
     if (!data) { showToast('Room not found or already started', <XIcon size={13} />, 'rgba(255,77,77,0.5)'); return }
     setFoundRoom(data as RoomRow)
@@ -814,8 +814,8 @@ function Lobby({ roomId, myId, myName, onGameStart, onLeave }: LobbyProps) {
             <div style={{ position: 'absolute', right: 0, top: 42, zIndex: 200, background: 'var(--surface2)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: 14, padding: '12px 14px', minWidth: 180, boxShadow: '0 8px 28px rgba(0,0,0,0.5)', animation: 'achSlideIn 0.2s ease both' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Team Code</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent)', letterSpacing: 4 }}>{room.team_code}</span>
-                <button onClick={() => { navigator.clipboard.writeText(room.team_code); showToast('Code copied!', <Copy size={13} />, 'rgba(62,207,142,0.5)') }} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent)', letterSpacing: 4 }}>{room.short_code}</span>
+                <button onClick={() => { navigator.clipboard.writeText(room.short_code); showToast('Code copied!', <Copy size={13} />, 'rgba(62,207,142,0.5)') }} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Copy size={13} />
                 </button>
               </div>
