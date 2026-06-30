@@ -23,6 +23,8 @@ const TYPE_COLOR: Record<string, string> = {
   message:          '#4f8ef7',
   level_up:         '#9b6dff',
   artifact:         '#9b6dff',
+  session_reset:    '#4f8ef7',
+  movies_open:      '#ff9a3c',
 }
 
 export function useNotificationToast() {
