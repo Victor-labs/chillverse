@@ -30,6 +30,7 @@ import SpeedMath from './games/SpeedMath'
 import LiarsGrid from './games/LiarsGrid'
 import Hangman from './games/Hangman'
 import CloseCall from './games/CloseCall'
+import PatternKing from './games/PatternKing'
 
 // ─── Constants ───────────────────────────────────────────────
 const MAX_PLAYS    = 7
@@ -262,6 +263,7 @@ export default function Games() {
   if (activeGame === 'liars-grid')     return <LiarsGrid         {...gameProps} />
   if (activeGame === 'hangman')        return <Hangman           {...gameProps} />
   if (activeGame === 'close-call')     return <CloseCall         {...gameProps} />
+  if (activeGame === 'pattern-king')   return <PatternKing       {...gameProps} />
 
   return (
     <div>
