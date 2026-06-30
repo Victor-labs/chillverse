@@ -247,11 +247,15 @@ export default function Games() {
   }
 
   const globalLimitReached = globalCount >= GLOBAL_LIMIT
+  const activeGameDef = activeGame ? GAMES.find(g => g.id === activeGame) : null
+  const sessionsLeft = Math.max(0, GLOBAL_LIMIT - globalCount)
 
   const gameProps = {
     rank: (activeGame ? (ranks[activeGame] ?? 'beginner') : 'beginner') as GameRank,
     onEnd: handleResult,
     onBack: () => setActiveGame(null),
+    sessionsLeft,
+    sessionCost: activeGameDef?.sessionCost ?? 1,
   }
 
   if (activeGame === 'arrow-dash')     return <ArrowDash         {...gameProps} />
