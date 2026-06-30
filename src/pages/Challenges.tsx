@@ -669,8 +669,8 @@ function Lobby({ roomId, myId, myName, onGameStart, onLeave }: LobbyProps) {
     if (!data) return
     const ids = data.map((r: { player_id: string }) => r.player_id)
     const { data: profiles } = await supabase.from('profiles').select('id,username,display_name,avatar').in('id', ids)
-    const profileMap: Record<string, typeof profiles[0]> = {}
-    profiles?.forEach(p => { profileMap[p.id] = p })
+    const profileMap: Record<string, { id: string; username: string; display_name: string | null; avatar: string | null }> = {}
+    ;(profiles ?? []).forEach((p: { id: string; username: string; display_name: string | null; avatar: string | null }) => { profileMap[p.id] = p })
     setPlayers(data.map((r: { player_id: string; is_host: boolean }, i: number) => ({ ...r, ...profileMap[r.player_id], position: i + 1 })))
   }
 
@@ -680,7 +680,8 @@ function Lobby({ roomId, myId, myName, onGameStart, onLeave }: LobbyProps) {
     if (!data) return
     const ids = [...new Set(data.map((m: { player_id: string }) => m.player_id))]
     const { data: profiles } = await supabase.from('profiles').select('id,username,avatar').in('id', ids)
-    const pm: Record<string, typeof profiles[0]> = {}; profiles?.forEach(p => { pm[p.id] = p })
+    const pm: Record<string, { id: string; username: string; avatar: string | null }> = {}
+    ;(profiles ?? []).forEach((p: { id: string; username: string; avatar: string | null }) => { pm[p.id] = p })
     setMessages(data.map((m: ChatMsg) => ({ ...m, username: pm[m.player_id]?.username, avatar: pm[m.player_id]?.avatar })))
   }
 
@@ -743,7 +744,7 @@ function Lobby({ roomId, myId, myName, onGameStart, onLeave }: LobbyProps) {
 
   async function sendInvite(targetId: string) {
     setInviteSending(targetId)
-    await supabase.from('room_invites').insert({ room_id: roomId, sender_id: myId, receiver_id: targetId }).catch(() => {})
+    await supabase.from('room_invites').insert({ room_id: roomId, sender_id: myId, receiver_id: targetId }).then(() => {}, () => {})
     // Notify via notifications table
     await supabase.from('notifications').insert({ user_id: targetId, type: 'room_invite', title: '🎮 Room Invite', body: `${myName} invited you to join a game room!`, icon: 'swords', meta: { room_id: roomId } })
     showToast('Invite sent!', <Send size={13} />, 'rgba(62,207,142,0.5)')
