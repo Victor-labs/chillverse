@@ -115,15 +115,32 @@ export default function Dashboard() {
   const [onlineCount, setOnlineCount]      = useState<number | null>(null)
   const [activeSessions, setActiveSessions] = useState<number>(0)
   const [sessionsToday, setSessionsToday]   = useState(0)
+  const [onlinePlayers, setOnlinePlayers]   = useState<{ id: string; avatar: string | null; display_name: string | null; username: string | null }[]>([])
 
-  // Live: global online count (presence)
+  // Live: global online count (presence) + who's online
   useEffect(() => {
     const channel = supabase.channel('online-users', {
       config: { presence: { key: userId || 'anon' } },
     })
     channel
-      .on('presence', { event: 'sync' }, () => {
-        setOnlineCount(Object.keys(channel.presenceState()).length)
+      .on('presence', { event: 'sync' }, async () => {
+        const state = channel.presenceState() as Record<string, { user_id?: string }[]>
+        const ids = Array.from(new Set(
+          Object.values(state).flatMap(entries => entries.map(e => e.user_id).filter(Boolean) as string[])
+        ))
+        setOnlineCount(ids.length)
+
+        const otherIds = ids.filter(id => id !== userId).slice(0, 5)
+        if (otherIds.length === 0) { setOnlinePlayers([]); return }
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, avatar, display_name, username')
+          .in('id', otherIds)
+        if (data) {
+          // preserve presence order
+          const byId = new Map(data.map(p => [p.id, p]))
+          setOnlinePlayers(otherIds.map(id => byId.get(id)).filter(Boolean) as typeof onlinePlayers)
+        }
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -306,12 +323,18 @@ export default function Dashboard() {
                 ? `${activeSessions} sessions played today · ${onlineCount ?? '…'} players online`
                 : `${onlineCount ?? '…'} players online`}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              {MINI_AVATAR_COLORS.slice(0, 5).map((bg, i) => (
-                <div key={i} style={{ width: 26, height: 26, borderRadius: 8, background: bg, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)', marginLeft: i === 0 ? 0 : -6 }}>
-                  {String.fromCharCode(65 + i)}
-                </div>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', minHeight: onlinePlayers.length ? undefined : 0 }}>
+              {MINI_AVATAR_COLORS.slice(0, onlinePlayers.length).map((bg, i) => {
+                const p = onlinePlayers[i]
+                const label = (p?.display_name || p?.username || '?').charAt(0).toUpperCase()
+                return (
+                  <div key={p?.id ?? i} style={{ width: 26, height: 26, borderRadius: 8, background: bg, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)', marginLeft: i === 0 ? 0 : -6, overflow: 'hidden' }}>
+                    {p?.avatar && p.avatar.startsWith('http')
+                      ? <img src={p.avatar} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      : label}
+                  </div>
+                )
+              })}
               {onlineCount != null && onlineCount > 5 && (
                 <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--text-dim)', background: 'var(--surface2)', padding: '2px 6px', borderRadius: 6 }}>+{onlineCount - 5}</span>
               )}

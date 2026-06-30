@@ -707,11 +707,14 @@ export default function PlayerProfile() {
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Avatar</p>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: equippedAvatar ? `${rank.color}20` : 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Sparkles size={17} style={{ color: equippedAvatar ? rank.color : 'var(--text-muted)' }} />
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: equippedAvatar ? `${rank.color}20` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {equippedAvatar && equippedAvatar.startsWith('http')
+                ? <img src={equippedAvatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                : <Sparkles size={17} style={{ color: equippedAvatar ? rank.color : 'var(--text-muted)' }} />
+              }
             </div>
             <span style={{ fontSize: 11.5, fontWeight: 700, color: equippedAvatar ? 'var(--text)' : 'var(--text-muted)', textAlign: 'center' }}>
-              {equippedAvatar || 'No avatar equipped'}
+              {equippedAvatar ? (equippedAvatar.startsWith('http') ? 'Equipped' : equippedAvatar) : 'No avatar equipped'}
             </span>
           </div>
         </div>

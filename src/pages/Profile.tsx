@@ -950,10 +950,10 @@ export default function Profile() {
       </div>
 
       <div style={{ padding: '0 20px', marginBottom: 24, display: 'flex', gap: 12 }}>
-        {/* Equipped Avatar — image preview + name, not tappable */}
+        {/* Equipped Avatar — image preview + name, tap to change in Mall */}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Avatar</p>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          <button type="button" onClick={() => navigate('/mall')} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)', cursor: 'pointer' }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: equippedAvatar ? `${rank.color}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedAvatar ? `1px solid ${rank.color}33` : '1px solid rgba(255,255,255,0.06)' }}>
               {equippedAvatar && equippedAvatar.startsWith('http')
                 ? <img src={equippedAvatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -963,13 +963,13 @@ export default function Profile() {
             <span style={{ fontSize: 11, fontWeight: 700, color: equippedAvatar ? 'var(--text)' : 'var(--text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
               {equippedAvatar ? (equippedAvatar.startsWith('http') ? 'Equipped' : equippedAvatar) : 'No avatar equipped'}
             </span>
-          </div>
+          </button>
         </div>
 
-        {/* Equipped Artifact — image preview + name, not tappable */}
+        {/* Equipped Artifact — image preview + name, tap to change in Mall */}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Artifact</p>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          <button type="button" onClick={() => navigate('/mall')} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)', cursor: 'pointer' }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: equippedArtifact ? `${rank.color}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedArtifact ? `1px solid ${rank.color}33` : '1px solid rgba(255,255,255,0.06)' }}>
               {equippedArtifactImage && equippedArtifactImage.startsWith('http')
                 ? <img src={equippedArtifactImage} alt="artifact" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -979,7 +979,7 @@ export default function Profile() {
             <span style={{ fontSize: 11, fontWeight: 700, color: equippedArtifact ? 'var(--text)' : 'var(--text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
               {equippedArtifact || 'No artifact equipped'}
             </span>
-          </div>
+          </button>
         </div>
       </div>
 
