@@ -404,28 +404,57 @@ function GamesTab({ myId, onRoomCreated }: GamesTabProps) {
     if (!selected) return
     setCreating(true)
     try {
-      // Generate 5-digit team code
       const teamCode = Math.floor(10000 + Math.random() * 90000).toString()
       const isPrivate = visibility === 'private'
 
-      const { data: room, error } = await supabase.from('game_rooms').insert({
+      // Build insert payload — omit team_code if column doesn't exist yet
+      const payload: Record<string, unknown> = {
         game_id: selected.id,
         room_name: `${selected.label} Room`,
         host_id: myId,
         is_private: isPrivate,
-        password_hash: isPrivate && password ? password : null, // raw; real hashing via edge fn
+        password_hash: isPrivate && password ? password : null,
         status: 'waiting',
         max_player_count: selected.maxPlayers,
         min_player_count: selected.minPlayers,
+        current_player_count: 0,
         team_code: teamCode,
-      }).select('id').single()
+      }
 
-      if (error || !room) { showToast('Could not create room. Try again.', <XIcon size={13} />, 'rgba(255,77,77,0.5)'); setCreating(false); return }
+      const { data: room, error } = await supabase
+        .from('game_rooms')
+        .insert(payload)
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('[createRoom] error:', error.message, error.details, error.hint)
+        showToast(`Error: ${error.message}`, <XIcon size={13} />, 'rgba(255,77,77,0.5)')
+        setCreating(false)
+        return
+      }
+
+      if (!room) {
+        showToast('Could not create room. Try again.', <XIcon size={13} />, 'rgba(255,77,77,0.5)')
+        setCreating(false)
+        return
+      }
 
       // Add host as first player
-      await supabase.from('room_players').insert({ room_id: room.id, player_id: myId, is_host: true })
+      const { error: playerError } = await supabase
+        .from('room_players')
+        .insert({ room_id: room.id, player_id: myId, is_host: true })
+
+      if (playerError) {
+        console.error('[createRoom] room_players error:', playerError.message)
+        showToast(`Player join error: ${playerError.message}`, <XIcon size={13} />, 'rgba(255,77,77,0.5)')
+        setCreating(false)
+        return
+      }
+
       onRoomCreated(room.id)
-    } catch {
+    } catch (e) {
+      console.error('[createRoom] caught:', e)
       showToast('Something went wrong.', <XIcon size={13} />, 'rgba(255,77,77,0.5)')
     }
     setCreating(false)
