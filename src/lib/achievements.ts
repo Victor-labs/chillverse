@@ -298,6 +298,29 @@ export async function notifyProfileLike(likerId: string, profileId: string) {
   })
 }
 
+// Notify the recipient of a new DM — body is truncated to roughly half
+// the message length (min 20 chars) so the preview never shows the full text.
+export async function notifyMessage(senderId: string, recipientId: string, content: string) {
+  if (senderId === recipientId) return
+  const { data: sender } = await supabase
+    .from('profiles').select('display_name, username').eq('id', senderId).single()
+  if (!sender) return
+  const name = sender.display_name || sender.username
+
+  const trimmed = content.trim()
+  const halfLen = Math.max(20, Math.ceil(trimmed.length / 2))
+  const preview = trimmed.length > halfLen ? `${trimmed.slice(0, halfLen).trimEnd()}…` : trimmed
+
+  await supabase.rpc('insert_notification', {
+    p_user_id: recipientId,
+    p_type:    'message',
+    p_title:   `${name} sent you a message`,
+    p_body:    preview,
+    p_icon:    'message-circle',
+    p_meta:    { sender_id: senderId },
+  })
+}
+
 export async function notifyRankUp(userId: string, rankTitle: string) {
   await supabase.rpc('insert_notification', {
     p_user_id: userId,
