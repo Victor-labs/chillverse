@@ -65,7 +65,7 @@ function shuffleArr<T>(arr: T[]): T[] {
   return a
 }
 
-interface PKCard { id: number; pattern: PatternDef; flipped: boolean; matched: boolean }
+interface PKCard { id: number; pattern: PatternDef; flipped: boolean; matched: boolean; counted: boolean }
 
 function buildDeck(cfg: RankPKConfig): { cards: PKCard[]; required: PatternDef[]; need: Record<string, number> } {
   const totalCards = cfg.cols * cfg.rows
@@ -89,7 +89,7 @@ function buildDeck(cfg: RankPKConfig): { cards: PKCard[]; required: PatternDef[]
   while (deck.length < totalCards) deck.push(all[0])
   deck.splice(totalCards)
 
-  const cards: PKCard[] = shuffleArr(deck).map((p, i) => ({ id: i, pattern: p, flipped: true, matched: false }))
+  const cards: PKCard[] = shuffleArr(deck).map((p, i) => ({ id: i, pattern: p, flipped: true, matched: false, counted: false }))
   const need: Record<string, number> = {}
   required.forEach(p => { need[p.sym] = deck.filter(c => c.sym === p.sym).length })
 
@@ -176,7 +176,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack }: Props)
 
       setTimeout(() => {
         setShuffling(false)
-        setCards(prev => prev.map(c => c.matched ? c : { ...c, flipped: false }))
+        setCards(prev => prev.map(c => (c.matched || c.counted) ? c : { ...c, flipped: false }))
         setBanner('Find the required patterns!')
         lockedRef.current = false
       }, 650)
@@ -300,7 +300,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack }: Props)
   function onCardClick(id: number) {
     if (lockedRef.current || gameOverRef.current || phase !== 'play') return
     const card = cards.find(c => c.id === id)
-    if (!card || card.matched || card.flipped) return
+    if (!card || card.matched || card.flipped || card.counted) return
 
     setCards(prev => prev.map(c => c.id === id ? { ...c, flipped: true } : c))
 
@@ -320,13 +320,15 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack }: Props)
       return
     }
 
+    // Correct card — lock it in immediately so it can never be re-tapped or re-counted
+    setCards(prev => prev.map(c => c.id === id ? { ...c, counted: true } : c))
     doneCountRef.current[sym] = (doneCountRef.current[sym] ?? 0) + 1
     scoreRef.current += 50
     setScore(scoreRef.current)
 
     if (doneCountRef.current[sym] >= (needRef.current[sym] ?? 0)) {
       // Pattern type complete
-      setCards(prev => prev.map(c => c.pattern.sym === sym ? { ...c, matched: true, flipped: true } : c))
+      setCards(prev => prev.map(c => c.pattern.sym === sym ? { ...c, matched: true, flipped: true, counted: true } : c))
       setDone(prev => new Set(prev).add(sym))
       scoreRef.current += 300
       matchedTypesRef.current += 1
@@ -337,12 +339,9 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack }: Props)
       if (matchedTypesRef.current >= required.length) {
         setTimeout(() => endGame(true), 600)
       }
-    } else {
-      advanceRef.current = setTimeout(() => {
-        if (gameOverRef.current) return
-        setCards(prev => prev.map(c => (c.id === id && !c.matched) ? { ...c, flipped: false } : c))
-      }, 800)
     }
+    // Card stays flipped face-up and locked (counted) until its pattern is fully found —
+    // no more auto flip-back, so a single correct card can never be tapped twice.
   }
 
   useEffect(() => () => clearTimers(), [])
