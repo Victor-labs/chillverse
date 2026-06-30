@@ -122,7 +122,8 @@ export function useHaloAI(): UseHaloAIReturn {
             bodyText = await res.text()
             try {
               const parsed = JSON.parse(bodyText)
-              debugMsg = parsed?.debug || ''
+              const rawDebug = parsed?.debug
+              debugMsg = typeof rawDebug === 'string' ? rawDebug : rawDebug ? JSON.stringify(rawDebug) : ''
             } catch {
               // body wasn't JSON, fall through to raw text
             }
@@ -188,4 +189,4 @@ export function useHaloAI(): UseHaloAIReturn {
     clearError,
     addLocalMessage,
   }
-}
+                }
