@@ -352,9 +352,9 @@ export default function Dashboard() {
           <div className="neu-card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <Gamepad2 size={20} style={{ color: 'var(--accent)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{sessionsToday}/10 sessions played today</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{sessionsToday}/15 sessions played today</p>
               <div style={{ marginTop: 6, height: 4, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(100, (sessionsToday / 10) * 100)}%`, background: sessionsToday >= 10 ? '#9b6dff' : 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
+                <div style={{ height: '100%', width: `${Math.min(100, (sessionsToday / 15) * 100)}%`, background: sessionsToday >= 15 ? '#9b6dff' : 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
               </div>
             </div>
             <Link to="/games" style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>Play</Link>
