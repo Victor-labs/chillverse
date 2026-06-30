@@ -10,6 +10,7 @@ import {
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
 import { updateMissionProgress } from '../lib/weeklyMissions'
+import { notifyMessage } from '../lib/achievements'
 import { useAuth } from '../hooks/useAuth'
 import PageOnboarding from '../components/PageOnboarding'
 
@@ -557,6 +558,12 @@ export default function Chat() {
     if (!error && inserted) {
       // Weekly mission: messages_sent
       if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
+      // Notify the other person in a DM (skip global chat to avoid spamming everyone)
+      if (myId && activeRoom.type === 'dm') {
+        activeRoom.members
+          .filter(mb => mb.user_id !== myId)
+          .forEach(mb => notifyMessage(myId, mb.user_id, inserted.content).catch(console.error))
+      }
       // Optimistically add own message immediately without waiting for realtime
       const myMember = activeRoom.members.find(mb => mb.user_id === myId)
       const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'
