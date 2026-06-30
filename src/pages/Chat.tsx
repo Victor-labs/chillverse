@@ -1,11 +1,11 @@
 // src/pages/Chat.tsx
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply,
   MessageCircle, UserPlus, ShieldOff, UserCheck,
-  ExternalLink,
+  ExternalLink, CheckCheck,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
@@ -47,6 +47,28 @@ interface SearchedProfile {
   avatar: string
 }
 
+/** Pre-processed render-ready message with consecutive-group metadata. */
+interface GroupedMessage extends Message {
+  isGroupFirst: boolean
+  isGroupLast: boolean
+}
+
+const GROUP_GAP_MS = 5 * 60 * 1000 // 5 min — new burst starts after this gap
+const MESSAGE_PAGE_SIZE = 30 // most-recent-page size for initial load + each "load older" fetch
+
+/** Splits a flat message list into consecutive-sender "bursts" for compact rendering. */
+function groupMessages(messages: Message[]): GroupedMessage[] {
+  return messages.map((m, i) => {
+    const prev = messages[i - 1]
+    const next = messages[i + 1]
+    const isGroupFirst = !prev || prev.sender_id !== m.sender_id ||
+      (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) > GROUP_GAP_MS
+    const isGroupLast = !next || next.sender_id !== m.sender_id ||
+      (new Date(next.created_at).getTime() - new Date(m.created_at).getTime()) > GROUP_GAP_MS
+    return { ...m, isGroupFirst, isGroupLast }
+  })
+}
+
 const EMOJIS = ['😂','🔥','💀','👑','😍','🎮','💯','🙌','😅','🤯','❤️','👀','🫡','💪','🏆']
 
 function IBtn({ onClick, children, style }: {
@@ -56,7 +78,7 @@ function IBtn({ onClick, children, style }: {
 }) {
   return (
     <button type="button" onClick={onClick}
-      style={{ width:36, height:36, borderRadius:10, flexShrink:0, background:'var(--surface)', boxShadow:'2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)', color:'var(--text-dim)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'color 0.15s', ...style }}
+      style={{ width:36, height:36, borderRadius:10, flexShrink:0, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.06)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'color 0.15s', ...style }}
       onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)' }}
       onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)' }}>
       {children}
@@ -90,7 +112,155 @@ function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; ava
   )
 }
 
-// ─── Player Profile Modal ────────────────────────────────────
+function SkeletonBubbles() {
+  const widths = [62, 38, 71, 48]
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12, padding:'4px 0' }}>
+      {widths.map((w, i) => (
+        <div key={i} style={{ display:'flex', flexDirection: i % 2 ? 'row-reverse' : 'row', gap:8 }}>
+          <div style={{ width:30, height:30, borderRadius:10, background:'var(--surface2)', flexShrink:0, animation:'skeletonPulse 1.4s ease-in-out infinite' }} />
+          <div style={{ width:`${w}%`, maxWidth:260, height:44, borderRadius:16, background:'var(--surface2)', animation:'skeletonPulse 1.4s ease-in-out infinite' }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+interface MessageRowProps {
+  msg: GroupedMessage
+  isMine: boolean
+  senderLabel: string
+  avatarUrl: string | null
+  myProfile: { username: string; display_name: string | null; avatar: string | null } | null
+  emojiForMsg: string | null
+  onOpenProfile: (msg: Message) => void
+  onContextMenu: (msg: Message, x: number, y: number) => void
+  onDoubleClick: (msg: Message) => void
+  onToggleEmojiPicker: (msgId: string) => void
+  onAddReaction: (msgId: string, emoji: string) => void
+  myId: string | null
+  formatTime: (iso: string) => string
+}
+
+const MessageRow = memo(function MessageRow({
+  msg, isMine, senderLabel, avatarUrl, myProfile, emojiForMsg,
+  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime,
+}: MessageRowProps) {
+  const AVATAR_COL = 38 // avatar width (30) + gap (8) — used as spacer for grouped bubbles
+
+  return (
+    <div style={{
+      display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8,
+      marginBottom: msg.isGroupLast ? 12 : 2,
+    }}>
+      {/* Avatar — only on first bubble of a consecutive group; otherwise an equal-width spacer keeps alignment */}
+      {msg.isGroupFirst ? (
+        <button
+          type="button"
+          onClick={() => onOpenProfile(msg)}
+          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
+          title={senderLabel}>
+          <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
+        </button>
+      ) : (
+        <div style={{ width:AVATAR_COL, flexShrink:0 }} />
+      )}
+
+      {/* Bubble column */}
+      <div className="msg-bubble-col" style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'75%', position:'relative' }}>
+        <div style={{ position:'relative' }}>
+          <div
+            onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); onContextMenu(msg, e.clientX, e.clientY) } }}
+            onDoubleClick={() => onDoubleClick(msg)}
+            style={{
+              padding:'8px 12px 6px', borderRadius:16,
+              background:'var(--surface)', color:'var(--text)',
+              border:'1px solid rgba(255,255,255,0.06)',
+              borderBottomRightRadius: isMine ? 4 : 16,
+              borderBottomLeftRadius: isMine ? 16 : 4,
+              fontSize:13.5, lineHeight:1.45,
+              fontStyle: msg.deleted ? 'italic' : 'normal',
+              opacity: msg.deleted ? 0.6 : 1,
+              cursor:'context-menu', userSelect:'none', wordBreak:'break-word',
+            }}>
+
+            {/* Reply preview — inlaid inside the bubble's top section, no separate background/box */}
+            {msg.replyPreview && !msg.deleted && (
+              <div style={{ fontSize:11, color:'var(--text-dim)', borderLeft:'2px solid #4f8ef7', paddingLeft:8, marginBottom:4, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {msg.replyPreview}
+              </div>
+            )}
+
+            {/* Sender name — only on the first bubble of a consecutive group */}
+            {!msg.deleted && msg.isGroupFirst && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenProfile(msg) }}
+                style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'block', marginBottom:1 }}>
+                <span style={{ fontSize:10.5, fontWeight:700, color:'#4f8ef7' }}>
+                  {senderLabel}
+                </span>
+              </button>
+            )}
+
+            {/* Message content + inline trailing timestamp (bottom-right, inside the bubble) */}
+            <div style={{ display:'flex', alignItems:'flex-end', gap:6 }}>
+              <span style={{ flex:1, minWidth:0 }}>{msg.deleted ? 'Message deleted' : msg.content}</span>
+              <span style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0, alignSelf:'flex-end', paddingBottom:1 }}>
+                <span style={{ fontSize:10, color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>{formatTime(msg.created_at)}</span>
+                {isMine && !msg.deleted && <CheckCheck size={12} style={{ color:'rgba(255,255,255,0.55)' }} />}
+              </span>
+            </div>
+          </div>
+
+          {/* Reaction badge — overlaps the bubble's bottom edge */}
+          {msg.reactions.length > 0 && (
+            <div style={{
+              position:'absolute', bottom:-8, zIndex:2,
+              display:'flex', gap:4, flexWrap:'nowrap',
+              ...(isMine ? { right:8 } : { left:8 }),
+            }}>
+              {Object.entries(
+                msg.reactions.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
+                  if (!acc[r.emoji]) acc[r.emoji] = { count:0, mine:false }
+                  acc[r.emoji].count++
+                  if (r.user_id === myId) acc[r.emoji].mine = true
+                  return acc
+                }, {})
+              ).map(([emoji, { count, mine }]) => (
+                <button key={emoji} type="button" onClick={() => onAddReaction(msg.id, emoji)}
+                  style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 6px', borderRadius:20, fontSize:12, cursor:'pointer', background: mine ? 'rgba(255,107,0,0.15)' : 'var(--surface2)', border:'2px solid var(--bg)', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }}>
+                  {emoji} {count > 1 && <span style={{ fontSize:11, color:'var(--text-dim)' }}>{count}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hover-revealed reaction trigger (reduces inline clutter) */}
+        {!msg.deleted && (
+          <button
+            type="button"
+            onClick={() => onToggleEmojiPicker(msg.id)}
+            className="msg-react-trigger"
+            style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:2, marginTop:2, opacity:0, transition:'opacity 0.15s' }}>
+            <Smile size={12} />
+          </button>
+        )}
+
+        {emojiForMsg === msg.id && (
+          <div style={{ display:'flex', gap:4, flexWrap:'wrap', padding:8, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', marginTop:4, maxWidth:220, zIndex:3, position:'relative' }}>
+            {EMOJIS.map(em => (
+              <button key={em} type="button" onClick={() => onAddReaction(msg.id, em)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, padding:2 }}>{em}</button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+})
+
+
 interface PlayerProfileModalProps {
   profile: SearchedProfile | { id: string; username: string; display_name: string | null; avatar: string }
   myId: string | null
@@ -205,6 +375,9 @@ export default function Chat() {
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [msgsLoading, setMsgsLoading] = useState(false)
+  const [hasMoreOlder, setHasMoreOlder] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const roomMembersRef = useRef<RoomMember[]>([])
 
   // Own profile (avatar, display_name) — loaded once on mount
   const [myProfile, setMyProfile] = useState<{ username: string; display_name: string | null; avatar: string | null } | null>(null)
@@ -318,17 +491,17 @@ export default function Chat() {
 
     if (!roomRows?.length) { setRoomsLoading(false); return }
 
-    const built: ChatRoom[] = []
-    for (const room of roomRows) {
-      const { data: memberData } = await supabase
-        .from('room_members')
-        .select('user_id, profiles(username, display_name, avatar)')
-        .eq('room_id', room.id)
-
-      const { data: lastMsgData } = await supabase
-        .from('messages').select('content, created_at')
-        .eq('room_id', room.id).eq('deleted', false)
-        .order('created_at', { ascending: false }).limit(1)
+    const built: ChatRoom[] = await Promise.all(roomRows.map(async (room) => {
+      const [{ data: memberData }, { data: lastMsgData }] = await Promise.all([
+        supabase
+          .from('room_members')
+          .select('user_id, profiles(username, display_name, avatar)')
+          .eq('room_id', room.id),
+        supabase
+          .from('messages').select('content, created_at')
+          .eq('room_id', room.id).eq('deleted', false)
+          .order('created_at', { ascending: false }).limit(1),
+      ])
 
       const members: RoomMember[] = (memberData ?? []).map((m: Record<string, unknown>) => ({
         user_id: m.user_id as string,
@@ -336,8 +509,8 @@ export default function Chat() {
       }))
 
       const lastMsg = lastMsgData?.[0]
-      built.push({ id: room.id, type: room.type, name: room.name, members, lastMsg: lastMsg?.content ?? '', lastMsgTime: lastMsg ? formatTime(lastMsg.created_at) : '', unread: 0 })
-    }
+      return { id: room.id, type: room.type, name: room.name, members, lastMsg: lastMsg?.content ?? '', lastMsgTime: lastMsg ? formatTime(lastMsg.created_at) : '', unread: 0 }
+    }))
 
     // Pin global chat room first, then DMs sorted by last message time
     const globalRoom = built.find(r => r.type === 'global')
@@ -377,18 +550,23 @@ export default function Chat() {
     setMessages([]); setMsgsLoading(true)
     setReplyTo(null); setText('')
     setEmojiOpen(false)
+    setHasMoreOlder(false)
 
+    // Most recent page only — newest-first query, then reversed for display
     const { data, error } = await supabase
       .from('messages')
       .select('id, sender_id, content, created_at, deleted, reply_to_id')
       .eq('room_id', room.id)
-      .order('created_at', { ascending: true })
-      .limit(80)
+      .order('created_at', { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE)
 
     if (error || !data) { setMsgsLoading(false); return }
 
+    const page = [...data].reverse()
+    setHasMoreOlder(data.length === MESSAGE_PAGE_SIZE)
+
     // Collect all unique sender IDs not in members to resolve names
-    const unknownIds = [...new Set(data.map(m => m.sender_id).filter(Boolean)
+    const unknownIds = [...new Set(page.map(m => m.sender_id).filter(Boolean)
       .filter(id => !room.members.find(mb => mb.user_id === id)))] as string[]
 
     let extraProfiles: RoomMember[] = []
@@ -401,24 +579,49 @@ export default function Chat() {
       }))
     }
     const allMembers = [...room.members, ...extraProfiles]
+    roomMembersRef.current = allMembers
 
-    const enriched: Message[] = await Promise.all(data.map(async (m) => {
+    // Batch-fetch reactions + reply previews for the whole page in 2 round-trips total,
+    // instead of N sequential awaits inside a per-message loop.
+    const msgIds = page.map(m => m.id)
+    const replyIds = [...new Set(page.map(m => m.reply_to_id).filter(Boolean))] as string[]
+
+    const [{ data: allReactions }, { data: allReplySources }] = await Promise.all([
+      msgIds.length
+        ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
+        : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
+      replyIds.length
+        ? supabase.from('messages').select('id, content').in('id', replyIds)
+        : Promise.resolve({ data: [] as { id: string; content: string }[] }),
+    ])
+
+    const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
+    for (const r of allReactions ?? []) {
+      const list = reactionsByMsg.get(r.message_id) ?? []
+      list.push({ emoji: r.emoji, user_id: r.user_id })
+      reactionsByMsg.set(r.message_id, list)
+    }
+    const replyContentById = new Map<string, string>()
+    for (const r of allReplySources ?? []) replyContentById.set(r.id, r.content)
+
+    const enriched: Message[] = page.map(m => {
       const senderMember = allMembers.find(mb => mb.user_id === m.sender_id)
       const senderName = senderMember ? (senderMember.profile.display_name || senderMember.profile.username) : 'Unknown'
       const senderUsername = senderMember ? senderMember.profile.username : undefined
-      const { data: reactions } = await supabase.from('message_reactions').select('emoji, user_id').eq('message_id', m.id)
-      let replyPreview: string | undefined
-      if (m.reply_to_id) {
-        const { data: replyMsg } = await supabase.from('messages').select('content').eq('id', m.reply_to_id).single()
-        replyPreview = replyMsg?.content
+      return {
+        ...m,
+        deleted: m.deleted ?? false,
+        reactions: reactionsByMsg.get(m.id) ?? [],
+        senderName,
+        senderUsername,
+        replyPreview: m.reply_to_id ? replyContentById.get(m.reply_to_id) : undefined,
       }
-      return { ...m, deleted: m.deleted ?? false, reactions: reactions ?? [], senderName, senderUsername, replyPreview }
-    }))
+    })
 
     setMessages(enriched)
     setMsgsLoading(false)
 
-    // ── Real-time subscription ──────────────────────────────
+    // ── Real-time subscription — appends only the new row, never re-fetches the list ──
     if (subRef.current) supabase.removeChannel(subRef.current)
     subRef.current = supabase
       .channel(`room:${room.id}:${Date.now()}`)
@@ -433,7 +636,7 @@ export default function Chat() {
         // Resolve sender name (may be a new global chat participant not in original members)
         let senderName = 'Unknown'
         let senderUsername: string | undefined
-        const memberMatch = allMembers.find(mb => mb.user_id === raw.sender_id)
+        const memberMatch = roomMembersRef.current.find(mb => mb.user_id === raw.sender_id)
         if (memberMatch) {
           senderName = memberMatch.profile.display_name || memberMatch.profile.username
           senderUsername = memberMatch.profile.username
@@ -454,7 +657,80 @@ export default function Chat() {
       .subscribe()
   }, [])
 
-  useEffect(() => { msgEnd.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
+  // ── Load older messages (scroll-up pagination) ──────────────
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeRoom || loadingOlder || !hasMoreOlder || messages.length === 0) return
+    setLoadingOlder(true)
+
+    const oldestCreatedAt = messages[0].created_at
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, sender_id, content, created_at, deleted, reply_to_id')
+      .eq('room_id', activeRoom.id)
+      .lt('created_at', oldestCreatedAt)
+      .order('created_at', { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE)
+
+    if (error || !data || data.length === 0) {
+      setHasMoreOlder(false)
+      setLoadingOlder(false)
+      return
+    }
+
+    const olderPage = [...data].reverse()
+    setHasMoreOlder(data.length === MESSAGE_PAGE_SIZE)
+
+    const allMembers = roomMembersRef.current
+    const msgIds = olderPage.map(m => m.id)
+    const replyIds = [...new Set(olderPage.map(m => m.reply_to_id).filter(Boolean))] as string[]
+
+    const [{ data: olderReactions }, { data: olderReplySources }] = await Promise.all([
+      msgIds.length
+        ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
+        : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
+      replyIds.length
+        ? supabase.from('messages').select('id, content').in('id', replyIds)
+        : Promise.resolve({ data: [] as { id: string; content: string }[] }),
+    ])
+
+    const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
+    for (const r of olderReactions ?? []) {
+      const list = reactionsByMsg.get(r.message_id) ?? []
+      list.push({ emoji: r.emoji, user_id: r.user_id })
+      reactionsByMsg.set(r.message_id, list)
+    }
+    const replyContentById = new Map<string, string>()
+    for (const r of olderReplySources ?? []) replyContentById.set(r.id, r.content)
+
+    const enrichedOlder: Message[] = olderPage.map(m => {
+      const senderMember = allMembers.find(mb => mb.user_id === m.sender_id)
+      const senderName = senderMember ? (senderMember.profile.display_name || senderMember.profile.username) : 'Unknown'
+      const senderUsername = senderMember ? senderMember.profile.username : undefined
+      return {
+        ...m,
+        deleted: m.deleted ?? false,
+        reactions: reactionsByMsg.get(m.id) ?? [],
+        senderName,
+        senderUsername,
+        replyPreview: m.reply_to_id ? replyContentById.get(m.reply_to_id) : undefined,
+      }
+    })
+
+    setMessages(ms => [...enrichedOlder, ...ms])
+    setLoadingOlder(false)
+  }, [activeRoom, loadingOlder, hasMoreOlder, messages])
+
+  const initialLoadRef = useRef(true)
+  useEffect(() => {
+    // Only auto-scroll-to-bottom on initial room open / new incoming message,
+    // not when prepending older messages from a scroll-up fetch.
+    if (initialLoadRef.current) {
+      msgEnd.current?.scrollIntoView({ behavior: 'auto' })
+      initialLoadRef.current = false
+    }
+  }, [activeRoom?.id])
+  useEffect(() => { if (!loadingOlder) msgEnd.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
+  useEffect(() => { initialLoadRef.current = true }, [activeRoom?.id])
   useEffect(() => () => { if (subRef.current) supabase.removeChannel(subRef.current) }, [])
 
   // ── Start private DM with a user ────────────────────────────
@@ -630,21 +906,22 @@ export default function Chat() {
 
   const filteredRooms = rooms.filter(r => !roomSearch || roomLabel(r).toLowerCase().includes(roomSearch.toLowerCase()))
   const totalUnread = rooms.reduce((s, r) => s + r.unread, 0)
+  const groupedMessages = useMemo(() => groupMessages(messages), [messages])
 
   const showList = !isMobile || !showConv
   const showChat = !isMobile || showConv
 
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 60px)', overflow:'hidden', background:'var(--bg)', position:'relative' }}>
+    <div className="flex h-[calc(100dvh-60px)] overflow-hidden relative" style={{ background:'var(--bg)' }}>
       <PageOnboarding pageKey="chat" />
 
       {/* ── Contact list + player search ── */}
       {showList && (
-        <div style={{ width: isMobile ? '100%' : 320, flexShrink:0, background:'var(--surface)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div className="w-full sm:w-[320px] flex-shrink-0 flex flex-col overflow-hidden" style={{ background:'var(--surface)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
 
           {/* Header */}
-          <div style={{ padding:'16px 16px 10px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <div className="p-0 sm:p-3 md:p-4 pb-2">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding: isMobile ? '12px 12px 0' : 0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ fontSize:17, fontWeight:700, color:'var(--text)' }}>Messages</span>
                 {totalUnread > 0 && <span style={{ background:'var(--accent)', color:'#fff', fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10 }}>{totalUnread}</span>}
@@ -653,19 +930,20 @@ export default function Chat() {
             </div>
 
             {/* Room search */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)', padding:'8px 12px', marginBottom:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'8px 12px', marginBottom:8, marginInline: isMobile ? 12 : 0 }}>
               <Search size={14} style={{ color:'var(--text-muted)', flexShrink:0 }} />
               <input type="text" placeholder="Search chats…" value={roomSearch} onChange={e => setRoomSearch(e.target.value)}
+
                 style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
             </div>
 
             {/* Player search — with chat icon + prompt */}
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, paddingInline: isMobile ? 12 : 0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
                 <MessageCircle size={13} style={{ color:'#4f8ef7', flexShrink:0 }} />
                 <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>Start a chat — enter a username</span>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', borderRadius:12, border:'1px solid rgba(79,142,247,0.18)', padding:'8px 12px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid rgba(79,142,247,0.18)', borderRadius:12, padding:'8px 12px' }}>
                 <Search size={14} style={{ color:'#4f8ef7', flexShrink:0 }} />
                 <input type="text" placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
                   style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
@@ -795,107 +1073,59 @@ export default function Chat() {
               </div>
 
               {/* Messages */}
-              <div style={{ flex:1, overflowY:'auto', padding:'16px 14px', display:'flex', flexDirection:'column', gap:4 }}>
+              <div
+                onScroll={e => {
+                  const el = e.currentTarget
+                  if (el.scrollTop < 80) loadOlderMessages()
+                }}
+                style={{ flex:1, overflowY:'auto', padding:'12px 10px', display:'flex', flexDirection:'column' }}>
                 {msgsLoading ? (
-                  <div style={{ display:'flex', justifyContent:'center', padding:40 }}>
-                    <span style={{ width:28, height:28, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
-                  </div>
+                  <SkeletonBubbles />
                 ) : messages.length === 0 ? (
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, gap:10 }}>
                     <MessageCircle size={32} style={{ color:'var(--text-muted)' }} />
                     <p style={{ fontSize:13, color:'var(--text-muted)' }}>No messages yet. Say hello!</p>
                   </div>
                 ) : (
-                  messages.map(msg => {
-                    const isMine = msg.sender_id === myId
-                    const senderLabel = isMine ? 'You' : (msg.senderName || 'Unknown')
-
-                    // Resolve avatar: own messages use myProfile, others look up in room members
-                    let avatarUrl: string | null = null
-                    if (isMine) {
-                      avatarUrl = myProfile?.avatar ?? null
-                    } else {
-                      const member = activeRoom?.members.find(mb => mb.user_id === msg.sender_id)
-                      avatarUrl = member?.profile?.avatar ?? null
-                    }
-
-                    return (
-                      <div key={msg.id} style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8, marginBottom:6 }}>
-
-                        {/* Avatar circle — clickable, opens profile modal */}
-                        <button
-                          type="button"
-                          onClick={() => openSenderProfile(msg)}
-                          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
-                          title={senderLabel}>
-                          <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
-                        </button>
-
-                        {/* Bubble + meta */}
-                        <div style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'75%' }}>
-
-                          {msg.replyPreview && !msg.deleted && (
-                            <div style={{ fontSize:11, color:'var(--text-dim)', padding:'4px 10px', background:'rgba(255,255,255,0.04)', borderRadius:8, borderLeft:'2px solid #4f8ef7', marginBottom:4, maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {msg.replyPreview}
-                            </div>
-                          )}
-
-                          <div
-                            onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); setCtxMsg(msg); setCtxPos({ x: e.clientX, y: e.clientY }) }}}
-                            onDoubleClick={() => { if (!msg.deleted) setReplyTo(msg) }}
-                            style={{ padding:'7px 13px 9px', borderRadius:16, background:'var(--surface)', color:'var(--text)', boxShadow:'2px 2px 8px var(--neu-dark),-1px -1px 4px var(--neu-light)', borderBottomRightRadius: isMine ? 4 : 16, borderBottomLeftRadius: isMine ? 16 : 4, fontSize:13.5, lineHeight:1.45, fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1, cursor:'context-menu', userSelect:'none', wordBreak:'break-word' }}>
-                            {/* Name inlaid on the bubble's first line */}
-                            {!msg.deleted && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); openSenderProfile(msg) }}
-                                style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'block', marginBottom:1 }}>
-                                <span style={{ fontSize:10.5, fontWeight:700, color:'#4f8ef7' }}>
-                                  {senderLabel}
-                                </span>
-                              </button>
-                            )}
-                            {msg.deleted ? 'Message deleted' : msg.content}
-                          </div>
-
-                        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
-                          <span style={{ fontSize:10, color:'var(--text-muted)' }}>{formatTime(msg.created_at)}</span>
-                          {!msg.deleted && (
-                            <button type="button" onClick={() => setEmojiForMsg(emojiForMsg === msg.id ? null : msg.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0 }}>
-                              <Smile size={12} />
-                            </button>
-                          )}
-                        </div>
-
-                        {msg.reactions.length > 0 && (
-                          <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:4 }}>
-                            {Object.entries(
-                              msg.reactions.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
-                                if (!acc[r.emoji]) acc[r.emoji] = { count:0, mine:false }
-                                acc[r.emoji].count++
-                                if (r.user_id === myId) acc[r.emoji].mine = true
-                                return acc
-                              }, {})
-                            ).map(([emoji, { count, mine }]) => (
-                              <button key={emoji} type="button" onClick={() => addReaction(msg.id, emoji)}
-                                style={{ display:'flex', alignItems:'center', gap:3, padding:'3px 7px', borderRadius:20, fontSize:12, cursor:'pointer', background: mine ? 'rgba(255,107,0,0.1)' : 'var(--surface2)', border: mine ? '1px solid rgba(255,107,0,0.4)' : '1px solid rgba(255,255,255,0.08)' }}>
-                                {emoji} {count > 1 && <span style={{ fontSize:11, color:'var(--text-dim)' }}>{count}</span>}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {emojiForMsg === msg.id && (
-                          <div style={{ display:'flex', gap:4, flexWrap:'wrap', padding:8, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', marginTop:4, maxWidth:220 }}>
-                            {EMOJIS.map(em => (
-                              <button key={em} type="button" onClick={() => addReaction(msg.id, em)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, padding:2 }}>{em}</button>
-                            ))}
-                          </div>
-                        )}
-                        </div>{/* end inner column */}
+                  <>
+                    {loadingOlder && (
+                      <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 12px' }}>
+                        <span style={{ width:18, height:18, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
                       </div>
-                    )
-                  })
+                    )}
+                    {groupedMessages.map(msg => {
+                      const isMine = msg.sender_id === myId
+                      const senderLabel = isMine ? 'You' : (msg.senderName || 'Unknown')
+
+                      // Resolve avatar: own messages use myProfile, others look up in room members
+                      let avatarUrl: string | null = null
+                      if (isMine) {
+                        avatarUrl = myProfile?.avatar ?? null
+                      } else {
+                        const member = activeRoom?.members.find(mb => mb.user_id === msg.sender_id)
+                        avatarUrl = member?.profile?.avatar ?? null
+                      }
+
+                      return (
+                        <MessageRow
+                          key={msg.id}
+                          msg={msg}
+                          isMine={isMine}
+                          senderLabel={senderLabel}
+                          avatarUrl={avatarUrl}
+                          myProfile={myProfile}
+                          emojiForMsg={emojiForMsg}
+                          onOpenProfile={openSenderProfile}
+                          onContextMenu={(m, x, y) => { setCtxMsg(m); setCtxPos({ x, y }) }}
+                          onDoubleClick={m => setReplyTo(m)}
+                          onToggleEmojiPicker={id => setEmojiForMsg(emojiForMsg === id ? null : id)}
+                          onAddReaction={addReaction}
+                          myId={myId}
+                          formatTime={formatTime}
+                        />
+                      )
+                    })}
+                  </>
                 )}
                 <div ref={msgEnd} />
               </div>
@@ -1017,7 +1247,17 @@ export default function Chat() {
         </>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes skeletonPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
+        .msg-react-trigger { opacity: 0; }
+        @media (hover: hover) {
+          .msg-bubble-col:hover .msg-react-trigger { opacity: 1; }
+        }
+        @media (hover: none) {
+          .msg-react-trigger { opacity: 0.55; }
+        }
+      `}</style>
     </div>
   )
 }
