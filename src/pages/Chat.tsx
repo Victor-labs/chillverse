@@ -184,14 +184,19 @@ const MessageRow = memo(function MessageRow({
 
       {/* Bubble column */}
       <div className="msg-bubble-col" style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'75%', position:'relative' }}>
-        <div style={{ position:'relative', maxWidth:'100%', paddingBottom: msg.reactions.length > 0 ? 10 : 0 }}>
+        <div style={{ position:'relative', maxWidth:'100%', paddingBottom: msg.reactions.length > 0 ? 14 : 0 }}>
           <div
             onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); onContextMenu(msg, e.clientX, e.clientY) } }}
             onDoubleClick={() => onDoubleClick(msg)}
             style={{
               padding:'8px 12px 6px', borderRadius:16,
               background:'var(--surface)', color:'var(--text)',
-              border:'1px solid rgba(255,255,255,0.06)',
+              // Suppress the top border on non-first bubbles in a burst so two stacked
+              // bubbles share a single hairline at their join instead of a doubled seam.
+              borderLeft:'1px solid rgba(255,255,255,0.06)',
+              borderRight:'1px solid rgba(255,255,255,0.06)',
+              borderBottom:'1px solid rgba(255,255,255,0.06)',
+              borderTop: msg.isGroupFirst ? '1px solid rgba(255,255,255,0.06)' : 'none',
               // Sharp tail point sits on the TOP corner nearest the avatar, and only on the
               // first bubble of a burst — subsequent bubbles in the same group are uniformly
               // rounded since there's no avatar/name for them to point at.
@@ -233,10 +238,10 @@ const MessageRow = memo(function MessageRow({
             </div>
           </div>
 
-          {/* Reaction badge — overlaps the bubble's bottom edge, clear of the text */}
+          {/* Reaction badge — sits flush below the bubble's bottom edge, not overlapping it */}
           {msg.reactions.length > 0 && (
             <div style={{
-              position:'absolute', bottom:-2, zIndex:2,
+              position:'absolute', bottom:0, zIndex:2,
               display:'flex', gap:4, flexWrap:'nowrap',
               ...(isMine ? { right:8 } : { left:8 }),
             }}>
