@@ -167,7 +167,7 @@ const MessageRow = memo(function MessageRow({
   return (
     <div style={{
       display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8,
-      marginBottom: msg.isGroupLast ? 14 : 8,
+      marginBottom: msg.isGroupLast ? 14 : 2,
     }}>
       {/* Avatar — only on first bubble of a consecutive group; otherwise an equal-width spacer keeps alignment */}
       {msg.isGroupFirst ? (
@@ -192,8 +192,11 @@ const MessageRow = memo(function MessageRow({
               padding:'8px 12px 6px', borderRadius:16,
               background:'var(--surface)', color:'var(--text)',
               border:'1px solid rgba(255,255,255,0.06)',
-              borderBottomRightRadius: isMine ? 2 : 16,
-              borderBottomLeftRadius: isMine ? 16 : 2,
+              // Sharp tail point sits on the TOP corner nearest the avatar, and only on the
+              // first bubble of a burst — subsequent bubbles in the same group are uniformly
+              // rounded since there's no avatar/name for them to point at.
+              borderTopRightRadius: isMine && msg.isGroupFirst ? 2 : 16,
+              borderTopLeftRadius: !isMine && msg.isGroupFirst ? 2 : 16,
               fontSize:13.5, lineHeight:1.45,
               fontStyle: msg.deleted ? 'italic' : 'normal',
               opacity: msg.deleted ? 0.6 : 1,
