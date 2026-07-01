@@ -1,6 +1,53 @@
 // src/lib/sfx.ts
-// Tiny Web Audio synth SFX — no audio files/assets needed, so nothing to load or fetch.
+// Game SFX. Praise sounds are real audio files (public/sounds/); the wrong-tap
+// buzz is a tiny synth tone since it's just a low blip. Everything respects the
+// "Game sound" setting (default ON) from soundSettings.ts.
 
+import { isGameSoundEnabled } from './soundSettings'
+
+// ─── Real audio files, one per "flavor" of praise ──────────────────────────
+const TREASURE_SRC = '/sounds/praise-treasure.wav'
+const BLING_SRC = '/sounds/praise-bling.wav'
+
+// Preload/cache Audio objects so repeated praise doesn't re-fetch.
+const audioCache = new Map<string, HTMLAudioElement>()
+function getAudio(src: string): HTMLAudioElement {
+  let el = audioCache.get(src)
+  if (!el) {
+    el = new Audio(src)
+    el.preload = 'auto'
+    audioCache.set(src, el)
+  }
+  return el
+}
+
+function playFile(src: string) {
+  if (!isGameSoundEnabled()) return
+  const el = getAudio(src)
+  // Allow rapid re-triggering: clone so overlapping praise doesn't cut itself off.
+  const instance = el.cloneNode(true) as HTMLAudioElement
+  instance.volume = 0.7
+  instance.play().catch(() => {})
+}
+
+// Map each praise line to a sound "flavor" — bigger-feeling praise gets the
+// bling/achievement sound, the rest get the lighter treasure blip.
+const PRAISE_SOUND_MAP: Record<string, string> = {
+  'Sharp eye!': TREASURE_SRC,
+  'Locked in!': TREASURE_SRC,
+  'Nailed it!': TREASURE_SRC,
+  'Pattern King!': BLING_SRC,
+  'Flawless!': BLING_SRC,
+  'Unstoppable!': BLING_SRC,
+}
+
+/** Play the sound that matches a given praise line (e.g. "Nailed it!"). */
+export function playPraiseSound(praiseText: string): void {
+  const src = PRAISE_SOUND_MAP[praiseText] ?? TREASURE_SRC
+  playFile(src)
+}
+
+// ─── Synth fallback for the wrong-tap buzz ─────────────────────────────────
 let ctx: AudioContext | null = null
 
 function getCtx(): AudioContext | null {
@@ -10,46 +57,24 @@ function getCtx(): AudioContext | null {
     if (!Ctor) return null
     ctx = new Ctor()
   }
-  // Browsers suspend the context until a user gesture — a card tap counts, so resume it.
   if (ctx.state === 'suspended') ctx.resume().catch(() => {})
   return ctx
 }
 
-function tone(freq: number, startOffset: number, durationSec: number, ac: AudioContext, gainPeak = 0.18) {
+export function playWrongCard(): void {
+  if (!isGameSoundEnabled()) return
+  const ac = getCtx()
+  if (!ac) return
   const osc = ac.createOscillator()
   const gain = ac.createGain()
   osc.type = 'sine'
-  osc.frequency.value = freq
-  const t0 = ac.currentTime + startOffset
+  osc.frequency.value = 180
+  const t0 = ac.currentTime
   gain.gain.setValueAtTime(0, t0)
-  gain.gain.linearRampToValueAtTime(gainPeak, t0 + 0.01)
-  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + durationSec)
+  gain.gain.linearRampToValueAtTime(0.15, t0 + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25)
   osc.connect(gain)
   gain.connect(ac.destination)
   osc.start(t0)
-  osc.stop(t0 + durationSec + 0.02)
-}
-
-/** Short bright blip for tapping a correct card. */
-export function playCorrectCard(): void {
-  const ac = getCtx()
-  if (!ac) return
-  tone(880, 0, 0.09, ac)
-  tone(1320, 0.06, 0.12, ac)
-}
-
-/** Fuller chime for completing an entire pattern set. */
-export function playPatternComplete(): void {
-  const ac = getCtx()
-  if (!ac) return
-  tone(660, 0, 0.1, ac, 0.16)
-  tone(880, 0.08, 0.1, ac, 0.16)
-  tone(1320, 0.16, 0.22, ac, 0.18)
-}
-
-/** Low buzz for a wrong tap. */
-export function playWrongCard(): void {
-  const ac = getCtx()
-  if (!ac) return
-  tone(180, 0, 0.25, ac, 0.15)
+  osc.stop(t0 + 0.27)
 }
