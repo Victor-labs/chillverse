@@ -5,7 +5,7 @@ import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply,
   MessageCircle, UserPlus, ShieldOff, UserCheck,
-  ExternalLink, CheckCheck,
+  ExternalLink, CheckCheck, Pin, PinOff,
 } from 'lucide-react'
 import { ripple } from '../lib/ripple'
 import { supabase } from '../lib/supabase'
@@ -26,7 +26,11 @@ interface ChatRoom {
   members: RoomMember[]
   lastMsg: string
   lastMsgTime: string
+  lastMsgAt: string | null // raw ISO timestamp, used for recency sort (lastMsgTime is pre-formatted for display only)
   unread: number
+  pinned: boolean
+  clearedAt: string | null // messages at/before this timestamp are hidden for me (soft clear)
+  pinnedMessageId: string | null // room-wide pinned message, visible to all members
 }
 interface Message {
   id: string
@@ -404,6 +408,7 @@ export default function Chat() {
   const [hasMoreOlder, setHasMoreOlder] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const roomMembersRef = useRef<RoomMember[]>([])
+  const creatingDmWithRef = useRef<Set<string>>(new Set()) // guards startDmWith against double-taps/slow-network races
 
   // Own profile (avatar, display_name) — loaded once on mount
   const [myProfile, setMyProfile] = useState<{ username: string; display_name: string | null; avatar: string | null } | null>(null)
@@ -434,6 +439,12 @@ export default function Chat() {
   const [viewProfile, setViewProfile] = useState<SearchedProfile | null>(null)
   // DM header options (tap avatar/name in DM to delete chat)
   const [dmOptionsOpen, setDmOptionsOpen] = useState(false)
+  // Conversation-level 3-dot menu (top-right inside an open chat: clear chat, pin/unpin, block)
+  const [convMenuOpen, setConvMenuOpen] = useState(false)
+  // Pinned message banner content — fetched separately since ChatRoom only stores the id
+  const [pinnedMsgPreview, setPinnedMsgPreview] = useState<{ id: string; content: string; senderName: string } | null>(null)
+  // Per-room row menu in the room list (pin/delete), keyed by room id, null = closed
+  const [roomMenuOpenFor, setRoomMenuOpenFor] = useState<string | null>(null)
 
   const msgEnd = useRef<HTMLDivElement>(null)
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -500,6 +511,59 @@ export default function Chat() {
   // ── Load rooms ──────────────────────────────────────────────
   useEffect(() => { if (myId) loadRooms() }, [myId])
 
+  // Room-list-wide realtime: keeps "recent chats move to top" live even for rooms
+  // that aren't currently open (the per-room subscription in openRoom only covers
+  // the active conversation). Also auto-un-hides a room I'd deleted-for-me if the
+  // other person sends something new into it.
+  const activeRoomIdRef = useRef<string | null>(null)
+  useEffect(() => { activeRoomIdRef.current = activeRoom?.id ?? null }, [activeRoom?.id])
+
+  useEffect(() => {
+    if (!myId) return
+    const listChannel = supabase
+      .channel(`room-list:${myId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+        const raw = payload.new as { room_id: string; content: string; created_at: string }
+
+        setRooms(prev => {
+          const idx = prev.findIndex(r => r.id === raw.room_id)
+          if (idx === -1) return prev // not a room I'm currently showing — ignore (covers rooms I'm not a member of)
+          const room = prev[idx]
+          const updated: ChatRoom = { ...room, lastMsg: raw.content, lastMsgTime: formatTime(raw.created_at), lastMsgAt: raw.created_at }
+          const rest = prev.filter((_, i) => i !== idx)
+
+          // Global Chat always stays first; pinned rooms float above unpinned, each
+          // group re-sorted by recency. Skip resort entirely for the room the user
+          // currently has open, so the list doesn't jump under their thumb mid-read.
+          if (updated.type === 'global' || updated.id === activeRoomIdRef.current) {
+            const merged = [updated, ...rest]
+            const globalRoom = merged.find(r => r.type === 'global')
+            const others = merged.filter(r => r.type !== 'global')
+            return globalRoom ? [globalRoom, ...others] : others
+          }
+
+          const globalRoom = rest.find(r => r.type === 'global')
+          const others = rest.filter(r => r.type !== 'global')
+          const withUpdated = [...others, updated]
+          const pinned = withUpdated.filter(r => r.pinned).sort((a, b) => (new Date(b.lastMsgAt ?? 0).getTime()) - (new Date(a.lastMsgAt ?? 0).getTime()))
+          const unpinned = withUpdated.filter(r => !r.pinned).sort((a, b) => (new Date(b.lastMsgAt ?? 0).getTime()) - (new Date(a.lastMsgAt ?? 0).getTime()))
+          return globalRoom ? [globalRoom, ...pinned, ...unpinned] : [...pinned, ...unpinned]
+        })
+
+        // If this room was hidden-for-me ("delete chat"), a fresh incoming message
+        // should bring it back into view rather than staying silently hidden.
+        const { data: myMembership } = await supabase
+          .from('room_members').select('hidden_at').eq('room_id', raw.room_id).eq('user_id', myId).maybeSingle()
+        if (myMembership?.hidden_at) {
+          await supabase.from('room_members').update({ hidden_at: null }).eq('room_id', raw.room_id).eq('user_id', myId)
+          loadRooms() // room was excluded from `rooms` state entirely — needs a full reload to reappear
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(listChannel) }
+  }, [myId])
+
   async function loadRooms() {
     setRoomsLoading(true)
 
@@ -507,26 +571,40 @@ export default function Chat() {
     await ensureGlobalRoom()
 
     const { data: memberRows, error: memErr } = await supabase
-      .from('room_members').select('room_id').eq('user_id', myId)
+      .from('room_members').select('room_id, pinned, cleared_at, hidden_at').eq('user_id', myId)
 
     if (memErr || !memberRows?.length) { setRoomsLoading(false); return }
 
-    const roomIds = memberRows.map(r => r.room_id)
-    const { data: roomRows } = await supabase
-      .from('chat_rooms').select('id, type, name').in('id', roomIds)
+    // Rooms I've hidden ("delete chat") are excluded from the list entirely — but if a
+    // NEW message lands in one after I hid it, the realtime handler below un-hides it.
+    const myRoomState = new Map(memberRows.map(r => [r.room_id, r]))
+    const visibleRoomIds = memberRows.filter(r => !r.hidden_at).map(r => r.room_id)
+    if (!visibleRoomIds.length) { setRooms([]); setRoomsLoading(false); return }
 
-    if (!roomRows?.length) { setRoomsLoading(false); return }
+    const { data: roomRows } = await supabase
+      .from('chat_rooms').select('id, type, name, pinned_message_id').in('id', visibleRoomIds)
+
+    if (!roomRows?.length) { setRooms([]); setRoomsLoading(false); return }
 
     const built: ChatRoom[] = await Promise.all(roomRows.map(async (room) => {
+      const myState = myRoomState.get(room.id)
+      const clearedAt = myState?.cleared_at ?? null
+
       const [{ data: memberData }, { data: lastMsgData }] = await Promise.all([
         supabase
           .from('room_members')
           .select('user_id, profiles(username, display_name, avatar)')
           .eq('room_id', room.id),
-        supabase
-          .from('messages').select('content, created_at')
-          .eq('room_id', room.id).eq('deleted', false)
-          .order('created_at', { ascending: false }).limit(1),
+        // Respect the soft-clear cutoff: a cleared chat's "last message" preview
+        // should reflect only what's still visible to me, not what I cleared.
+        (clearedAt
+          ? supabase.from('messages').select('content, created_at')
+              .eq('room_id', room.id).eq('deleted', false).gt('created_at', clearedAt)
+              .order('created_at', { ascending: false }).limit(1)
+          : supabase.from('messages').select('content, created_at')
+              .eq('room_id', room.id).eq('deleted', false)
+              .order('created_at', { ascending: false }).limit(1)
+        ),
       ])
 
       const members: RoomMember[] = (memberData ?? []).map((m: Record<string, unknown>) => ({
@@ -535,13 +613,29 @@ export default function Chat() {
       }))
 
       const lastMsg = lastMsgData?.[0]
-      return { id: room.id, type: room.type, name: room.name, members, lastMsg: lastMsg?.content ?? '', lastMsgTime: lastMsg ? formatTime(lastMsg.created_at) : '', unread: 0 }
+      return {
+        id: room.id, type: room.type, name: room.name, members,
+        lastMsg: lastMsg?.content ?? '',
+        lastMsgTime: lastMsg ? formatTime(lastMsg.created_at) : '',
+        lastMsgAt: lastMsg?.created_at ?? null,
+        unread: 0,
+        pinned: myState?.pinned ?? false,
+        clearedAt,
+        pinnedMessageId: room.pinned_message_id ?? null,
+      }
     }))
 
-    // Pin global chat room first, then DMs sorted by last message time
+    // Sort: Global Chat always first, then pinned DMs, then the rest by most-recent message.
     const globalRoom = built.find(r => r.type === 'global')
     const dmRooms = built.filter(r => r.type !== 'global')
-    const sorted = globalRoom ? [globalRoom, ...dmRooms] : dmRooms
+    const byRecency = (a: ChatRoom, b: ChatRoom) => {
+      const at = a.lastMsgAt ? new Date(a.lastMsgAt).getTime() : 0
+      const bt = b.lastMsgAt ? new Date(b.lastMsgAt).getTime() : 0
+      return bt - at
+    }
+    const pinnedDms = dmRooms.filter(r => r.pinned).sort(byRecency)
+    const unpinnedDms = dmRooms.filter(r => !r.pinned).sort(byRecency)
+    const sorted = globalRoom ? [globalRoom, ...pinnedDms, ...unpinnedDms] : [...pinnedDms, ...unpinnedDms]
 
     // Deduplicate by room id (guards against race between startDmWith + loadRooms)
     const seen = new Set<string>()
@@ -578,11 +672,14 @@ export default function Chat() {
     setEmojiOpen(false)
     setHasMoreOlder(false)
 
-    // Most recent page only — newest-first query, then reversed for display
-    const { data, error } = await supabase
+    // Most recent page only — newest-first query, then reversed for display.
+    // If I've cleared this chat, only fetch messages after that cutoff.
+    let query = supabase
       .from('messages')
       .select('id, sender_id, content, created_at, deleted, reply_to_id')
       .eq('room_id', room.id)
+    if (room.clearedAt) query = query.gt('created_at', room.clearedAt)
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(MESSAGE_PAGE_SIZE)
 
@@ -647,6 +744,21 @@ export default function Chat() {
     setMessages(enriched)
     setMsgsLoading(false)
 
+    // Pinned message banner — fetch its content since ChatRoom only carries the id
+    setPinnedMsgPreview(null)
+    if (room.pinnedMessageId) {
+      const { data: pinnedRow } = await supabase
+        .from('messages').select('id, sender_id, content').eq('id', room.pinnedMessageId).maybeSingle()
+      if (pinnedRow) {
+        const pinnedSender = allMembers.find(mb => mb.user_id === pinnedRow.sender_id)
+        setPinnedMsgPreview({
+          id: pinnedRow.id,
+          content: pinnedRow.content,
+          senderName: pinnedSender ? (pinnedSender.profile.display_name || pinnedSender.profile.username) : 'Unknown',
+        })
+      }
+    }
+
     // ── Real-time subscription — appends only the new row, never re-fetches the list ──
     if (subRef.current) supabase.removeChannel(subRef.current)
     subRef.current = supabase
@@ -689,11 +801,14 @@ export default function Chat() {
     setLoadingOlder(true)
 
     const oldestCreatedAt = messages[0].created_at
-    const { data, error } = await supabase
+    let query = supabase
       .from('messages')
       .select('id, sender_id, content, created_at, deleted, reply_to_id')
       .eq('room_id', activeRoom.id)
       .lt('created_at', oldestCreatedAt)
+    // Never page past a soft-clear cutoff — that history is hidden for me.
+    if (activeRoom.clearedAt) query = query.gt('created_at', activeRoom.clearedAt)
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(MESSAGE_PAGE_SIZE)
 
@@ -763,91 +878,109 @@ export default function Chat() {
   async function startDmWith(targetUserId: string) {
     if (!myId || targetUserId === myId) return
 
-    // Check if a DM room already exists between the two users
-    const { data: myRooms } = await supabase
-      .from('room_members')
-      .select('room_id, chat_rooms(type)')
-      .eq('user_id', myId)
-    const { data: theirRooms } = await supabase
-      .from('room_members')
-      .select('room_id, chat_rooms(type)')
-      .eq('user_id', targetUserId)
+    // Guard against slow-network double-taps: if a DM-room creation for this exact
+    // target is already in flight, ignore the repeat tap instead of racing a second
+    // "does a room exist?" check that hasn't seen the first call's insert yet.
+    if (creatingDmWithRef.current.has(targetUserId)) return
+    creatingDmWithRef.current.add(targetUserId)
 
-    let roomId: string | null = null
+    try {
+      // Check if a DM room already exists between the two users
+      const { data: myRooms } = await supabase
+        .from('room_members')
+        .select('room_id, chat_rooms(type)')
+        .eq('user_id', myId)
+      const { data: theirRooms } = await supabase
+        .from('room_members')
+        .select('room_id, chat_rooms(type)')
+        .eq('user_id', targetUserId)
 
-    if (myRooms && theirRooms) {
-      const myDmIds = new Set(
-        myRooms
-          .filter((r: Record<string, unknown>) => (r.chat_rooms as { type: string } | null)?.type === 'dm')
-          .map((r: Record<string, unknown>) => r.room_id as string)
-      )
-      const commonDm = theirRooms.find((r: Record<string, unknown>) =>
-        (r.chat_rooms as { type: string } | null)?.type === 'dm' && myDmIds.has(r.room_id as string)
-      )
-      if (commonDm) roomId = commonDm.room_id as string
-    }
+      let roomId: string | null = null
 
-    if (!roomId) {
-      // Create brand new DM room
-      const { data: newRoom, error } = await supabase
-        .from('chat_rooms').insert({ type: 'dm', name: null }).select('id').single()
-      if (error || !newRoom) { console.error('Failed to create DM room:', error); return }
-      roomId = newRoom.id
-
-      await supabase.from('room_members').insert({ room_id: roomId, user_id: myId })
-      const { error: memberErr } = await supabase.from('room_members').insert({ room_id: roomId, user_id: targetUserId })
-      if (memberErr) console.warn('Could not pre-add target member:', memberErr.message)
-    }
-
-    // Fetch the target user's profile for the room member list
-    const { data: targetProfile } = await supabase
-      .from('profiles').select('username, display_name, avatar').eq('id', targetUserId).single()
-
-    // Build the room object directly and open it — no setTimeout race
-    const roomObj: ChatRoom = {
-      id: roomId!,
-      type: 'dm',
-      name: null,
-      members: [
-        {
-          user_id: myId,
-          profile: {
-            username: myProfile?.username ?? '',
-            display_name: myProfile?.display_name ?? null,
-            avatar: myProfile?.avatar ?? '',
-          },
-        },
-        {
-          user_id: targetUserId,
-          profile: {
-            username: targetProfile?.username ?? '',
-            display_name: targetProfile?.display_name ?? null,
-            avatar: targetProfile?.avatar ?? '',
-          },
-        },
-      ],
-      lastMsg: '',
-      lastMsgTime: '',
-      unread: 0,
-    }
-
-    setPlayerSearch('')
-    setPlayerResults([])
-
-    // Add to rooms list (or skip if already there), then open
-    let roomToOpen = roomObj
-    setRooms(prev => {
-      const existing = prev.find(r => r.id === roomId)
-      if (existing) {
-        roomToOpen = existing
-        return prev
+      if (myRooms && theirRooms) {
+        const myDmIds = new Set(
+          myRooms
+            .filter((r: Record<string, unknown>) => (r.chat_rooms as { type: string } | null)?.type === 'dm')
+            .map((r: Record<string, unknown>) => r.room_id as string)
+        )
+        const commonDm = theirRooms.find((r: Record<string, unknown>) =>
+          (r.chat_rooms as { type: string } | null)?.type === 'dm' && myDmIds.has(r.room_id as string)
+        )
+        if (commonDm) roomId = commonDm.room_id as string
       }
-      const globalRoom = prev.find(r => r.type === 'global')
-      const dms = prev.filter(r => r.type !== 'global')
-      return globalRoom ? [globalRoom, roomObj, ...dms] : [roomObj, ...dms]
-    })
-    // Small tick to ensure state is settled before opening
-    setTimeout(() => openRoom(roomToOpen), 0)
+
+      if (!roomId) {
+        // Create brand new DM room
+        const { data: newRoom, error } = await supabase
+          .from('chat_rooms').insert({ type: 'dm', name: null }).select('id').single()
+        if (error || !newRoom) { console.error('Failed to create DM room:', error); return }
+        roomId = newRoom.id
+
+        await supabase.from('room_members').insert({ room_id: roomId, user_id: myId })
+        const { error: memberErr } = await supabase.from('room_members').insert({ room_id: roomId, user_id: targetUserId })
+        if (memberErr) console.warn('Could not pre-add target member:', memberErr.message)
+      } else {
+        // Re-opening an existing DM: if I'd previously hidden it ("delete chat"),
+        // un-hide it now that I'm actively re-entering the conversation.
+        await supabase.from('room_members').update({ hidden_at: null }).eq('room_id', roomId).eq('user_id', myId)
+      }
+
+      // Fetch the target user's profile for the room member list
+      const { data: targetProfile } = await supabase
+        .from('profiles').select('username, display_name, avatar').eq('id', targetUserId).single()
+
+      // Build the room object directly and open it — no setTimeout race
+      const roomObj: ChatRoom = {
+        id: roomId!,
+        type: 'dm',
+        name: null,
+        members: [
+          {
+            user_id: myId,
+            profile: {
+              username: myProfile?.username ?? '',
+              display_name: myProfile?.display_name ?? null,
+              avatar: myProfile?.avatar ?? '',
+            },
+          },
+          {
+            user_id: targetUserId,
+            profile: {
+              username: targetProfile?.username ?? '',
+              display_name: targetProfile?.display_name ?? null,
+              avatar: targetProfile?.avatar ?? '',
+            },
+          },
+        ],
+        lastMsg: '',
+        lastMsgTime: '',
+        lastMsgAt: null,
+        unread: 0,
+        pinned: false,
+        clearedAt: null,
+        pinnedMessageId: null,
+      }
+
+      setPlayerSearch('')
+      setPlayerResults([])
+
+      // Add to rooms list (or skip if already there), then open
+      let roomToOpen = roomObj
+      setRooms(prev => {
+        const existing = prev.find(r => r.id === roomId)
+        if (existing) {
+          roomToOpen = existing
+          return prev
+        }
+        const globalRoom = prev.find(r => r.type === 'global')
+        const dms = prev.filter(r => r.type !== 'global')
+        return globalRoom ? [globalRoom, roomObj, ...dms] : [roomObj, ...dms]
+      })
+      // Small tick to ensure state is settled before opening
+      setTimeout(() => openRoom(roomToOpen), 0)
+    } finally {
+      creatingDmWithRef.current.delete(targetUserId)
+    }
   }
 
   // ── Send ────────────────────────────────────────────────────
@@ -916,6 +1049,71 @@ export default function Chat() {
     await supabase.from('messages').update({ deleted: true }).eq('id', id).eq('sender_id', myId)
     setMessages(ms => ms.map(m => m.id === id ? { ...m, deleted: true, content: 'Message deleted' } : m))
     setCtxMsg(null)
+  }
+
+  // ── Pin / clear / delete-for-me ──────────────────────────────
+
+  /** Toggle "pin chat" for the given room — pinned rooms float to the top of the list. */
+  async function togglePinChat(roomId: string) {
+    if (!myId) return
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    const nextPinned = !room.pinned
+    await supabase.from('room_members').update({ pinned: nextPinned }).eq('room_id', roomId).eq('user_id', myId)
+    setRooms(prev => {
+      const updated = prev.map(r => r.id === roomId ? { ...r, pinned: nextPinned } : r)
+      const globalRoom = updated.find(r => r.type === 'global')
+      const others = updated.filter(r => r.type !== 'global')
+      const byRecency = (a: ChatRoom, b: ChatRoom) => (new Date(b.lastMsgAt ?? 0).getTime()) - (new Date(a.lastMsgAt ?? 0).getTime())
+      const pinnedRooms = others.filter(r => r.pinned).sort(byRecency)
+      const unpinnedRooms = others.filter(r => !r.pinned).sort(byRecency)
+      return globalRoom ? [globalRoom, ...pinnedRooms, ...unpinnedRooms] : [...pinnedRooms, ...unpinnedRooms]
+    })
+    if (activeRoom?.id === roomId) setActiveRoom(r => r ? { ...r, pinned: nextPinned } : r)
+  }
+
+  /** Soft-clear a chat for me only — hides everything up to now, other member unaffected. */
+  async function clearChatForMe(roomId: string) {
+    if (!myId) return
+    const cutoff = new Date().toISOString()
+    await supabase.from('room_members').update({ cleared_at: cutoff }).eq('room_id', roomId).eq('user_id', myId)
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, clearedAt: cutoff, lastMsg: '', lastMsgTime: '' } : r))
+    if (activeRoom?.id === roomId) {
+      setActiveRoom(r => r ? { ...r, clearedAt: cutoff } : r)
+      setMessages([])
+    }
+  }
+
+  /** Delete-for-me: hides a DM from my room list without affecting the other member. Global Chat is exempt. */
+  async function deleteChatForMe(roomId: string) {
+    if (!myId) return
+    const room = rooms.find(r => r.id === roomId)
+    if (!room || room.type === 'global') return
+    await supabase.from('room_members').update({ hidden_at: new Date().toISOString() }).eq('room_id', roomId).eq('user_id', myId)
+    setRooms(prev => prev.filter(r => r.id !== roomId))
+    if (activeRoom?.id === roomId) { setActiveRoom(null); setShowConv(false); setMessages([]) }
+  }
+
+  /** Pin a message to the top of the active conversation, visible to all members. */
+  async function pinMessage(msg: Message) {
+    if (!activeRoom) return
+    await supabase.from('chat_rooms').update({ pinned_message_id: msg.id }).eq('id', activeRoom.id)
+    setActiveRoom(r => r ? { ...r, pinnedMessageId: msg.id } : r)
+    setRooms(prev => prev.map(r => r.id === activeRoom.id ? { ...r, pinnedMessageId: msg.id } : r))
+    setPinnedMsgPreview({
+      id: msg.id,
+      content: msg.deleted ? 'Message deleted' : msg.content,
+      senderName: msg.sender_id === myId ? 'You' : (msg.senderName || 'Unknown'),
+    })
+    setCtxMsg(null)
+  }
+
+  async function unpinMessage() {
+    if (!activeRoom) return
+    await supabase.from('chat_rooms').update({ pinned_message_id: null }).eq('id', activeRoom.id)
+    setActiveRoom(r => r ? { ...r, pinnedMessageId: null } : r)
+    setRooms(prev => prev.map(r => r.id === activeRoom.id ? { ...r, pinnedMessageId: null } : r))
+    setPinnedMsgPreview(null)
   }
 
   function formatTime(iso: string) {
@@ -1043,35 +1241,77 @@ export default function Chat() {
               filteredRooms.map(room => {
                 const isGlobal = room.type === 'global'
                 return (
-                  <button key={room.id} type="button" onClick={(e) => { ripple(e); openRoom(room) }} className="ripple-wrap"
-                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', width:'100%', cursor:'pointer', background: activeRoom?.id === room.id && !isMobile ? 'rgba(79,142,247,0.08)' : isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent', border:'none', borderBottom: isGlobal ? '2px solid rgba(79,142,247,0.15)' : '1px solid rgba(255,255,255,0.04)', textAlign:'left', transition:'background 0.15s' }}
-                    onMouseEnter={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.10)' : 'rgba(255,255,255,0.03)' }}
-                    onMouseLeave={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent' }}>
-                    {/* Globe avatar for global chat, real profile pic for DMs */}
-                    {isGlobal ? (
-                      <div style={{ width:44, height:44, borderRadius:13, flexShrink:0, background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, boxShadow:'0 0 14px rgba(79,142,247,0.35)' }}>
-                        🌍
-                      </div>
-                    ) : (() => {
-                      const other = room.members.find(m => m.user_id !== myId)
-                      return <Avatar name={roomLabel(room)} avatarUrl={other?.profile?.avatar || null} size={44} />
-                    })()}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
-                          <span style={{ fontSize:14, fontWeight:700, color: isGlobal ? '#4f8ef7' : 'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{roomLabel(room)}</span>
-                          {isGlobal && (
-                            <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', borderRadius:5, padding:'1px 6px', flexShrink:0 }}>GLOBAL</span>
-                          )}
+                  <div key={room.id} className="ripple-wrap" style={{ position:'relative' }}>
+                    <div role="button" tabIndex={0} onClick={(e) => { ripple(e); openRoom(room) }}
+                      onKeyDown={e => { if (e.key === 'Enter') openRoom(room) }}
+                      style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 44px 12px 16px', width:'100%', cursor:'pointer', background: activeRoom?.id === room.id && !isMobile ? 'rgba(79,142,247,0.08)' : isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent', border:'none', borderBottom: isGlobal ? '2px solid rgba(79,142,247,0.15)' : '1px solid rgba(255,255,255,0.04)', textAlign:'left', transition:'background 0.15s' }}
+                      onMouseEnter={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.10)' : 'rgba(255,255,255,0.03)' }}
+                      onMouseLeave={e => { if (activeRoom?.id !== room.id) e.currentTarget.style.background = isGlobal ? 'rgba(79,142,247,0.04)' : 'transparent' }}>
+                      {/* Globe avatar for global chat, real profile pic for DMs */}
+                      {isGlobal ? (
+                        <div style={{ width:44, height:44, borderRadius:13, flexShrink:0, background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, boxShadow:'0 0 14px rgba(79,142,247,0.35)' }}>
+                          🌍
                         </div>
-                        <span style={{ fontSize:11, color:'var(--text-muted)', flexShrink:0, marginLeft:8 }}>{room.lastMsgTime}</span>
+                      ) : (() => {
+                        const other = room.members.find(m => m.user_id !== myId)
+                        return <Avatar name={roomLabel(room)} avatarUrl={other?.profile?.avatar || null} size={44} />
+                      })()}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+                            {room.pinned && <Pin size={11} style={{ color:'#4f8ef7', flexShrink:0 }} />}
+                            <span style={{ fontSize:14, fontWeight:700, color: isGlobal ? '#4f8ef7' : 'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{roomLabel(room)}</span>
+                            {isGlobal && (
+                              <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'linear-gradient(135deg,#4f8ef7,#9b6dff)', borderRadius:5, padding:'1px 6px', flexShrink:0 }}>GLOBAL</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize:11, color:'var(--text-muted)', flexShrink:0, marginLeft:8 }}>{room.lastMsgTime}</span>
+                        </div>
+                        <span style={{ fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
+                          {isGlobal && !room.lastMsg ? '👋 Say hello to everyone!' : room.lastMsg || 'No messages yet'}
+                        </span>
                       </div>
-                      <span style={{ fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
-                        {isGlobal && !room.lastMsg ? '👋 Say hello to everyone!' : room.lastMsg || 'No messages yet'}
-                      </span>
+                      {room.unread > 0 && <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--accent)', borderRadius:10, padding:'2px 6px', flexShrink:0 }}>{room.unread}</span>}
                     </div>
-                    {room.unread > 0 && <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:'var(--accent)', borderRadius:10, padding:'2px 6px', flexShrink:0 }}>{room.unread}</span>}
-                  </button>
+
+                    {/* Per-row 3-dot menu — Pin / Delete (DMs only, Global Chat is exempt) */}
+                    {!isGlobal && (
+                      <div style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)' }}>
+                        <button type="button"
+                          onClick={(e) => { e.stopPropagation(); setRoomMenuOpenFor(o => o === room.id ? null : room.id) }}
+                          style={{ width:28, height:28, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)' }}>
+                          <MoreVertical size={15} />
+                        </button>
+                        {roomMenuOpenFor === room.id && (
+                          <>
+                            <div style={{ position:'fixed', inset:0, zIndex:90 }} onClick={(e) => { e.stopPropagation(); setRoomMenuOpenFor(null) }} />
+                            <div style={{ position:'absolute', right:0, top:32, zIndex:100, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, overflow:'hidden', boxShadow:'0 12px 40px rgba(0,0,0,0.5)', minWidth:170 }}>
+                              {[
+                                {
+                                  icon: room.pinned ? <PinOff size={14} /> : <Pin size={14} />,
+                                  label: room.pinned ? 'Unpin chat' : 'Pin chat',
+                                  action: () => { togglePinChat(room.id); setRoomMenuOpenFor(null) },
+                                },
+                                {
+                                  icon: <Trash2 size={14} />,
+                                  label: 'Delete chat',
+                                  action: () => { deleteChatForMe(room.id); setRoomMenuOpenFor(null) },
+                                  danger: true,
+                                },
+                              ].map(({ icon, label, action, danger }) => (
+                                <button key={label} type="button" onClick={(e) => { e.stopPropagation(); action() }}
+                                  style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', width:'100%', background:'none', border:'none', cursor:'pointer', fontSize:13, color: danger ? '#ff6b6b' : 'var(--text-dim)' }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'none' }}>
+                                  {icon} {label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )
               })
             )}
@@ -1109,7 +1349,63 @@ export default function Chat() {
                     )}
                   </div>
                 </div>
+                {activeRoom.type === 'dm' && (
+                  <div style={{ position:'relative' }}>
+                    <IBtn onClick={() => setConvMenuOpen(o => !o)}><MoreVertical size={15} /></IBtn>
+                    {convMenuOpen && (
+                      <>
+                        <div style={{ position:'fixed', inset:0, zIndex:90 }} onClick={() => setConvMenuOpen(false)} />
+                        <div style={{ position:'absolute', right:0, top:42, zIndex:100, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, overflow:'hidden', boxShadow:'0 12px 40px rgba(0,0,0,0.5)', minWidth:180 }}>
+                          {[
+                            {
+                              icon: activeRoom.pinned ? <PinOff size={14} /> : <Pin size={14} />,
+                              label: activeRoom.pinned ? 'Unpin chat' : 'Pin chat',
+                              action: () => { togglePinChat(activeRoom.id); setConvMenuOpen(false) },
+                            },
+                            {
+                              icon: <Trash2 size={14} />,
+                              label: 'Clear chat',
+                              action: () => { clearChatForMe(activeRoom.id); setConvMenuOpen(false) },
+                              danger: true,
+                            },
+                            {
+                              icon: <ShieldOff size={14} />,
+                              label: 'Block user',
+                              action: async () => {
+                                const other = activeRoom.members.find(m => m.user_id !== myId)
+                                if (myId && other) await supabase.from('blocks').upsert({ blocker_id: myId, blocked_id: other.user_id })
+                                setConvMenuOpen(false)
+                              },
+                              danger: true,
+                            },
+                          ].map(({ icon, label, action, danger }) => (
+                            <button key={label} type="button" onClick={action}
+                              style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 16px', width:'100%', background:'none', border:'none', cursor:'pointer', fontSize:13, color: danger ? '#ff6b6b' : 'var(--text-dim)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'none' }}>
+                              {icon} {label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Pinned message banner */}
+              {pinnedMsgPreview && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', background:'rgba(79,142,247,0.08)', borderBottom:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
+                  <Pin size={13} style={{ color:'#4f8ef7', flexShrink:0 }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:10.5, fontWeight:700, color:'#4f8ef7' }}>{pinnedMsgPreview.senderName}</div>
+                    <div style={{ fontSize:12, color:'var(--text-dim)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pinnedMsgPreview.content}</div>
+                  </div>
+                  <button type="button" onClick={unpinMessage} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:4, flexShrink:0 }}>
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
 
               {/* Messages */}
               <div
@@ -1210,6 +1506,11 @@ export default function Chat() {
                     {[
                       { icon: <Smile size={14} />, label:'React', action: () => { setEmojiForMsg(ctxMsg.id); setCtxMsg(null) } },
                       { icon: <Reply size={14} />, label:'Reply', action: () => { setReplyTo(ctxMsg); setCtxMsg(null) } },
+                      ...(!ctxMsg.deleted ? [
+                        activeRoom?.pinnedMessageId === ctxMsg.id
+                          ? { icon: <PinOff size={14} />, label:'Unpin', action: unpinMessage }
+                          : { icon: <Pin size={14} />, label:'Pin', action: () => pinMessage(ctxMsg) }
+                      ] : []),
                       ...(ctxMsg.sender_id !== myId ? [{
                         icon: <UserPlus size={14} />,
                         label: 'View Profile',
@@ -1270,13 +1571,9 @@ export default function Chat() {
             </button>
             <p style={{ fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:14 }}>Chat options</p>
             <button type="button"
-              onClick={async () => {
-                if (!myId || !activeRoom) return
-                // Remove user from room (soft-leave by deleting membership)
-                await supabase.from('room_members').delete().eq('room_id', activeRoom.id).eq('user_id', myId)
-                setRooms(prev => prev.filter(r => r.id !== activeRoom.id))
-                setActiveRoom(null)
-                setShowConv(false)
+              onClick={() => {
+                if (!activeRoom) return
+                deleteChatForMe(activeRoom.id)
                 setDmOptionsOpen(false)
               }}
               style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', width:'100%', borderRadius:11, border:'none', background:'rgba(255,107,107,0.1)', color:'#ff6b6b', fontSize:13, fontWeight:600, cursor:'pointer' }}>
