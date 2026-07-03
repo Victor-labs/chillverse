@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X, Lock, CheckCircle2 } from 'lucide-react'
 import { useProfile } from '../profile/useProfile'
+import { isProActive } from '../../shared/lib/proPlans'
 import { useWallet } from '../economy/useWallet'
 import { supabase } from '../../shared/lib/supabase'
 import PageOnboarding from '../onboarding/PageOnboarding'
@@ -393,8 +394,8 @@ export default function Version() {
   const { profile } = useProfile()
   const { wallet, refetch: refetchWallet } = useWallet()
 
-  // Derive isPro from profile (check pro_until date if column exists, else assume not pro)
-  const isPro = !!(profile && (profile as any).pro_until && new Date((profile as any).pro_until) > new Date())
+  // Derive isPro from the real Premium subscription fields (is_pro / pro_expires_at)
+  const isPro = isProActive(profile)
 
   // Which versions are owned — stored in profile or a dedicated column.
   // We use a local Supabase column `version_level` (int, default 1).
