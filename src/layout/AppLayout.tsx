@@ -10,6 +10,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { getUserRankTier } from '../features/profile/ranks'
 import { getGlobalSessionInfo } from '../features/games/gameSession'
 import { checkSessionResetNotification, checkMoviesOpenNotification } from '../features/notifications/liveNotifications'
+import { getSessionLimits } from '../shared/lib/proPlans'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard':  'Dashboard',
@@ -55,7 +56,7 @@ export default function AppLayout() {
     if (!myId) return
     const username = profile?.display_name || profile?.username || 'Player'
     const run = () => {
-      checkSessionResetNotification(myId, username).catch(console.error)
+      checkSessionResetNotification(myId, username, getSessionLimits(profile).limit).catch(console.error)
       checkMoviesOpenNotification(myId).catch(console.error)
     }
     run()
