@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Gamepad2, ShoppingBag, Film, Swords, Sparkles,
-  Flame, Zap, ChevronRight, Fan, Rss,
+  Flame, Zap, ChevronRight, Fan,
 } from 'lucide-react'
 import { useProfile } from '../profile/useProfile'
 import { getUserRankTier, getNextRankTier, getRankProgress } from '../profile/ranks'
@@ -12,7 +12,9 @@ import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getGlobalSessionInfo } from '../games/gameSession'
+import { getSessionLimits } from '../../shared/lib/proPlans'
 import PageOnboarding from '../onboarding/PageOnboarding'
+import Feed from '../posts/Feed'
 
 interface QuickAction {
   label: string
@@ -109,6 +111,7 @@ function getStreakMessage(streak: number): { emoji: string; message: string; col
 
 export default function Dashboard() {
   const { profile, loading, error } = useProfile()
+  const sessionLimit = getSessionLimits(profile).limit
   const { session } = useAuth()
   const userId = session?.user?.id ?? ''
 
@@ -154,11 +157,11 @@ export default function Dashboard() {
   // User's personal sessions today
   useEffect(() => {
     if (!userId) return
-    const refresh = async () => { const info = await getGlobalSessionInfo(userId); setSessionsToday(info?.count ?? 0) }
+    const refresh = async () => { const info = await getGlobalSessionInfo(userId, sessionLimit); setSessionsToday(info?.count ?? 0) }
     refresh()
     const iv = setInterval(refresh, 5000)
     return () => clearInterval(iv)
-  }, [userId])
+  }, [userId, sessionLimit])
 
   // currentHour drives greeting — must be before any early returns
   const [currentHour, setCurrentHour] = useState(() => new Date().getHours())
@@ -201,7 +204,6 @@ export default function Dashboard() {
   const QUICK_ACTIONS: QuickAction[] = [
     { label: 'Play Games',  sub: onlineCount != null ? `${onlineCount} online` : '…', to: '/games',      bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2 },
     { label: 'Mall',        sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,#ff6b00,#ff9a3c)', icon: ShoppingBag },
-    { label: 'Feed',        sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
   ]
 
   return (
@@ -352,9 +354,9 @@ export default function Dashboard() {
           <div className="neu-card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <Gamepad2 size={20} style={{ color: 'var(--accent)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{sessionsToday}/15 sessions played today</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{sessionsToday}/{sessionLimit} sessions played today</p>
               <div style={{ marginTop: 6, height: 4, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(100, (sessionsToday / 15) * 100)}%`, background: sessionsToday >= 15 ? '#9b6dff' : 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
+                <div style={{ height: '100%', width: `${Math.min(100, (sessionsToday / sessionLimit) * 100)}%`, background: sessionsToday >= sessionLimit ? '#9b6dff' : 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
               </div>
             </div>
             <Link to="/games" style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>Play</Link>
@@ -412,6 +414,8 @@ export default function Dashboard() {
           </div>
         </Link>
       </section>
+
+      <Feed />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
