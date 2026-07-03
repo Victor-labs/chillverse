@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { X, Lock, Fan, Zap, MapPin, Crown } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { useProfile } from '../profile/useProfile'
+import { isProActive } from '../../shared/lib/proPlans'
 import { getAllArtifacts, getPlayerArtifacts } from './artifacts'
 import type { Artifact, PlayerArtifact } from './artifacts'
 import PageOnboarding from '../onboarding/PageOnboarding'
@@ -51,14 +53,17 @@ function groupByLocation(artifacts: Artifact[]): Record<string, Artifact[]> {
 function ArtifactModal({
   artifact,
   isUnlocked,
+  isPro,
   onClose,
 }: {
   artifact: Artifact
   isUnlocked: boolean
+  isPro: boolean
   onClose: () => void
 }) {
   const tier = TIER_META[artifact.tier] ?? TIER_META.common
-  const isProGated = artifact.requires_pro && !isUnlocked
+  const isProGated = artifact.requires_pro && !isUnlocked && !isPro
+  const isClaimable = artifact.requires_pro && !isUnlocked && isPro
 
   return (
     <div
@@ -127,9 +132,9 @@ function ArtifactModal({
                 )}
                 {/* Lock overlay */}
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Lock size={40} style={{ color: 'rgba(255,255,255,0.75)' }} />
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: '0.1em' }}>
-                    {isProGated ? 'PRO REQUIRED' : 'LOCKED'}
+                  {isClaimable ? <Crown size={40} style={{ color: '#f5c542' }} /> : <Lock size={40} style={{ color: 'rgba(255,255,255,0.75)' }} />}
+                  <div style={{ fontSize: 11, color: isClaimable ? '#f5c542' : 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: '0.1em' }}>
+                    {isClaimable ? 'CLAIMABLE' : isProGated ? 'PRO REQUIRED' : 'LOCKED'}
                   </div>
                 </div>
               </div>
@@ -234,6 +239,29 @@ function ArtifactModal({
             </div>
           )}
 
+          {/* Claimable notice — Pro user, just needs to explore for it */}
+          {isClaimable && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px', borderRadius: 12,
+                background: 'rgba(245,197,66,0.1)',
+                border: '1px solid rgba(245,197,66,0.3)',
+                marginBottom: 14,
+              }}
+            >
+              <Crown size={14} style={{ color: '#f5c542', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#f5c542', marginBottom: 1 }}>
+                  Claimable with your Pro plan
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(245,197,66,0.75)', lineHeight: 1.4 }}>
+                  Head to Exploration and finish the related action to collect it.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Status */}
           {isUnlocked ? (
             <div
@@ -274,13 +302,16 @@ function ArtifactModal({
 function ArtifactCard({
   artifact,
   isUnlocked,
+  isPro,
   onClick,
 }: {
   artifact: Artifact
   isUnlocked: boolean
+  isPro: boolean
   onClick: () => void
 }) {
   const tier = TIER_META[artifact.tier] ?? TIER_META.common
+  const isClaimable = artifact.requires_pro && !isUnlocked && isPro
 
   return (
     <button
@@ -292,13 +323,17 @@ function ArtifactCard({
         borderRadius: 18,
         border: isUnlocked
           ? `1.5px solid ${tier.color}44`
+          : isClaimable
+          ? '1.5px solid rgba(245,197,66,0.4)'
           : '1.5px solid rgba(255,255,255,0.05)',
-        background: isUnlocked ? tier.bg : 'rgba(255,255,255,0.02)',
+        background: isUnlocked ? tier.bg : isClaimable ? 'rgba(245,197,66,0.06)' : 'rgba(255,255,255,0.02)',
         overflow: 'hidden',
         cursor: 'pointer',
         padding: 0,
         boxShadow: isUnlocked
           ? `0 4px 20px ${tier.glow}, 4px 4px 12px var(--neu-dark)`
+          : isClaimable
+          ? '0 4px 16px rgba(245,197,66,0.15), 4px 4px 12px var(--neu-dark)'
           : '4px 4px 12px var(--neu-dark), -2px -2px 6px var(--neu-light)',
         transition: 'transform 0.18s, box-shadow 0.18s',
       }}
@@ -333,7 +368,9 @@ function ArtifactCard({
             gap: 6,
           }}
         >
-          <Lock size={22} style={{ color: 'rgba(255,255,255,0.12)' }} />
+          {isClaimable
+            ? <Crown size={22} style={{ color: 'rgba(245,197,66,0.65)' }} />
+            : <Lock size={22} style={{ color: 'rgba(255,255,255,0.12)' }} />}
         </div>
       )}
 
@@ -342,7 +379,7 @@ function ArtifactCard({
         <div
           style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(10,10,14,0.45)',
+            background: isClaimable ? 'rgba(245,197,66,0.08)' : 'rgba(10,10,14,0.45)',
             borderRadius: 16,
           }}
         />
@@ -370,7 +407,7 @@ function ArtifactCard({
         <div
           style={{
             fontSize: 11, fontWeight: 700,
-            color: isUnlocked ? '#fff' : 'rgba(255,255,255,0.3)',
+            color: isUnlocked ? '#fff' : isClaimable ? 'rgba(245,197,66,0.75)' : 'rgba(255,255,255,0.3)',
             textAlign: 'center',
             lineHeight: 1.2,
             textTransform: 'uppercase',
@@ -400,6 +437,8 @@ function ArtifactCard({
 export default function Artifacts() {
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
+  const { profile } = useProfile()
+  const isPro = isProActive(profile)
 
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [playerArtifacts, setPlayerArtifacts] = useState<PlayerArtifact[]>([])
@@ -577,7 +616,7 @@ export default function Artifacts() {
                             display: 'flex', alignItems: 'center', gap: 3,
                           }}
                         >
-                          <Crown size={8} /> Pro
+                          <Crown size={8} /> {isPro ? 'Claimable' : 'Pro'}
                         </span>
                       )}
                     </div>
@@ -602,6 +641,7 @@ export default function Artifacts() {
                     key={art.id}
                     artifact={art}
                     isUnlocked={unlockedSet.has(art.id)}
+                    isPro={isPro}
                     onClick={() => setSelected(art)}
                   />
                 ))}
@@ -613,14 +653,16 @@ export default function Artifacts() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', borderRadius: 12,
-                    background: 'rgba(245,197,66,0.05)',
-                    border: '1px solid rgba(245,197,66,0.15)',
+                    background: isPro ? 'rgba(245,197,66,0.08)' : 'rgba(245,197,66,0.05)',
+                    border: isPro ? '1px solid rgba(245,197,66,0.25)' : '1px solid rgba(245,197,66,0.15)',
                     marginTop: 10,
                   }}
                 >
                   <Crown size={13} style={{ color: '#f5c542', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'rgba(245,197,66,0.7)', lineHeight: 1.4 }}>
-                    Open in Exploration — Pro membership required to claim these artifacts.
+                  <span style={{ fontSize: 11, color: isPro ? 'rgba(245,197,66,0.85)' : 'rgba(245,197,66,0.7)', lineHeight: 1.4 }}>
+                    {isPro
+                      ? 'Unlocked with your Pro plan — head into Exploration to claim these artifacts.'
+                      : 'Open in Exploration — Pro membership required to claim these artifacts.'}
                   </span>
                 </div>
               )}
@@ -634,6 +676,7 @@ export default function Artifacts() {
         <ArtifactModal
           artifact={selected}
           isUnlocked={unlockedSet.has(selected.id)}
+          isPro={isPro}
           onClose={() => setSelected(null)}
         />
       )}

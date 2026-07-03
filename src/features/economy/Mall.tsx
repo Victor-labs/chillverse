@@ -1,5 +1,5 @@
 // src/pages/Mall.tsx
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, createContext, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ChevronRight, Image as ImageIcon, Shirt, Zap,
@@ -9,10 +9,17 @@ import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import { useAuth } from '../auth/useAuth'
+import { useProfile } from '../profile/useProfile'
+import { isProActive } from '../../shared/lib/proPlans'
 import { useMallItems } from './useMallItems'
 import { useWallet } from './useWallet'
 import type { MallItem, MallRarity } from '../../shared/types'
 import PageOnboarding from '../onboarding/PageOnboarding'
+
+// Whether the viewing user has an active Pro (Orbit/Void) plan. Provided
+// once at the top of Mall() and read by SquareCard/RectCard/ItemModal so
+// is_pro_locked items don't need isPro threaded through every page wrapper.
+const MallProContext = createContext(false)
 
 
 /* ══════════════════════════════════════════════════════
@@ -58,24 +65,18 @@ function RarityBadge({ rarity }: { rarity: MallRarity }) {
 
 /* ══════════════════════════════════════════════════════
    UNLOCK / LOCK STATUS
-   For now: items requiring an avatar link or group requirement are
-   treated as locked until real ownership-checking is wired up (needs
-   user_inventory join, not implemented in this pass). Pro-locked items
-   are locked unless... we don't have a real "is this user Pro" check
-   yet either — flagged clearly below, not silently assumed.
+   Pro-locked items unlock for any active Pro plan (Orbit or Void).
+   Avatar/group-requirement items are still locked until real
+   ownership-checking is wired up (needs user_inventory join).
 ══════════════════════════════════════════════════════ */
 interface LockInfo {
   locked: boolean
   reason: string | null
 }
 
-// TODO: replace with real ownership checks once user_inventory reads are
-// wired into the Mall. For now this only reflects Pro-locking and items
-// that are gated behind avatar/group requirements (shown locked until
-// the real "does this user own the required avatar(s)" query exists).
-function getLockInfo(item: MallItem, hasOwnedRequirement: boolean): LockInfo {
+function getLockInfo(item: MallItem, hasOwnedRequirement: boolean, isPro: boolean): LockInfo {
   if (item.is_pro_locked) {
-    return { locked: true, reason: 'Requires Pro' }
+    return isPro ? { locked: false, reason: null } : { locked: true, reason: 'Requires Pro' }
   }
   if (item.category === 'profile_pic' && !item.price_gems && !item.unlock_xp && !hasOwnedRequirement) {
     // A profile_pic with no direct price/XP path and no confirmed
@@ -90,7 +91,8 @@ function getLockInfo(item: MallItem, hasOwnedRequirement: boolean): LockInfo {
    CARD COMPONENTS
 ══════════════════════════════════════════════════════ */
 function SquareCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean; likeCount?: number }) {
-  const lock = getLockInfo(item, false)
+  const isPro = useContext(MallProContext)
+  const lock = getLockInfo(item, false, isPro)
   const isMythic = item.rarity === 'Mythic'
 
   return (
@@ -137,7 +139,8 @@ function SquareCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: {
 }
 
 function RectCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { item: MallItem; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: boolean; likeCount?: number }) {
-  const lock = getLockInfo(item, false)
+  const isPro = useContext(MallProContext)
+  const lock = getLockInfo(item, false, isPro)
   const isMythic = item.rarity === 'Mythic'
 
   return (
@@ -220,7 +223,8 @@ function ItemModal({
   onClose: () => void
   onPurchased: (item: MallItem) => void
 }) {
-  const lock = getLockInfo(item, false)
+  const isPro = useContext(MallProContext)
+  const lock = getLockInfo(item, false, isPro)
   const canAfford = item.price_gems != null && walletBalance >= item.price_gems
   const [buying, setBuying] = useState(false)
   const [alreadyOwned, setAlreadyOwned] = useState(false)
@@ -387,7 +391,7 @@ function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted, like
 /* ══════════════════════════════════════════════════════
    AVATARS SUB-PAGE — with sub-category tabs
 ══════════════════════════════════════════════════════ */
-const AVATAR_SUB_CATEGORIES = ['Models and brand', 'Others', 'Power up characters']
+const AVATAR_SUB_CATEGORIES = ['Models and brand', 'Others', 'Power up characters', 'Animated Characters']
 
 function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
   const [activeTab, setActiveTab] = useState(AVATAR_SUB_CATEGORIES[0])
@@ -486,6 +490,8 @@ export default function Mall() {
   const { wallet, refetch: refetchWallet } = useWallet()
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
+  const { profile } = useProfile()
+  const isPro = isProActive(profile)
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
@@ -554,8 +560,8 @@ export default function Mall() {
 
 
   return (
-    <>
-      <PageOnboarding pageKey="mall" />
+    <MallProContext.Provider value={isPro}>
+    <PageOnboarding pageKey="mall" />
       <style>{`
         @keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }
         @keyframes feedIn { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform: translateY(0) } }
@@ -692,6 +698,6 @@ export default function Mall() {
 
       {/* Wishlist toast */}
       {toast && <WishlistToast message={toast} onDone={() => setToast(null)} />}
-    </>
+    </MallProContext.Provider>
   )
 }
