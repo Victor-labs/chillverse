@@ -34,7 +34,7 @@ export function usePostEligibility(active: boolean): UsePostEligibilityState {
   return { eligibility, loading }
 }
 
-/** Short, concise reason string for the locked state — e.g. "Gold Rank · 150 games · Profile pic" */
+/** Short, concise reason string for the locked state — e.g. "Gold Rank · 50 games · Profile pic" */
 export function lockedReasonText(e: PostingEligibility): string {
   const missing: string[] = []
   if (!e.is_gold_rank) missing.push('Gold Rank')
