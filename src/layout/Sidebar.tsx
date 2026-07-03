@@ -281,7 +281,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
           <div className="p-3 pb-5">
             <button
               type="button"
-              onClick={(e) => { ripple(e); navigate('/coming-soon?feature=Go%20Premium') }}
+              onClick={(e) => { ripple(e); navigate('/pro') }}
               className="ripple-wrap w-full text-left"
               style={{ background: 'linear-gradient(135deg, rgba(30,10,0,0.9), rgba(40,18,0,0.9))', border: '1px solid rgba(255,107,0,0.3)', borderRadius: 'var(--radius)', padding: 16, cursor: 'pointer', transition: 'border-color 0.2s, transform 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,107,0,0.55)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
@@ -303,7 +303,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
           <div className="p-3 pb-5 flex justify-center">
             <button
               type="button"
-              onClick={(e) => { ripple(e); navigate('/coming-soon?feature=Go%20Premium') }}
+              onClick={(e) => { ripple(e); navigate('/pro') }}
               title="Go Premium"
               style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,var(--accent),var(--accent2))', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
             >
