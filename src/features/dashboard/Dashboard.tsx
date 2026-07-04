@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Gamepad2, ShoppingBag, Film, Swords, Sparkles,
+  Gamepad2, ShoppingBag, Film, Swords, Sparkles, Rss,
   Flame, Zap, ChevronRight, Fan,
 } from 'lucide-react'
 import { useProfile } from '../profile/useProfile'
@@ -14,7 +14,6 @@ import { useAuth } from '../auth/useAuth'
 import { getGlobalSessionInfo } from '../games/gameSession'
 import { getSessionLimits } from '../../shared/lib/proPlans'
 import PageOnboarding from '../onboarding/PageOnboarding'
-import Feed from '../posts/Feed'
 
 interface QuickAction {
   label: string
@@ -204,6 +203,7 @@ export default function Dashboard() {
   const QUICK_ACTIONS: QuickAction[] = [
     { label: 'Play Games',  sub: onlineCount != null ? `${onlineCount} online` : '…', to: '/games',      bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2 },
     { label: 'Mall',        sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,#ff6b00,#ff9a3c)', icon: ShoppingBag },
+    { label: 'Feed',        sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
   ]
 
   return (
@@ -414,8 +414,6 @@ export default function Dashboard() {
           </div>
         </Link>
       </section>
-
-      <Feed />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
