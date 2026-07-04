@@ -12,11 +12,16 @@ import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
 import { notifyFollow, notifyProfileView, notifyProfileLike } from '../achievements/achievements'
+import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import { getUserRankTier, type RankTier } from './ranks'
 import { GAMES, getGameMeta } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 
 function getRank(xp: number): RankTier { return getUserRankTier(xp) }
+
+// Lower is better — used to pick a player's 3 best (rarest) unlocked
+// achievements to show off, instead of just the 3 most recently earned.
+const RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
 
 const GAME_LABELS: Record<string, string> = Object.fromEntries(GAMES.map(g => [g.dbKey, g.name]))
 
@@ -130,7 +135,7 @@ export default function PlayerProfile() {
   const [albumPics, setAlbumPics] = useState<AlbumPic[]>([])
   const [wishlistCount, setWishlistCount] = useState(0)
   const [achievementCount, setAchievementCount] = useState(0)
-  const [recentAchievements, setRecentAchievements] = useState<{ id: string; title: string; icon: string }[]>([])
+  const [recentAchievements, setRecentAchievements] = useState<{ id: string; title: string; icon: string; rarity: string }[]>([])
   const [favoriteGameRank, setFavoriteGameRank] = useState<string | null>(null)
   const [equippedArtifact, setEquippedArtifact] = useState<string | null>(null)
   const [showAchievements, setShowAchievements] = useState(false)
@@ -263,15 +268,26 @@ export default function PlayerProfile() {
       .then(({ count }) => setWishlistCount(count ?? 0))
   }, [userId])
 
-  // Load achievement count + 3 most recent
+  // Load achievement count + best 3 (rarest first)
   useEffect(() => {
     if (!userId) return
-    supabase.from('player_achievements').select('achievement_id, unlocked_at, achievements(title, icon)')
-      .eq('user_id', userId).order('unlocked_at', { ascending: false }).limit(3)
+    supabase.from('player_achievements').select('achievement_id, unlocked_at, achievements(title, icon, rarity)')
+      .eq('user_id', userId)
       .then(({ data }) => {
-        const rows = (data ?? []) as unknown as { achievement_id: string; achievements: { title: string; icon: string } | null }[]
-        setRecentAchievements(rows.map(r => ({
-          id: r.achievement_id, title: r.achievements?.title ?? 'Achievement', icon: r.achievements?.icon ?? '🏆',
+        const rows = (data ?? []) as unknown as { achievement_id: string; unlocked_at: string; achievements: { title: string; icon: string; rarity: string } | null }[]
+        const best = [...rows]
+          .sort((a, b) => {
+            const rA = RARITY_RANK[a.achievements?.rarity ?? 'common'] ?? 3
+            const rB = RARITY_RANK[b.achievements?.rarity ?? 'common'] ?? 3
+            if (rA !== rB) return rA - rB
+            return new Date(b.unlocked_at).getTime() - new Date(a.unlocked_at).getTime()
+          })
+          .slice(0, 3)
+        setRecentAchievements(best.map(r => ({
+          id: r.achievement_id,
+          title: r.achievements?.title ?? 'Achievement',
+          icon: r.achievements?.icon ?? 'trophy',
+          rarity: r.achievements?.rarity ?? 'common',
         })))
       })
     supabase.from('player_achievements').select('achievement_id', { count: 'exact', head: true }).eq('user_id', userId)
@@ -645,12 +661,17 @@ export default function PlayerProfile() {
         <SimpleListModal title="Achievements" subtitle={`${achievementCount} unlocked total`} onClose={() => setShowAchievements(false)}>
           {recentAchievements.length === 0 ? (
             <p style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No achievements unlocked yet</p>
-          ) : recentAchievements.map(a => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
-              <span style={{ fontSize: 22 }}>{a.icon}</span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{a.title}</span>
-            </div>
-          ))}
+          ) : recentAchievements.map(a => {
+            const color = RARITY_COLOR[a.rarity] ?? RARITY_COLOR.common
+            return (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${color}33,${color}11)`, border: `1.5px solid ${color}44` }}>
+                  <AchIcon iconKey={a.icon} size={18} color={color} />
+                </div>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{a.title}</span>
+              </div>
+            )
+          })}
         </SimpleListModal>
       )}
       {showWishlist && <ViewerWishlistModal userId={userId!} onClose={() => setShowWishlist(false)} />}

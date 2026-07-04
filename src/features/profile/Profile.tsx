@@ -16,12 +16,17 @@ import { getUserRankTier, type RankTier } from './ranks'
 import { GAMES, getGameMeta } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 import EditProfileModal, { type EditProfileSavedFields } from './EditProfileModal'
+import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import PageOnboarding from '../onboarding/PageOnboarding'
 
 /** Use the real rank system (lib/ranks.ts) everywhere on this page —
  *  this used to be a hardcoded 7-tier placeholder ("Newcomer" etc).
  *  getRank() is now a thin wrapper so call sites barely changed. */
 function getRank(xp: number): RankTier { return getUserRankTier(xp) }
+
+// Lower is better — used to pick a player's 3 best (rarest) unlocked
+// achievements to show off, instead of just the 3 most recently earned.
+const RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
 
 const GAME_LABELS: Record<string, string> = Object.fromEntries(GAMES.map(g => [g.dbKey, g.name]))
 
@@ -384,7 +389,7 @@ function AchievementsModal({
   total, recent, onClose,
 }: {
   total: number
-  recent: { id: string; title: string; icon: string }[]
+  recent: { id: string; title: string; icon: string; rarity: string }[]
   onClose: () => void
 }) {
   const [visible, setVisible] = useState(false)
@@ -408,12 +413,17 @@ function AchievementsModal({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recent.map(a => (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: 22 }}>{a.icon}</span>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{a.title}</span>
-                </div>
-              ))}
+              {recent.map(a => {
+                const color = RARITY_COLOR[a.rarity] ?? RARITY_COLOR.common
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${color}33,${color}11)`, border: `1.5px solid ${color}44` }}>
+                      <AchIcon iconKey={a.icon} size={18} color={color} />
+                    </div>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{a.title}</span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -538,7 +548,7 @@ export default function Profile() {
   const [albumPics, setAlbumPics]                   = useState<AlbumPic[]>([])
   const [bannerUrl, setBannerUrl]                   = useState<string | null>(null)
   const [favoriteGameRank, setFavoriteGameRank]     = useState<string | null>(null)
-  const [recentAchievements, setRecentAchievements] = useState<{ id: string; title: string; icon: string }[]>([])
+  const [recentAchievements, setRecentAchievements] = useState<{ id: string; title: string; icon: string; rarity: string }[]>([])
   const [achievementCount, setAchievementCount]     = useState(0)
   const [liked, setLiked]                           = useState(false)
   const [likeCount, setLikeCount]                   = useState(0)
@@ -643,17 +653,27 @@ export default function Profile() {
     })
   }, [profile?.id, favoriteGame])
 
-  // Load achievement count + 3 most recent (for the Achievements grid card)
+  // Load achievement count + best 3 (rarest first) for the Achievements grid card
   useEffect(() => {
     if (!profile?.id) return
-    supabase.from('player_achievements').select('achievement_id, unlocked_at, achievements(title, icon)')
-      .eq('user_id', profile.id).order('unlocked_at', { ascending: false }).limit(3)
+    supabase.from('player_achievements').select('achievement_id, unlocked_at, achievements(title, icon, rarity)')
+      .eq('user_id', profile.id)
       .then(({ data }) => {
-        const rows = (data ?? []) as unknown as { achievement_id: string; achievements: { title: string; icon: string } | null }[]
-        setRecentAchievements(rows.map(r => ({
+        const rows = (data ?? []) as unknown as { achievement_id: string; unlocked_at: string; achievements: { title: string; icon: string; rarity: string } | null }[]
+        const best = [...rows]
+          .sort((a, b) => {
+            const rA = RARITY_RANK[a.achievements?.rarity ?? 'common'] ?? 3
+            const rB = RARITY_RANK[b.achievements?.rarity ?? 'common'] ?? 3
+            if (rA !== rB) return rA - rB
+            // Tie-break: most recently unlocked first
+            return new Date(b.unlocked_at).getTime() - new Date(a.unlocked_at).getTime()
+          })
+          .slice(0, 3)
+        setRecentAchievements(best.map(r => ({
           id: r.achievement_id,
           title: r.achievements?.title ?? 'Achievement',
-          icon: r.achievements?.icon ?? '🏆',
+          icon: r.achievements?.icon ?? 'trophy',
+          rarity: r.achievements?.rarity ?? 'common',
         })))
       })
     supabase.from('player_achievements').select('achievement_id', { count: 'exact', head: true }).eq('user_id', profile.id)
