@@ -109,6 +109,7 @@ export interface MallItem {
   unlocks_profile_pic_id: string | null
   grants_free_on_unlock: boolean
   image_url: string | null
+  animated_url: string | null    // gif/mp4/webm shown only in the item detail modal
   is_consumable: boolean
   is_active: boolean
   created_at: string
