@@ -40,6 +40,8 @@ const Rooms              = lazy(() => import('../features/multiplayer/Rooms'))
 const Room                = lazy(() => import('../features/multiplayer/Room'))
 const FeedPage            = lazy(() => import('../features/posts/FeedPage'))
 const SinglePostPage      = lazy(() => import('../features/posts/SinglePostPage'))
+const HighlightsPage      = lazy(() => import('../features/highlights/HighlightsPage'))
+const ReferralPage        = lazy(() => import('../features/referral/Referral'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -108,7 +110,9 @@ export default function App() {
         <Route path="/rooms"            element={<Suspense fallback={<Fallback />}><Rooms /></Suspense>} />
         <Route path="/rooms/:roomId"    element={<Suspense fallback={<Fallback />}><Room /></Suspense>} />
         <Route path="/feed"             element={<Suspense fallback={<Fallback />}><FeedPage /></Suspense>} />
+        <Route path="/feed/highlights"  element={<Suspense fallback={<Fallback />}><HighlightsPage /></Suspense>} />
         <Route path="/feed/:postId"     element={<Suspense fallback={<Fallback />}><SinglePostPage /></Suspense>} />
+        <Route path="/referral"         element={<Suspense fallback={<Fallback />}><ReferralPage /></Suspense>} />
       </Route>
     </Routes>
   )
