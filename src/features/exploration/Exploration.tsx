@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Battery, Lock, Zap, MapPin, ChevronLeft, Crown, Clock, Star, Trophy, GamepadIcon } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { useProfile } from '../profile/useProfile'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Chamber {
@@ -34,7 +35,7 @@ interface ChamberState {
 // ── Maps Data ─────────────────────────────────────────────────
 const MAPS: ExplorationMap[] = [
   {
-    id: 1, name: 'The Verdant Hollow', tier: 'I', xpRequired: 0,
+    id: 1, name: 'Greenfields', tier: 'I', xpRequired: 0,
     artifactLocation: 'Greenfields',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/2f3de4d78ede24c46d7a8ecf5f67b9c0.webp.jpg',
     energyCost: 20,
@@ -47,10 +48,10 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 2, name: 'Ashfall Ruins', tier: 'II', xpRequired: 12000,
+    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 12000,
     artifactLocation: 'Crystal Lake',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/45a3c9b17775c774156c9c924ed4a89e.webp.jpg',
-    energyCost: 40,
+    energyCost: 20,
     chambers: [
       { id: 1, name: 'Ember Arch',      baseTimeHours: 6, xpReward: 400,  artifact: false },
       { id: 2, name: 'Cinder Hall',     baseTimeHours: 6, xpReward: 650,  artifact: true  },
@@ -60,10 +61,10 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 3, name: 'Tidebound Depths', tier: 'III', xpRequired: 45000,
+    id: 3, name: 'Under World', tier: 'III', xpRequired: 45000,
     artifactLocation: 'Under World',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/7c15d735d2aeb8fff833fdd949d5c4a3.jpg',
-    energyCost: 70,
+    energyCost: 20,
     chambers: [
       { id: 1, name: 'Salt Shore',        baseTimeHours: 12, xpReward: 1200, artifact: false },
       { id: 2, name: 'Kelp Maze',         baseTimeHours: 12, xpReward: 2000, artifact: true  },
@@ -73,10 +74,10 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 4, name: 'Celestial Spire', tier: 'IV', xpRequired: 120000,
+    id: 4, name: 'The Void', tier: 'IV', xpRequired: 120000,
     artifactLocation: 'The Void',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/ecaf76f4607a37f03cfaac5babbc2826.jpg',
-    energyCost: 100,
+    energyCost: 20,
     chambers: [
       { id: 1, name: 'Cloud Vestibule', baseTimeHours: 24, xpReward: 3000,  artifact: false },
       { id: 2, name: 'Star Corridor',   baseTimeHours: 24, xpReward: 5000,  artifact: true  },
@@ -91,8 +92,9 @@ const MAP5_IMAGE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/p
 const AVATAR_PLACEHOLDER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/ac50a770bef6d3a9b94eac44e946924f.jpg'
 
 const MAX_ENERGY = 200
-// Refill: 29% of MAX (58 energy) per 50 minutes — hidden from UI
-const ENERGY_REFILL_RATE = (0.29 * MAX_ENERGY) / (50 * 60 * 1000) // energy per ms
+// Refill rate (29% of max per 50 min) is computed server-side in the
+// get_exploration_energy / spend_exploration_energy RPCs, so it stays
+// correct regardless of how long the client was closed.
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmtXP(n: number) {
@@ -397,7 +399,7 @@ function MapCard({ map, playerXP, onClick }: { map: ExplorationMap; playerXP: nu
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Battery size={11} style={{ color: locked ? 'rgba(255,255,255,0.12)' : tierColor }} />
             <span style={{ fontSize: 11, fontWeight: 800, color: locked ? 'rgba(255,255,255,0.12)' : tierColor }}>
-              {map.energyCost} energy
+              {map.energyCost} energy/chamber
             </span>
           </div>
         </div>
@@ -408,13 +410,14 @@ function MapCard({ map, playerXP, onClick }: { map: ExplorationMap; playerXP: nu
 
 // ── Chamber Row ───────────────────────────────────────────────
 function ChamberRow({
-  chamber, index, state, onExplore, disabled,
+  chamber, index, state, onExplore, disabled, lockedReason,
 }: {
   chamber: Chamber
   index: number
   state: ChamberState | null
   onExplore: (c: Chamber) => void
   disabled: boolean
+  lockedReason?: string
 }) {
   const isRunning = state?.status === 'running'
   const isDone = state?.status === 'done'
@@ -521,6 +524,13 @@ function ChamberRow({
         )}
       </div>
 
+      {/* Locked reason */}
+      {!isDone && !isRunning && lockedReason && (
+        <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Lock size={10} /> {lockedReason}
+        </div>
+      )}
+
       {/* Progress bar */}
       {(isRunning || isDone) && (
         <div style={{ marginTop: 12 }}>
@@ -554,18 +564,20 @@ function ChamberRow({
 
 // ── Map View ──────────────────────────────────────────────────
 function MapView({
-  map, energy, setEnergy, onBack, userId,
+  map, energy, refreshEnergy, spendEnergy, onBack, userId,
 }: {
   map: ExplorationMap
   energy: number
-  setEnergy: React.Dispatch<React.SetStateAction<number>>
+  refreshEnergy: () => Promise<void>
+  spendEnergy: (amount: number) => Promise<boolean>
   onBack: () => void
   userId: string | null
 }) {
   const [chamberStates, setChamberStates] = useState<Record<number, ChamberState>>({})
+  const [loadingRuns, setLoadingRuns] = useState(true)
   const [totalXP, setTotalXP] = useState(0)
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
-  const timers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+  const claimingRef = useRef<Set<number>>(new Set())
 
   const tierColors: Record<string, string> = {
     'I': '#3ecf8e', 'II': '#4f8ef7', 'III': '#9b6dff', 'IV': '#f5c542',
@@ -610,33 +622,112 @@ function MapView({
     }
   }
 
-  function handleExplore(chamber: Chamber) {
-    if (energy < map.energyCost) {
+  // Load this map's chamber runs from the DB — this is what makes the
+  // timer survive navigation/refresh/closing the tab, since started_at
+  // and ends_at are server timestamps, not a JS setTimeout.
+  async function loadRuns() {
+    if (!userId) { setLoadingRuns(false); return }
+    const { data, error } = await supabase
+      .from('exploration_chamber_runs')
+      .select('chamber_id, started_at, ends_at, claimed')
+      .eq('user_id', userId)
+      .eq('map_id', map.id)
+
+    if (error) { setLoadingRuns(false); return }
+
+    const next: Record<number, ChamberState> = {}
+    for (const row of data ?? []) {
+      const startedAt = new Date(row.started_at).getTime()
+      const endsAt = new Date(row.ends_at).getTime()
+      next[row.chamber_id] = {
+        status: row.claimed ? 'done' : 'running',
+        startedAt,
+        durationMs: endsAt - startedAt,
+      }
+    }
+    setChamberStates(next)
+    setLoadingRuns(false)
+  }
+
+  useEffect(() => { loadRuns() }, [userId, map.id])
+
+  // Every 15s, check for any running chamber whose ends_at has passed and
+  // claim its reward (XP + artifact roll) exactly once. claimingRef guards
+  // against double-claims if this fires twice before the DB update lands.
+  useEffect(() => {
+    async function checkCompletions() {
+      if (!userId) return
+      const now = Date.now()
+
+      for (const chamber of map.chambers) {
+        const st = chamberStates[chamber.id]
+        if (!st || st.status !== 'running' || !st.startedAt || !st.durationMs) continue
+        if (now < st.startedAt + st.durationMs) continue
+        if (claimingRef.current.has(chamber.id)) continue
+
+        claimingRef.current.add(chamber.id)
+
+        // Flip claimed=true only if it's still false — the WHERE clause
+        // makes this safe even if two tabs race each other.
+        const { data: claimedRow, error } = await supabase
+          .from('exploration_chamber_runs')
+          .update({ claimed: true })
+          .eq('user_id', userId)
+          .eq('map_id', map.id)
+          .eq('chamber_id', chamber.id)
+          .eq('claimed', false)
+          .select('chamber_id')
+          .maybeSingle()
+
+        if (!error && claimedRow) {
+          await supabase.rpc('award_xp', { p_user_id: userId, p_xp: chamber.xpReward })
+          setTotalXP(x => x + chamber.xpReward)
+          showToast(`+${chamber.xpReward} XP earned from ${chamber.name}!`, '#3ecf8e')
+          if (chamber.artifact) await tryArtifactDrop()
+          setChamberStates(s => ({ ...s, [chamber.id]: { ...s[chamber.id], status: 'done' } }))
+        }
+
+        claimingRef.current.delete(chamber.id)
+      }
+    }
+
+    const iv = setInterval(checkCompletions, 15000)
+    checkCompletions()
+    return () => clearInterval(iv)
+  }, [chamberStates, userId, map.id])
+
+  async function handleExplore(chamber: Chamber) {
+    const ok = await spendEnergy(map.energyCost)
+    if (!ok) {
       showToast('Not enough energy!', '#ef4444')
       return
     }
-    const durationMs = chamber.baseTimeHours * 60 * 60 * 1000
-    const startedAt = Date.now()
 
-    setEnergy(e => e - map.energyCost)
+    const startedAt = new Date()
+    const durationMs = chamber.baseTimeHours * 60 * 60 * 1000
+    const endsAt = new Date(startedAt.getTime() + durationMs)
+
+    const { error } = await supabase
+      .from('exploration_chamber_runs')
+      .insert({
+        user_id: userId,
+        map_id: map.id,
+        chamber_id: chamber.id,
+        started_at: startedAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      })
+
+    if (error) {
+      showToast('Could not start exploration — try again.', '#ef4444')
+      refreshEnergy() // give back the optimistic deduction on failure
+      return
+    }
+
     setChamberStates(s => ({
       ...s,
-      [chamber.id]: { status: 'running', startedAt, durationMs, progress: 0 },
+      [chamber.id]: { status: 'running', startedAt: startedAt.getTime(), durationMs, progress: 0 },
     }))
-
-    const t = setTimeout(async () => {
-      setChamberStates(s => ({ ...s, [chamber.id]: { status: 'done', progress: 100 } }))
-      setTotalXP(x => x + chamber.xpReward)
-      showToast(`+${chamber.xpReward} XP earned from ${chamber.name}!`, '#3ecf8e')
-
-      // Artifact drop only on flagged chambers
-      if (chamber.artifact) await tryArtifactDrop()
-    }, durationMs)
-
-    timers.current[chamber.id] = t
   }
-
-  useEffect(() => () => { Object.values(timers.current).forEach(clearTimeout) }, [])
 
   const doneCount = Object.values(chamberStates).filter(s => s.status === 'done').length
   const progressPct = (doneCount / map.chambers.length) * 100
@@ -773,16 +864,29 @@ function MapView({
         Chambers
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {map.chambers.map((chamber, i) => (
-          <ChamberRow
-            key={chamber.id}
-            chamber={chamber}
-            index={i}
-            state={chamberStates[chamber.id] ?? null}
-            onExplore={handleExplore}
-            disabled={energy < map.energyCost}
-          />
-        ))}
+        {map.chambers.map((chamber, i) => {
+          const prevDone = i === 0 || chamberStates[map.chambers[i - 1].id]?.status === 'done'
+          const notEnoughEnergy = energy < map.energyCost
+          const lockedReason = loadingRuns
+            ? undefined
+            : !prevDone
+            ? 'Explore the previous chamber first'
+            : notEnoughEnergy
+            ? 'Not enough energy'
+            : undefined
+
+          return (
+            <ChamberRow
+              key={chamber.id}
+              chamber={chamber}
+              index={i}
+              state={chamberStates[chamber.id] ?? null}
+              onExplore={handleExplore}
+              disabled={loadingRuns || !prevDone || notEnoughEnergy}
+              lockedReason={lockedReason}
+            />
+          )
+        })}
       </div>
 
       {/* Toast */}
@@ -809,22 +913,37 @@ function MapView({
 export default function Exploration() {
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
+  const { profile } = useProfile()
+  const playerXP = profile?.xp ?? 0
 
-  const [playerXP] = useState(0)
   const [energy, setEnergy] = useState(MAX_ENERGY)
-  const energyRef = useRef(MAX_ENERGY)
 
-  // Silent background refill — 29% of max per 50 min
+  const refreshEnergy = async () => {
+    if (!userId) return
+    const { data, error } = await supabase.rpc('get_exploration_energy', { p_user_id: userId })
+    if (!error && typeof data === 'number') setEnergy(data)
+  }
+
+  // Atomically spend energy server-side (refill-aware). Returns false if
+  // there wasn't enough — the caller shows the "not enough energy" toast.
+  const spendEnergy = async (amount: number): Promise<boolean> => {
+    if (!userId) return false
+    const { data, error } = await supabase.rpc('spend_exploration_energy', {
+      p_user_id: userId,
+      p_amount: amount,
+    })
+    if (error) return false
+    setEnergy(data as number)
+    return true
+  }
+
+  // Fetch real (refill-aware) energy on mount, then refresh periodically
+  // so the display stays current even if the user never spends anything.
   useEffect(() => {
-    const iv = setInterval(() => {
-      setEnergy(prev => {
-        const next = Math.min(MAX_ENERGY, prev + ENERGY_REFILL_RATE * 60000)
-        energyRef.current = next
-        return next
-      })
-    }, 60000) // tick every minute
+    refreshEnergy()
+    const iv = setInterval(refreshEnergy, 60000)
     return () => clearInterval(iv)
-  }, [])
+  }, [userId])
   const [activeMap, setActiveMap] = useState<ExplorationMap | null>(null)
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null)  // null = loading
   const [showNoAvatar, setShowNoAvatar] = useState(false)
@@ -909,7 +1028,8 @@ export default function Exploration() {
           <MapView
             map={activeMap}
             energy={energy}
-            setEnergy={setEnergy}
+            refreshEnergy={refreshEnergy}
+            spendEnergy={spendEnergy}
             onBack={() => setActiveMap(null)}
             userId={userId}
           />
