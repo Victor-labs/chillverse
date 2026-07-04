@@ -41,7 +41,7 @@ export default function InfluenceModal({
           {authorName} has {influence} Influence
         </p>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.5 }}>
-          Influence comes from likes and comments on posts. Posts with more Influence rank higher in the Feed — it doesn't affect XP, rank, or the economy.
+          Activities on posts increases Influence. Posts with more Influence has high filter priority.
         </p>
       </div>
     </div>,
