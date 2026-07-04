@@ -1,11 +1,11 @@
 // src/pages/Chat.tsx
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply,
   MessageCircle, UserPlus, ShieldOff, UserCheck,
-  ExternalLink, CheckCheck, Pin, PinOff,
+  ExternalLink, Check, CheckCheck, Pin, PinOff,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
@@ -51,6 +51,15 @@ interface SearchedProfile {
   avatar: string
 }
 
+/** Read-receipt state for one of MY OWN messages: 'sent' = persisted but not yet
+ *  confirmed read by the other DM member, 'read' = their last_read_at has passed
+ *  this message's created_at. Only computed for DMs — global chat has too many
+ *  members for a single "read" state to mean anything. */
+type ReadReceipt = 'sent' | 'read' | null
+
+/** Result of checking the `blocks` table for the two members of an open DM. */
+type DmBlockState = 'none' | 'blockedByMe' | 'blockedMe'
+
 /** Pre-processed render-ready message with consecutive-group metadata. */
 interface GroupedMessage extends Message {
   isGroupFirst: boolean
@@ -59,6 +68,10 @@ interface GroupedMessage extends Message {
 
 const GROUP_GAP_MS = 5 * 60 * 1000 // 5 min — new burst starts after this gap
 const MESSAGE_PAGE_SIZE = 30 // most-recent-page size for initial load + each "load older" fetch
+const MAX_MESSAGE_LENGTH = 2000 // must match the `messages.content` check constraint in the DB
+const TYPING_IDLE_MS = 3000 // stop broadcasting "typing" after this long without a keystroke
+const NEAR_BOTTOM_PX = 150 // how close to the bottom counts as "already reading the latest"
+const MARK_READ_THROTTLE_MS = 2000 // minimum gap between last_read_at writes
 
 /** Splits a flat message list into consecutive-sender "bursts" for compact rendering. */
 function groupMessages(messages: Message[]): GroupedMessage[] {
@@ -116,6 +129,18 @@ function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; ava
   )
 }
 
+/** Small green presence dot, absolutely positioned over the bottom-right corner
+ *  of whatever avatar it's rendered alongside. Caller wraps both in a `position:
+ *  relative` container. */
+function OnlineDot({ size = 10 }: { size?: number }) {
+  return (
+    <span style={{
+      position:'absolute', right:-1, bottom:-1, width:size, height:size, borderRadius:'50%',
+      background:'#3ecf8e', border:'2px solid var(--surface)', boxShadow:'0 0 0 1px rgba(0,0,0,0.15)',
+    }} />
+  )
+}
+
 function SkeletonBubbles() {
   const widths = [62, 38, 71, 48]
   return (
@@ -160,11 +185,12 @@ interface MessageRowProps {
   onAddReaction: (msgId: string, emoji: string) => void
   myId: string | null
   formatTime: (iso: string) => string
+  readReceipt: ReadReceipt
 }
 
 const MessageRow = memo(function MessageRow({
   msg, isMine, senderLabel, avatarUrl, myProfile, emojiForMsg,
-  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime,
+  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt,
 }: MessageRowProps) {
   const AVATAR_COL = 38 // avatar width (30) + gap (8) — used as spacer for grouped bubbles
 
@@ -237,7 +263,8 @@ const MessageRow = memo(function MessageRow({
               <span style={{ flex:1, minWidth:0 }}>{msg.deleted ? 'Message deleted' : msg.content}</span>
               <span style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0, alignSelf:'flex-end', paddingBottom:1 }}>
                 <span style={{ fontSize:10, color:'rgba(255,255,255,0.55)', whiteSpace:'nowrap' }}>{formatTime(msg.created_at)}</span>
-                {isMine && !msg.deleted && <CheckCheck size={12} style={{ color:'rgba(255,255,255,0.55)' }} />}
+                {isMine && !msg.deleted && readReceipt === 'read' && <CheckCheck size={12} style={{ color:'#4f8ef7' }} />}
+                {isMine && !msg.deleted && readReceipt === 'sent' && <Check size={12} style={{ color:'rgba(255,255,255,0.55)' }} />}
               </span>
             </div>
           </div>
@@ -296,9 +323,10 @@ interface PlayerProfileModalProps {
   myId: string | null
   onClose: () => void
   onStartChat?: (userId: string) => void
+  onBlockChange?: (userId: string, blocked: boolean) => void
 }
 
-function PlayerProfileModal({ profile, myId, onClose, onStartChat }: PlayerProfileModalProps) {
+function PlayerProfileModal({ profile, myId, onClose, onStartChat, onBlockChange }: PlayerProfileModalProps) {
   const navigate = useNavigate()
   const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
   const [actionLoading, setActionLoading] = useState(false)
@@ -335,11 +363,13 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat }: PlayerProfi
     if (followStatus === 'blocked') {
       await supabase.from('blocks').delete().eq('blocker_id', myId).eq('blocked_id', profile.id)
       setFollowStatus('none')
+      onBlockChange?.(profile.id, false)
     } else {
       // also unfollow if was following
       await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', profile.id)
       await supabase.from('blocks').insert({ blocker_id: myId, blocked_id: profile.id })
       setFollowStatus('blocked')
+      onBlockChange?.(profile.id, true)
     }
     setActionLoading(false)
   }
@@ -415,9 +445,30 @@ export default function Chat() {
 
   useEffect(() => {
     if (!myId) return
+    let cancelled = false
     supabase.from('profiles').select('username, display_name, avatar').eq('id', myId).single()
-      .then(({ data }) => { if (data) setMyProfile(data) })
+      .then(({ data }) => { if (!cancelled && data) setMyProfile(data) })
+    return () => { cancelled = true }
   }, [myId])
+
+  // Users I've blocked — used to hide their content everywhere in this view (most
+  // importantly Global Chat, where the server can't reject their messages the way
+  // it does for DMs, since they're still a legitimate member of that shared room).
+  const [myBlockedIds, setMyBlockedIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!myId) return
+    let cancelled = false
+    supabase.from('blocks').select('blocked_id').eq('blocker_id', myId)
+      .then(({ data }) => { if (!cancelled && data) setMyBlockedIds(new Set(data.map(b => b.blocked_id))) })
+    return () => { cancelled = true }
+  }, [myId])
+  const handleBlockChange = useCallback((userId: string, blocked: boolean) => {
+    setMyBlockedIds(prev => {
+      const next = new Set(prev)
+      if (blocked) next.add(userId); else next.delete(userId)
+      return next
+    })
+  }, [])
 
   const [showConv, setShowConv] = useState(false)
   const [text, setText] = useState('')
@@ -452,12 +503,98 @@ export default function Chat() {
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const playerSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ── Read receipts (DM only) — the other member's last_read_at, kept live via
+  //    the room's realtime channel so ticks flip from sent → read without a reload.
+  const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(null)
+  const lastMarkReadAtRef = useRef(0)
+
+  // ── Block enforcement for the currently open DM ──────────────
+  const [dmBlockState, setDmBlockState] = useState<DmBlockState>('none')
+
+  // ── Presence: who's online app-wide, who's typing in THIS room ──
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
+  const [typingUserIds, setTypingUserIds] = useState<Set<string>>(new Set())
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Scroll behavior: 'bottom' snaps to the newest message, 'preserve' keeps
+  //    the reading position stable after older history is prepended above it.
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollModeRef = useRef<'none' | 'bottom' | 'preserve'>('none')
+  const preserveScrollInfoRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
+  const isNearBottomRef = useRef(true)
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
+
+  // ── App-wide online presence — every signed-in user tracks themselves on a
+  //    shared channel so DM headers and the room list can show a live green dot.
+  //    Best-effort last_seen_at write on the way out covers the "offline" case.
+  useEffect(() => {
+    if (!myId) return
+    const channel = supabase.channel('chat-online-presence', { config: { presence: { key: myId } } })
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        setOnlineUserIds(new Set(Object.keys(channel.presenceState())))
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await channel.track({ online: true })
+      })
+    return () => {
+      channel.untrack().finally(() => supabase.removeChannel(channel))
+      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', myId)
+    }
+  }, [myId])
+
+  // ── Per-room typing presence — separate channel scoped to the open conversation ──
+  useEffect(() => {
+    if (!activeRoom || !myId) { setTypingUserIds(new Set()); return }
+    const channel = supabase.channel(`chat-typing:${activeRoom.id}`, { config: { presence: { key: myId } } })
+    presenceChannelRef.current = channel
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState<{ typing: boolean }>()
+        const typing = new Set<string>()
+        for (const [userId, metas] of Object.entries(state)) {
+          if (userId === myId) continue
+          if (metas.some(m => m.typing)) typing.add(userId)
+        }
+        setTypingUserIds(typing)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await channel.track({ typing: false })
+      })
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      channel.untrack().finally(() => supabase.removeChannel(channel))
+      if (presenceChannelRef.current === channel) presenceChannelRef.current = null
+    }
+  }, [activeRoom?.id, myId])
+
+  function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setText(e.target.value)
+    const channel = presenceChannelRef.current
+    if (!channel) return
+    channel.track({ typing: true })
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => { channel.track({ typing: false }) }, TYPING_IDLE_MS)
+  }
+
+  /** Persists my read position for the active room, throttled so scrolling
+   *  doesn't fire a write on every frame. Other member's UI updates via realtime. */
+  const markRoomAsRead = useCallback((roomId: string) => {
+    if (!myId) return
+    const now = Date.now()
+    if (now - lastMarkReadAtRef.current < MARK_READ_THROTTLE_MS) return
+    lastMarkReadAtRef.current = now
+    supabase.from('room_members').update({ last_read_at: new Date().toISOString() })
+      .eq('room_id', roomId).eq('user_id', myId)
+      .then(({ error }) => { if (error) console.error('Failed to mark room as read:', error.message) })
+  }, [myId])
 
   // ── Ensure global chat room exists & user is a member ──────
   async function ensureGlobalRoom(): Promise<string | null> {
@@ -673,6 +810,9 @@ export default function Chat() {
     setReplyTo(null); setText('')
     setEmojiOpen(false)
     setHasMoreOlder(false)
+    setOtherLastReadAt(null)
+    setDmBlockState('none')
+    isNearBottomRef.current = true
 
     // Most recent page only — newest-first query, then reversed for display.
     // If I've cleared this chat, only fetch messages after that cutoff.
@@ -706,6 +846,19 @@ export default function Chat() {
     const allMembers = [...room.members, ...extraProfiles]
     roomMembersRef.current = allMembers
 
+    // For a DM: resolve block state (either direction) and the other member's
+    // current read position, both needed for the composer guard + read ticks.
+    const otherMember = room.type === 'dm' ? room.members.find(mb => mb.user_id !== myId) : undefined
+    if (room.type === 'dm' && myId && otherMember) {
+      const [{ data: iBlockedThem }, { data: theyBlockedMe }, { data: theirMembership }] = await Promise.all([
+        supabase.from('blocks').select('blocked_id').eq('blocker_id', myId).eq('blocked_id', otherMember.user_id).maybeSingle(),
+        supabase.from('blocks').select('blocker_id').eq('blocker_id', otherMember.user_id).eq('blocked_id', myId).maybeSingle(),
+        supabase.from('room_members').select('last_read_at').eq('room_id', room.id).eq('user_id', otherMember.user_id).maybeSingle(),
+      ])
+      setDmBlockState(iBlockedThem ? 'blockedByMe' : theyBlockedMe ? 'blockedMe' : 'none')
+      setOtherLastReadAt(theirMembership?.last_read_at ?? null)
+    }
+
     // Batch-fetch reactions + reply previews for the whole page in 2 round-trips total,
     // instead of N sequential awaits inside a per-message loop.
     const msgIds = page.map(m => m.id)
@@ -716,8 +869,8 @@ export default function Chat() {
         ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
         : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
       replyIds.length
-        ? supabase.from('messages').select('id, content').in('id', replyIds)
-        : Promise.resolve({ data: [] as { id: string; content: string }[] }),
+        ? supabase.from('messages').select('id, content, deleted').in('id', replyIds)
+        : Promise.resolve({ data: [] as { id: string; content: string; deleted: boolean }[] }),
     ])
 
     const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
@@ -727,7 +880,7 @@ export default function Chat() {
       reactionsByMsg.set(r.message_id, list)
     }
     const replyContentById = new Map<string, string>()
-    for (const r of allReplySources ?? []) replyContentById.set(r.id, r.content)
+    for (const r of allReplySources ?? []) replyContentById.set(r.id, r.deleted ? 'Message deleted' : r.content)
 
     const enriched: Message[] = page.map(m => {
       const senderMember = allMembers.find(mb => mb.user_id === m.sender_id)
@@ -743,8 +896,10 @@ export default function Chat() {
       }
     })
 
+    scrollModeRef.current = 'bottom'
     setMessages(enriched)
     setMsgsLoading(false)
+    markRoomAsRead(room.id)
 
     // Pinned message banner — fetch its content since ChatRoom only carries the id
     setPinnedMsgPreview(null)
@@ -761,7 +916,9 @@ export default function Chat() {
       }
     }
 
-    // ── Real-time subscription — appends only the new row, never re-fetches the list ──
+    // ── Real-time subscription — appends only the new row, never re-fetches the list.
+    //    Also syncs message edits/deletes, live reactions, pin changes, and the other
+    //    DM member's read position, all on one channel scoped to this room. ──
     if (subRef.current) supabase.removeChannel(subRef.current)
     subRef.current = supabase
       .channel(`room:${room.id}:${Date.now()}`)
@@ -788,6 +945,11 @@ export default function Chat() {
           }
         }
 
+        // Only auto-scroll if the reader was already at the bottom — otherwise
+        // they're reading history and shouldn't get yanked down mid-scroll.
+        scrollModeRef.current = isNearBottomRef.current ? 'bottom' : 'none'
+        if (isNearBottomRef.current) markRoomAsRead(room.id)
+
         setMessages(ms => {
           // Deduplicate — if msg already added (optimistic send), skip
           if (ms.find(m => m.id === raw.id)) return ms
@@ -806,13 +968,77 @@ export default function Chat() {
         const raw = payload.new as { id: string; content: string; deleted: boolean }
         setMessages(ms => ms.map(m => m.id === raw.id ? { ...m, deleted: raw.deleted, content: raw.deleted ? 'Message deleted' : raw.content } : m))
       })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_reactions',
+        filter: `room_id=eq.${room.id}`
+      }, (payload) => {
+        const raw = payload.new as { message_id: string; emoji: string; user_id: string }
+        setMessages(ms => ms.map(m => {
+          if (m.id !== raw.message_id) return m
+          const withoutSameUser = m.reactions.filter(r => r.user_id !== raw.user_id)
+          return { ...m, reactions: [...withoutSameUser, { emoji: raw.emoji, user_id: raw.user_id }] }
+        }))
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'message_reactions',
+        filter: `room_id=eq.${room.id}`
+      }, (payload) => {
+        const raw = payload.old as { message_id: string; user_id: string }
+        setMessages(ms => ms.map(m => m.id !== raw.message_id
+          ? m
+          : { ...m, reactions: m.reactions.filter(r => r.user_id !== raw.user_id) }))
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_rooms',
+        filter: `id=eq.${room.id}`
+      }, async (payload) => {
+        // Live-syncs pin/unpin performed by the other member of the conversation.
+        const raw = payload.new as { pinned_message_id: string | null }
+        setActiveRoom(r => (r && r.id === room.id) ? { ...r, pinnedMessageId: raw.pinned_message_id } : r)
+        setRooms(prev => prev.map(r => r.id === room.id ? { ...r, pinnedMessageId: raw.pinned_message_id } : r))
+        if (!raw.pinned_message_id) { setPinnedMsgPreview(null); return }
+        const { data: pinnedRow } = await supabase
+          .from('messages').select('id, sender_id, content').eq('id', raw.pinned_message_id).maybeSingle()
+        if (pinnedRow) {
+          const pinnedSender = roomMembersRef.current.find(mb => mb.user_id === pinnedRow.sender_id)
+          setPinnedMsgPreview({
+            id: pinnedRow.id,
+            content: pinnedRow.content,
+            senderName: pinnedSender ? (pinnedSender.profile.display_name || pinnedSender.profile.username) : 'Unknown',
+          })
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'room_members',
+        filter: `room_id=eq.${room.id}`
+      }, (payload) => {
+        // The other DM member's read position moved — flip sent → read live.
+        const raw = payload.new as { user_id: string; last_read_at: string }
+        if (raw.user_id !== myId) setOtherLastReadAt(raw.last_read_at)
+      })
       .subscribe()
-  }, [])
+  }, [myId, markRoomAsRead])
 
   // ── Load older messages (scroll-up pagination) ──────────────
   const loadOlderMessages = useCallback(async () => {
     if (!activeRoom || loadingOlder || !hasMoreOlder || messages.length === 0) return
     setLoadingOlder(true)
+
+    // Snapshot the current scroll geometry so we can restore the reader's exact
+    // position after older messages are prepended above what they're looking at —
+    // otherwise the browser keeps scrollTop fixed and the whole view jumps down.
+    const container = scrollContainerRef.current
+    if (container) {
+      preserveScrollInfoRef.current = { scrollHeight: container.scrollHeight, scrollTop: container.scrollTop }
+    }
 
     const oldestCreatedAt = messages[0].created_at
     let query = supabase
@@ -844,8 +1070,8 @@ export default function Chat() {
         ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
         : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
       replyIds.length
-        ? supabase.from('messages').select('id, content').in('id', replyIds)
-        : Promise.resolve({ data: [] as { id: string; content: string }[] }),
+        ? supabase.from('messages').select('id, content, deleted').in('id', replyIds)
+        : Promise.resolve({ data: [] as { id: string; content: string; deleted: boolean }[] }),
     ])
 
     const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
@@ -855,7 +1081,7 @@ export default function Chat() {
       reactionsByMsg.set(r.message_id, list)
     }
     const replyContentById = new Map<string, string>()
-    for (const r of olderReplySources ?? []) replyContentById.set(r.id, r.content)
+    for (const r of olderReplySources ?? []) replyContentById.set(r.id, r.deleted ? 'Message deleted' : r.content)
 
     const enrichedOlder: Message[] = olderPage.map(m => {
       const senderMember = allMembers.find(mb => mb.user_id === m.sender_id)
@@ -871,21 +1097,35 @@ export default function Chat() {
       }
     })
 
+    scrollModeRef.current = 'preserve'
     setMessages(ms => [...enrichedOlder, ...ms])
     setLoadingOlder(false)
   }, [activeRoom, loadingOlder, hasMoreOlder, messages])
 
-  const initialLoadRef = useRef(true)
-  useEffect(() => {
-    // Only auto-scroll-to-bottom on initial room open / new incoming message,
-    // not when prepending older messages from a scroll-up fetch.
-    if (initialLoadRef.current) {
-      msgEnd.current?.scrollIntoView({ behavior: 'auto' })
-      initialLoadRef.current = false
+  // ── Scroll behavior, driven by scrollModeRef ─────────────────
+  // Fixes a real bug in the previous implementation: prepending older messages
+  // and then unconditionally re-running a "scroll to bottom" effect on every
+  // `messages.length` change caused the view to snap back to the newest message
+  // immediately after the user scrolled up to read history — pagination was
+  // effectively unusable. This single effect distinguishes the two cases:
+  //   'bottom'   → room just opened, I sent a message, or a live message arrived
+  //                while I was already reading the latest — snap to the newest.
+  //   'preserve' → older history was just prepended above what I was reading —
+  //                keep my exact reading position stable using a scrollHeight delta.
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    if (scrollModeRef.current === 'bottom') {
+      el.scrollTop = el.scrollHeight
+      scrollModeRef.current = 'none'
+    } else if (scrollModeRef.current === 'preserve' && preserveScrollInfoRef.current) {
+      const prev = preserveScrollInfoRef.current
+      el.scrollTop = el.scrollHeight - prev.scrollHeight + prev.scrollTop
+      preserveScrollInfoRef.current = null
+      scrollModeRef.current = 'none'
     }
-  }, [activeRoom?.id])
-  useEffect(() => { if (!loadingOlder) msgEnd.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
-  useEffect(() => { initialLoadRef.current = true }, [activeRoom?.id])
+  }, [messages])
+
   useEffect(() => () => { if (subRef.current) supabase.removeChannel(subRef.current) }, [])
 
   // ── Start private DM with a user ────────────────────────────
@@ -998,10 +1238,26 @@ export default function Chat() {
   }
 
   // ── Send ────────────────────────────────────────────────────
+  interface MessageInsertPayload {
+    room_id: string
+    sender_id: string
+    content: string
+    reply_to_id?: string
+  }
+
   async function sendMsg() {
-    if (!text.trim() || !activeRoom || !myId || sending) return
+    const trimmed = text.trim()
+    if (!trimmed || !activeRoom || !myId || sending) return
+    if (trimmed.length > MAX_MESSAGE_LENGTH) return // guards against a pasted block over the DB check-constraint limit
+    if (activeRoom.type === 'dm' && dmBlockState !== 'none') return // composer is hidden in this state, but guard defensively
+
     setSending(true)
-    const payload: Record<string, unknown> = { room_id: activeRoom.id, sender_id: myId, content: text.trim() }
+
+    // Stop broadcasting "typing" the instant the message goes out.
+    if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
+    presenceChannelRef.current?.track({ typing: false })
+
+    const payload: MessageInsertPayload = { room_id: activeRoom.id, sender_id: myId, content: trimmed }
     if (replyTo) payload.reply_to_id = replyTo.id
     const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, reply_to_id').single()
     if (!error && inserted) {
@@ -1017,6 +1273,7 @@ export default function Chat() {
       const myMember = activeRoom.members.find(mb => mb.user_id === myId)
       const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'
       const senderUsername = myMember?.profile.username
+      scrollModeRef.current = 'bottom'
       setMessages(ms => {
         if (ms.find(m => m.id === inserted.id)) return ms
         return [...ms, { ...inserted, deleted: false, reactions: [], senderName, senderUsername, replyPreview: replyTo?.content }]
@@ -1288,7 +1545,12 @@ export default function Chat() {
                         </div>
                       ) : (() => {
                         const other = room.members.find(m => m.user_id !== myId)
-                        return <Avatar name={roomLabel(room)} avatarUrl={other?.profile?.avatar || null} size={44} />
+                        return (
+                          <div style={{ position:'relative', flexShrink:0 }}>
+                            <Avatar name={roomLabel(room)} avatarUrl={other?.profile?.avatar || null} size={44} />
+                            {other && onlineUserIds.has(other.user_id) && <OnlineDot />}
+                          </div>
+                        )
                       })()}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
@@ -1350,7 +1612,12 @@ export default function Chat() {
                     </div>
                   ) : (() => {
                     const other = activeRoom.members.find(m => m.user_id !== myId)
-                    return <Avatar name={roomLabel(activeRoom)} avatarUrl={other?.profile?.avatar || null} size={34} radius={10} />
+                    return (
+                      <div style={{ position:'relative', flexShrink:0 }}>
+                        <Avatar name={roomLabel(activeRoom)} avatarUrl={other?.profile?.avatar || null} size={34} radius={10} />
+                        {other && onlineUserIds.has(other.user_id) && <OnlineDot size={9} />}
+                      </div>
+                    )
                   })()}
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:14, fontWeight:700, color: activeRoom.type === 'global' ? '#4f8ef7' : 'var(--text)' }}>{roomLabel(activeRoom)}</div>
@@ -1359,6 +1626,11 @@ export default function Chat() {
                         🌐 Open to all Chillverse players
                       </div>
                     )}
+                    {activeRoom.type === 'dm' && (() => {
+                      const other = activeRoom.members.find(m => m.user_id !== myId)
+                      if (!other || !onlineUserIds.has(other.user_id)) return null
+                      return <div style={{ fontSize:11, color:'#3ecf8e', fontWeight:600 }}>Online</div>
+                    })()}
                   </div>
                 </div>
                 {activeRoom.type === 'dm' && (
@@ -1386,8 +1658,11 @@ export default function Chat() {
 
               {/* Messages */}
               <div
+                ref={scrollContainerRef}
                 onScroll={e => {
                   const el = e.currentTarget
+                  isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+                  if (isNearBottomRef.current) markRoomAsRead(activeRoom.id)
                   if (el.scrollTop < 80) loadOlderMessages()
                 }}
                 style={{ flex:1, overflowY:'auto', padding:'12px 10px', display:'flex', flexDirection:'column' }}>
@@ -1405,7 +1680,7 @@ export default function Chat() {
                         <span style={{ width:18, height:18, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
                       </div>
                     )}
-                    {groupedMessages.map(msg => {
+                    {groupedMessages.filter(m => !m.sender_id || !myBlockedIds.has(m.sender_id)).map(msg => {
                       const isMine = msg.sender_id === myId
                       const senderLabel = isMine ? 'You' : (msg.senderName || 'Unknown')
 
@@ -1417,6 +1692,14 @@ export default function Chat() {
                         const member = activeRoom?.members.find(mb => mb.user_id === msg.sender_id)
                         avatarUrl = member?.profile?.avatar ?? null
                       }
+
+                      // Read receipt only means something for a DM — with a single
+                      // other member, "read" is unambiguous. Global chat skips this.
+                      const readReceipt: ReadReceipt = !isMine || msg.deleted
+                        ? null
+                        : activeRoom.type === 'dm' && otherLastReadAt && new Date(msg.created_at) <= new Date(otherLastReadAt)
+                          ? 'read'
+                          : 'sent'
 
                       return (
                         <MessageRow
@@ -1434,6 +1717,7 @@ export default function Chat() {
                           onAddReaction={addReaction}
                           myId={myId}
                           formatTime={formatTime}
+                          readReceipt={readReceipt}
                         />
                       )
                     })}
@@ -1441,6 +1725,24 @@ export default function Chat() {
                 )}
                 <div ref={msgEnd} />
               </div>
+
+              {/* Typing indicator — WhatsApp-style, shown just above the composer */}
+              {typingUserIds.size > 0 && (
+                <div style={{ padding:'2px 16px 4px', fontSize:11.5, fontStyle:'italic', color:'var(--text-muted)', flexShrink:0 }}>
+                  {activeRoom.type === 'dm'
+                    ? `${roomLabel(activeRoom)} is typing…`
+                    : (() => {
+                        const names = [...typingUserIds]
+                          .map(id => activeRoom.members.find(m => m.user_id === id))
+                          .filter((m): m is RoomMember => !!m)
+                          .map(m => m.profile.display_name || m.profile.username)
+                        if (names.length === 0) return null
+                        if (names.length === 1) return `${names[0]} is typing…`
+                        if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`
+                        return `${names.length} people are typing…`
+                      })()}
+                </div>
+              )}
 
               {/* Reply bar */}
               {replyTo && (
@@ -1453,18 +1755,40 @@ export default function Chat() {
                 </div>
               )}
 
-              {/* Input bar — text + emoji + send ONLY, no attachments */}
-              <div style={{ display:'flex', alignItems:'flex-end', gap:8, padding:'10px 12px', background:'rgba(17,17,19,0.92)', backdropFilter:'blur(14px)', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                <IBtn onClick={() => setEmojiOpen(v => !v)}><Smile size={15} /></IBtn>
-                <div style={{ flex:1, background:'var(--surface)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:14, padding:'9px 12px', display:'flex', alignItems:'flex-end' }}>
-                  <textarea rows={1} value={text} onChange={e => setText(e.target.value)} onKeyDown={handleKey} placeholder="Type a message…"
-                    style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--text)', fontSize:13.5, resize:'none', maxHeight:80, overflowY:'auto', lineHeight:1.4, fontFamily:'inherit' }} />
+              {/* Block banner — replaces the composer entirely when either party has blocked the other in this DM */}
+              {activeRoom.type === 'dm' && dmBlockState !== 'none' ? (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'12px 16px', background:'rgba(255,107,107,0.08)', borderTop:'1px solid rgba(255,107,107,0.15)' }}>
+                  <span style={{ fontSize:12.5, color:'#ff6b6b', fontWeight:600 }}>
+                    {dmBlockState === 'blockedByMe' ? 'You blocked this user.' : "You can't reply to this conversation."}
+                  </span>
+                  {dmBlockState === 'blockedByMe' && (
+                    <button type="button"
+                      onClick={async () => {
+                        const other = activeRoom.members.find(m => m.user_id !== myId)
+                        if (!myId || !other) return
+                        await supabase.from('blocks').delete().eq('blocker_id', myId).eq('blocked_id', other.user_id)
+                        setDmBlockState('none')
+                        handleBlockChange(other.user_id, false)
+                      }}
+                      style={{ fontSize:12, fontWeight:700, color:'#ff6b6b', background:'rgba(255,107,107,0.12)', border:'1px solid rgba(255,107,107,0.3)', borderRadius:10, padding:'6px 12px', cursor:'pointer', flexShrink:0 }}>
+                      Unblock
+                    </button>
+                  )}
                 </div>
-                <button type="button" onClick={sendMsg} disabled={!text.trim() || sending}
-                  style={{ width:40, height:40, borderRadius:11, flexShrink:0, border:'none', background:'linear-gradient(135deg,var(--accent),var(--accent2))', boxShadow:'0 4px 14px rgba(255,107,0,0.35)', color:'#fff', cursor: !text.trim() || sending ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', opacity: !text.trim() || sending ? 0.6 : 1 }}>
-                  <Send size={16} />
-                </button>
-              </div>
+              ) : (
+                /* Input bar — text + emoji + send ONLY, no attachments */
+                <div style={{ display:'flex', alignItems:'flex-end', gap:8, padding:'10px 12px', background:'rgba(17,17,19,0.92)', backdropFilter:'blur(14px)', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+                  <IBtn onClick={() => setEmojiOpen(v => !v)}><Smile size={15} /></IBtn>
+                  <div style={{ flex:1, background:'var(--surface)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:14, padding:'9px 12px', display:'flex', alignItems:'flex-end' }}>
+                    <textarea rows={1} value={text} onChange={handleTextChange} onKeyDown={handleKey} placeholder="Type a message…" maxLength={MAX_MESSAGE_LENGTH}
+                      style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--text)', fontSize:13.5, resize:'none', maxHeight:80, overflowY:'auto', lineHeight:1.4, fontFamily:'inherit' }} />
+                  </div>
+                  <button type="button" onClick={sendMsg} disabled={!text.trim() || sending}
+                    style={{ width:40, height:40, borderRadius:11, flexShrink:0, border:'none', background:'linear-gradient(135deg,var(--accent),var(--accent2))', boxShadow:'0 4px 14px rgba(255,107,0,0.35)', color:'#fff', cursor: !text.trim() || sending ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', opacity: !text.trim() || sending ? 0.6 : 1 }}>
+                    <Send size={16} />
+                  </button>
+                </div>
+              )}
 
               {/* Emoji picker */}
               {emojiOpen && (
@@ -1499,6 +1823,7 @@ export default function Chat() {
                         action: async () => {
                           if (myId && ctxMsg.sender_id) {
                             await supabase.from('blocks').upsert({ blocker_id: myId, blocked_id: ctxMsg.sender_id })
+                            handleBlockChange(ctxMsg.sender_id, true)
                           }
                           setCtxMsg(null)
                         }
@@ -1553,7 +1878,11 @@ export default function Chat() {
                 label: 'Block user',
                 action: async () => {
                   const other = activeRoom.members.find(m => m.user_id !== myId)
-                  if (myId && other) await supabase.from('blocks').upsert({ blocker_id: myId, blocked_id: other.user_id })
+                  if (myId && other) {
+                    await supabase.from('blocks').upsert({ blocker_id: myId, blocked_id: other.user_id })
+                    handleBlockChange(other.user_id, true)
+                    setDmBlockState('blockedByMe')
+                  }
                   setConvMenuOpen(false)
                 },
                 danger: true,
@@ -1614,6 +1943,12 @@ export default function Chat() {
           myId={myId}
           onClose={() => setViewProfile(null)}
           onStartChat={startDmWith}
+          onBlockChange={(userId, blocked) => {
+            handleBlockChange(userId, blocked)
+            if (activeRoom?.type === 'dm' && activeRoom.members.some(m => m.user_id === userId)) {
+              setDmBlockState(blocked ? 'blockedByMe' : 'none')
+            }
+          }}
         />
       )}
 
