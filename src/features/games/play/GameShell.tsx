@@ -1,8 +1,11 @@
 // src/pages/games/GameShell.tsx
 import { useState, useEffect } from 'react'
-import { X, Zap, Flame, Trophy, ChevronRight } from 'lucide-react'
+import { X, Zap, Flame, Trophy, ChevronRight, Camera, Check } from 'lucide-react'
 import type { GameRank, GameEndPayload, PlayerRankState } from './types'
 import { getRankConfig, getNextRank, RANK_CONFIGS } from './types'
+import { useAuth } from '../../auth/useAuth'
+import { createHighlight } from '../../highlights/highlights'
+import { GAMES } from '../games'
 
 // ─── Pre-game Info Modal ─────────────────────────────────────
 interface InfoRule {
@@ -247,12 +250,15 @@ interface ResultScreenProps {
 }
 
 export function ResultScreen({ payload, accent, onReplay, onBack, promoted, sessionCost = 1, sessionsLeft = 99 }: ResultScreenProps) {
+  const { user } = useAuth()
   const [showPromo, setShowPromo] = useState(!!promoted)
   const [displayScore, setDisplayScore] = useState(0)
   const [displayXP, setDisplayXP] = useState(0)
   const [xpBannerVisible, setXpBannerVisible] = useState(false)
   const [buttonsVisible, setButtonsVisible] = useState(false)
   const [sessionToast, setSessionToast] = useState(false)
+  const [shared, setShared] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const canPlayAgain = sessionsLeft >= sessionCost
   const mins = Math.floor(payload.durationSec / 60)
   const secs = payload.durationSec % 60
@@ -382,6 +388,41 @@ export function ResultScreen({ payload, accent, onReplay, onBack, promoted, sess
         }}>
           <Zap size={15} /> +{payload.xpEarned} XP added to your profile
         </div>
+
+        {/* Share your win — posts a lightweight Highlight (text + game icon only) */}
+        {user && payload.score > 0 && (
+          <button
+            type="button"
+            disabled={sharing || shared}
+            onClick={async () => {
+              setSharing(true)
+              const game = GAMES.find(g => g.id === payload.gameId)
+              const body = `Scored ${payload.score} in ${payload.gameName}! 🔥`
+              const { error } = await createHighlight({
+                authorId: user.id,
+                kind: 'game_result',
+                gameKey: game?.dbKey ?? null,
+                body,
+              })
+              setSharing(false)
+              if (!error) setShared(true)
+            }}
+            style={{
+              width: '100%', padding: '10px', borderRadius: 13, marginBottom: 10,
+              background: shared ? 'rgba(62,207,142,0.12)' : 'var(--surface2)',
+              border: `1px solid ${shared ? 'rgba(62,207,142,0.4)' : 'rgba(255,255,255,0.08)'}`,
+              color: shared ? 'var(--green, #3ecf8e)' : 'var(--text)',
+              fontSize: 13, fontWeight: 700, cursor: shared ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              opacity: buttonsVisible ? 1 : 0,
+              transform: buttonsVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease',
+            }}
+          >
+            {shared ? <Check size={14} /> : <Camera size={14} />}
+            {shared ? 'Shared to Highlights' : sharing ? 'Sharing…' : 'Share your win'}
+          </button>
+        )}
 
         {/* Buttons */}
         <div style={{
