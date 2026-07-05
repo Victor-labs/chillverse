@@ -1,9 +1,7 @@
 // src/components/Topbar.tsx
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
-import { MessageCircle, ArrowLeft, Search } from 'lucide-react'
+import { MessageCircle, ArrowLeft } from 'lucide-react'
 import NotificationBell from '../features/notifications/NotificationBell'
-import SearchOverlay from '../features/search/SearchOverlay'
 
 interface TopbarProps {
   title: string
@@ -13,8 +11,6 @@ interface TopbarProps {
 }
 
 export default function Topbar({ title, showBack, onBack, onMenuClick }: TopbarProps) {
-  const [searchOpen, setSearchOpen] = useState(false)
-
   return (
     <header className="topbar-shell">
       <div className="flex items-center gap-3">
@@ -59,25 +55,6 @@ export default function Topbar({ title, showBack, onBack, onMenuClick }: TopbarP
 
       <div className="flex items-center gap-2">
         <NotificationBell />
-        <button
-          type="button"
-          onClick={() => setSearchOpen(true)}
-          aria-label="Search"
-          style={{
-            width: 38, height: 38,
-            borderRadius: 10,
-            background: 'var(--surface)',
-            boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
-            color: 'var(--text-dim)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', border: 'none',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-dim)')}
-        >
-          <Search size={17} />
-        </button>
         <Link
           to="/chat"
           aria-label="Chat"
@@ -96,8 +73,6 @@ export default function Topbar({ title, showBack, onBack, onMenuClick }: TopbarP
           <MessageCircle size={17} />
         </Link>
       </div>
-
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
     </header>
   )
 }
