@@ -1,5 +1,5 @@
 // src/pages/Landing.tsx
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../../layout/Nav'
 import Footer from '../../layout/Footer'
@@ -65,6 +65,7 @@ export default function Landing() {
   useReveal()
   const navigate = useNavigate()
   const { session, loading } = useAuth()
+  const heroContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!loading && session) navigate('/dashboard', { replace: true })
@@ -74,50 +75,56 @@ export default function Landing() {
     <>
       <Nav />
 
-      {/* ── HERO ── */}
-      <section className="min-h-screen relative flex items-center justify-center overflow-hidden px-6 md:px-16 pt-32 pb-24">
-        <CubeScene />
+      {/* ── HERO ──
+          Outer div is the tall "pinned" scroll container CubeScene measures
+          progress against; the inner section stays sticky at the top of the
+          viewport while the user scrolls through the extra height, driving
+          the cube's rotate/recede/fade animation. */}
+      <div ref={heroContainerRef} className="relative" style={{ height: '220vh' }}>
+        <section className="sticky top-0 min-h-screen h-screen relative flex items-center justify-center overflow-hidden px-6 md:px-16 pt-32 pb-24">
+          <CubeScene containerRef={heroContainerRef} />
 
-        <div className="relative z-[2] max-w-3xl text-center">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-chill-violet/35 bg-chill-violet/10 text-sm font-semibold text-chill-violetSoft tracking-wide mb-7">
-            <span className="live-dot" />
-            Games · Profiles · Streaks · Chat
+          <div className="relative z-[2] max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-chill-violet/35 bg-chill-violet/10 text-sm font-semibold text-chill-violetSoft tracking-wide mb-7">
+              <span className="live-dot" />
+              Games · Profiles · Streaks · Chat
+            </div>
+
+            <h1 className="font-bold leading-[0.95] mb-7 text-[clamp(58px,9vw,100px)] tracking-tight">
+              <span className="block text-chill-text">Play. Win.</span>
+              <span className="block text-gradient">Dominate.</span>
+              <span className="block text-[rgba(238,234,255,0.55)] text-[0.55em] font-normal mt-2.5 tracking-normal">
+                Your universe. Your rules.
+              </span>
+            </h1>
+
+            <p className="text-lg text-chill-textSecondary max-w-md mx-auto mb-12 leading-relaxed">
+              Compete, build your profile, keep your streak alive, and chat with your crew — all inside one electrifying platform.
+            </p>
+
+            <div className="flex items-center justify-center gap-3.5 flex-wrap">
+              <Link
+                to="/signup"
+                className="px-10 py-4 rounded-full text-base font-bold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_8px_36px_rgba(108,80,255,0.5)] hover:-translate-y-1 hover:shadow-[0_14px_48px_rgba(108,80,255,0.7)] transition-all"
+              >
+                Enter Chillverse →
+              </Link>
+              <a
+                href="#features"
+                className="px-10 py-4 rounded-full text-base font-medium text-chill-text border-[1.5px] border-chill-borderBright hover:bg-chill-violet/10 hover:border-chill-violetSoft transition-all"
+              >
+                See what's inside
+              </a>
+            </div>
+
+            <div className="mt-12 flex items-center justify-center gap-2 text-xs tracking-[3px] uppercase text-chill-textMuted font-mono">
+              <div className="w-10 h-px bg-gradient-to-r from-transparent to-chill-borderBright" />
+              scroll to explore
+              <div className="w-10 h-px bg-gradient-to-l from-transparent to-chill-borderBright" />
+            </div>
           </div>
-
-          <h1 className="font-bold leading-[0.95] mb-7 text-[clamp(58px,9vw,100px)] tracking-tight">
-            <span className="block text-chill-text">Play. Win.</span>
-            <span className="block text-gradient">Dominate.</span>
-            <span className="block text-[rgba(238,234,255,0.55)] text-[0.55em] font-normal mt-2.5 tracking-normal">
-              Your universe. Your rules.
-            </span>
-          </h1>
-
-          <p className="text-lg text-chill-textSecondary max-w-md mx-auto mb-12 leading-relaxed">
-            Compete, build your profile, keep your streak alive, and chat with your crew — all inside one electrifying platform.
-          </p>
-
-          <div className="flex items-center justify-center gap-3.5 flex-wrap">
-            <Link
-              to="/signup"
-              className="px-10 py-4 rounded-full text-base font-bold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_8px_36px_rgba(108,80,255,0.5)] hover:-translate-y-1 hover:shadow-[0_14px_48px_rgba(108,80,255,0.7)] transition-all"
-            >
-              Enter Chillverse →
-            </Link>
-            <a
-              href="#features"
-              className="px-10 py-4 rounded-full text-base font-medium text-chill-text border-[1.5px] border-chill-borderBright hover:bg-chill-violet/10 hover:border-chill-violetSoft transition-all"
-            >
-              See what's inside
-            </a>
-          </div>
-
-          <div className="mt-12 flex items-center justify-center gap-2 text-xs tracking-[3px] uppercase text-chill-textMuted font-mono">
-            <div className="w-10 h-px bg-gradient-to-r from-transparent to-chill-borderBright" />
-            scroll to explore
-            <div className="w-10 h-px bg-gradient-to-l from-transparent to-chill-borderBright" />
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* ── STATS ── */}
       <div className="bg-chill-surface border-y border-chill-border px-6 md:px-16 py-9 flex items-center justify-center gap-12 md:gap-20 flex-wrap">
