@@ -288,10 +288,11 @@
 }
 .hero-3d-bg::after {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, #04040f 75%);
+  background: radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, #120604 75%);
 }
 .grid-floor {
-  position: absolute; left: 50%; top: 50%; width: 900px; height: 900px;
+  position: absolute; left: 50%; top: 50%;
+  width: clamp(480px, 140vw, 900px); height: clamp(480px, 140vw, 900px);
   background-image: linear-gradient(rgba(255,106,44,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,106,44,0.12) 1px, transparent 1px);
   background-size: 60px 60px;
   transform: translateX(-50%) translateY(-50%) rotateX(75deg); opacity: 0.6;
@@ -332,7 +333,13 @@
   will-change: transform, opacity;
 }
 .glass-cube-diamond {
-  position: absolute; left: 50%; top: 50%; width: 230px; height: 230px;
+  /* Single source of truth for cube size — everything below reads this
+     custom property (it inherits to all descendants), so the whole cube
+     scales fluidly from phones to ultra-wide monitors with no separate
+     breakpoint rules to keep in sync. */
+  --glass-size: clamp(120px, 34vw, 230px);
+  position: absolute; left: 50%; top: 50%;
+  width: var(--glass-size); height: var(--glass-size);
   transform: translate(-50%, -50%) rotateZ(45deg);
 }
 .glass-cube {
@@ -341,12 +348,17 @@
   will-change: transform;
 }
 .glass-cube .gf {
-  position: absolute; inset: 0; width: 230px; height: 230px;
+  position: absolute; inset: 0; width: var(--glass-size); height: var(--glass-size);
   border-radius: 22px; overflow: hidden;
   background: linear-gradient(150deg, rgba(255,241,230,0.16) 0%, rgba(255,106,44,0.07) 45%, rgba(255,176,32,0.12) 100%);
   border: 1px solid rgba(255,241,230,0.38);
-  backdrop-filter: blur(7px) saturate(150%) brightness(1.06);
-  -webkit-backdrop-filter: blur(7px) saturate(150%) brightness(1.06);
+  /* url(#glass-refraction) is what actually bends/stretches the headline
+     glyphs visible through each face (feTurbulence + feDisplacementMap,
+     defined in CubeScene.tsx) — the light blur+saturate+brightness chained
+     after it is the fallback for browsers that ignore the SVG filter ref
+     inside backdrop-filter, so the cube still reads as glass either way. */
+  backdrop-filter: url(#glass-refraction) blur(2px) saturate(160%) brightness(1.08);
+  -webkit-backdrop-filter: blur(3px) saturate(160%) brightness(1.08);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.5),
     inset 0 -14px 26px rgba(0,0,0,0.32),
@@ -359,12 +371,12 @@
   transform: rotate(8deg);
   pointer-events: none;
 }
-.gf.gfr { transform: translateZ(115px); }
-.gf.gbk { transform: rotateY(180deg) translateZ(115px); }
-.gf.grt { transform: rotateY(90deg)  translateZ(115px); border-color: rgba(255,176,32,0.45); }
-.gf.glt { transform: rotateY(-90deg) translateZ(115px); border-color: rgba(255,93,93,0.4); }
-.gf.gtp { transform: rotateX(90deg)  translateZ(115px); border-color: rgba(45,212,191,0.4); }
-.gf.gbt { transform: rotateX(-90deg) translateZ(115px); border-color: rgba(255,210,63,0.4); }
+.gf.gfr { transform: translateZ(calc(var(--glass-size) / 2)); }
+.gf.gbk { transform: rotateY(180deg) translateZ(calc(var(--glass-size) / 2)); }
+.gf.grt { transform: rotateY(90deg)  translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,176,32,0.45); }
+.gf.glt { transform: rotateY(-90deg) translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,93,93,0.4); }
+.gf.gtp { transform: rotateX(90deg)  translateZ(calc(var(--glass-size) / 2)); border-color: rgba(45,212,191,0.4); }
+.gf.gbt { transform: rotateX(-90deg) translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,210,63,0.4); }
 
 /* ══════════════════════════════════
    WORDMARK — "Chillverse" custom lockup
