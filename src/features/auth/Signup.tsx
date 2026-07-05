@@ -3,6 +3,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Rocket, Check } from 'lucide-react'
 import { signUpWithEmail, signInWithGoogle, upsertProfile, getCurrentSession } from './auth'
+import Wordmark from '../../layout/Wordmark'
 import { interestIcons } from '../../shared/lib/icons'
 
 const INTERESTS = ['Strategy', 'Action', 'Puzzle', 'Compete', 'Social', 'Casual']
@@ -227,7 +228,7 @@ export default function Signup() {
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28, textDecoration: 'none' }}>
           <span style={{ fontSize: 22 }}>🎮</span>
-          <span style={{ fontSize: 20, fontWeight: 800, background: 'linear-gradient(135deg, var(--accent), var(--accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Chillverse</span>
+          <Wordmark size={20} animated={false} />
         </Link>
 
         {/* Step indicator */}

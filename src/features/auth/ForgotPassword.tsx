@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { sendPasswordReset } from './auth'
+import Wordmark from '../../layout/Wordmark'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -34,7 +35,7 @@ export default function ForgotPassword() {
       <div className="relative z-[2] w-full max-w-[460px] glass-panel glow-violet-tint rounded-[22px] p-8 md:p-11 shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
         <Link to="/" className="flex items-center gap-2.5 mb-7">
           <span className="text-2xl">🎮</span>
-          <span className="text-xl font-bold text-gradient-2">Chillverse</span>
+          <Wordmark size={20} animated={false} />
         </Link>
 
         {sent ? (
@@ -45,7 +46,7 @@ export default function ForgotPassword() {
             </p>
             <Link
               to="/login"
-              className="w-full inline-block text-center py-3.5 rounded-full text-[15px] font-semibold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_6px_28px_rgba(108,80,255,0.45)] hover:-translate-y-0.5 transition-all"
+              className="w-full inline-block text-center py-3.5 rounded-full text-[15px] font-semibold text-white bg-gradient-to-br from-chill-violet to-[#8a2d0a] shadow-[0_6px_28px_rgba(255,106,44,0.45)] hover:-translate-y-0.5 transition-all"
             >
               Back to login
             </Link>
@@ -63,7 +64,7 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@email.com"
-                  className={`bg-chill-surface2 border-[1.5px] rounded-[10px] px-4 py-3.5 text-[15px] outline-none transition-all focus:border-chill-violet focus:shadow-[0_0_0_3px_rgba(108,80,255,0.15)] ${error ? 'border-chill-red' : 'border-chill-border'}`}
+                  className={`bg-chill-surface2 border-[1.5px] rounded-[10px] px-4 py-3.5 text-[15px] outline-none transition-all focus:border-chill-violet focus:shadow-[0_0_0_3px_rgba(255,106,44,0.15)] ${error ? 'border-chill-red' : 'border-chill-border'}`}
                 />
                 {error && <div className="text-xs text-chill-red mt-1">{error}</div>}
               </div>
@@ -71,7 +72,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-full text-[15px] font-semibold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_6px_28px_rgba(108,80,255,0.45)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full text-[15px] font-semibold text-white bg-gradient-to-br from-chill-violet to-[#8a2d0a] shadow-[0_6px_28px_rgba(255,106,44,0.45)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2"
               >
                 {loading ? <span className="w-[18px] h-[18px] border-2 border-white/25 border-t-white rounded-full animate-spin" /> : 'Send reset link →'}
               </button>

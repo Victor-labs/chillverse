@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmail, signInWithGoogle, signInWithDiscord, resendConfirmationEmail } from './auth'
+import Wordmark from '../../layout/Wordmark'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -79,7 +80,7 @@ export default function Login() {
 
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28, textDecoration: 'none' }}>
           <span style={{ fontSize: 24 }}>🎮</span>
-          <span style={{ fontSize: 20, fontWeight: 800, background: 'linear-gradient(135deg, var(--accent), var(--accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Chillverse</span>
+          <Wordmark size={20} animated={false} />
         </Link>
 
         <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.5px', marginBottom: 6, color: 'var(--text)' }}>Welcome back</h1>
