@@ -1,6 +1,6 @@
 // src/components/NotificationToastRenderer.tsx
 import { useRef, useState } from 'react'
-import { Bell, Trophy, Flame, UserPlus, Zap, Heart, Eye, Crown, Fan, MessageCircle, Spade, Image, Brain, Wifi, CirclePlay } from 'lucide-react'
+import { Bell, Trophy, Flame, UserPlus, Zap, Heart, Eye, Crown, Fan, MessageCircle, Spade, Image, Brain, Wifi, CirclePlay, Camera } from 'lucide-react'
 import type React from 'react'
 import { useNotificationToast } from './useNotificationToast'
 import type { ToastNotif } from './useNotificationToast'
@@ -24,6 +24,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'brain':          Brain,
   'wifi':           Wifi,
   'circle-play':    CirclePlay,
+  'camera':         Camera,
 }
 
 const SWIPE_DISMISS_PX = 70

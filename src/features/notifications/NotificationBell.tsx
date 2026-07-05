@@ -7,7 +7,7 @@ import {
   Sword, Rocket, Gem, Users, Heart, Mail, Sprout, User,
   Moon, Calendar, Activity, Flag, Plus, ArrowRight, Grid, Search,
   Gamepad2, Home, Lock, BarChart2, Layers, Brain, Eye, ChevronRight,
-  Spade, Image, Wifi, CirclePlay,
+  Spade, Image, Wifi, CirclePlay, Camera,
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -28,7 +28,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'plus': Plus, 'arrow-right': ArrowRight, 'grid': Grid, 'search': Search,
   'gamepad-2': Gamepad2, 'home': Home, 'lock': Lock, 'bar-chart': BarChart2,
   'layers': Layers, 'brain': Brain, 'eye': Eye, 'settings': Sparkles,
-  'spade': Spade, 'image': Image, 'wifi': Wifi, 'circle-play': CirclePlay,
+  'spade': Spade, 'image': Image, 'wifi': Wifi, 'circle-play': CirclePlay, 'camera': Camera,
 }
 
 function NotifIcon({ iconKey, size = 15 }: { iconKey: string; size?: number }) {
