@@ -1,6 +1,6 @@
 // src/pages/Exploration.tsx
 import { useState, useEffect, useRef } from 'react'
-import { Battery, Lock, Zap, MapPin, ChevronLeft, Crown, Clock, Star, Trophy, GamepadIcon } from 'lucide-react'
+import { Battery, Lock, Zap, MapPin, ChevronLeft, Crown, Star, Trophy, GamepadIcon } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useProfile } from '../profile/useProfile'
@@ -30,7 +30,10 @@ interface ChamberState {
   startedAt?: number      // ms timestamp
   durationMs?: number     // total ms for this run
   progress?: number       // 0–100
+  artifactFound?: boolean // only true if the artifact roll actually hit
 }
+
+const MAX_ENERGY = 200
 
 // ── Maps Data ─────────────────────────────────────────────────
 const MAPS: ExplorationMap[] = [
@@ -38,52 +41,52 @@ const MAPS: ExplorationMap[] = [
     id: 1, name: 'Greenfields', tier: 'I', xpRequired: 0,
     artifactLocation: 'Greenfields',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/2f3de4d78ede24c46d7a8ecf5f67b9c0.webp.jpg',
-    energyCost: 20,
+    energyCost: MAX_ENERGY,
     chambers: [
-      { id: 1, name: 'Mossy Gate',      baseTimeHours: 3, xpReward: 70,   artifact: false },
-      { id: 2, name: 'Thornwood Pass',  baseTimeHours: 3, xpReward: 110,  artifact: true  },
-      { id: 3, name: 'Sunken Altar',    baseTimeHours: 3, xpReward: 180,  artifact: false },
-      { id: 4, name: 'Root Labyrinth',  baseTimeHours: 3, xpReward: 260,  artifact: true  },
-      { id: 5, name: 'The Deep Hollow', baseTimeHours: 3, xpReward: 550,  artifact: true  },
+      { id: 1, name: 'Mossy Gate',      baseTimeHours: 5, xpReward: 70,   artifact: false },
+      { id: 2, name: 'Thornwood Pass',  baseTimeHours: 5, xpReward: 110,  artifact: true  },
+      { id: 3, name: 'Sunken Altar',    baseTimeHours: 5, xpReward: 180,  artifact: false },
+      { id: 4, name: 'Root Labyrinth',  baseTimeHours: 5, xpReward: 260,  artifact: true  },
+      { id: 5, name: 'The Deep Hollow', baseTimeHours: 5, xpReward: 550,  artifact: true  },
     ],
   },
   {
-    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 12000,
+    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 30000,
     artifactLocation: 'Crystal Lake',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/45a3c9b17775c774156c9c924ed4a89e.webp.jpg',
-    energyCost: 20,
+    energyCost: MAX_ENERGY,
     chambers: [
-      { id: 1, name: 'Ember Arch',      baseTimeHours: 6, xpReward: 400,  artifact: false },
-      { id: 2, name: 'Cinder Hall',     baseTimeHours: 6, xpReward: 650,  artifact: true  },
-      { id: 3, name: 'Obsidian Court',  baseTimeHours: 6, xpReward: 900,  artifact: false },
-      { id: 4, name: 'The Ashen Keep',  baseTimeHours: 6, xpReward: 1200, artifact: false },
-      { id: 5, name: 'Pyroclast Vault', baseTimeHours: 6, xpReward: 2500, artifact: true  },
+      { id: 1, name: 'Ember Arch',      baseTimeHours: 5, xpReward: 400,  artifact: false },
+      { id: 2, name: 'Cinder Hall',     baseTimeHours: 5, xpReward: 650,  artifact: true  },
+      { id: 3, name: 'Obsidian Court',  baseTimeHours: 5, xpReward: 900,  artifact: false },
+      { id: 4, name: 'The Ashen Keep',  baseTimeHours: 5, xpReward: 1200, artifact: false },
+      { id: 5, name: 'Pyroclast Vault', baseTimeHours: 5, xpReward: 2500, artifact: true  },
     ],
   },
   {
-    id: 3, name: 'Under World', tier: 'III', xpRequired: 45000,
+    id: 3, name: 'Under World', tier: 'III', xpRequired: 90000,
     artifactLocation: 'Under World',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/7c15d735d2aeb8fff833fdd949d5c4a3.jpg',
-    energyCost: 20,
+    energyCost: MAX_ENERGY,
     chambers: [
-      { id: 1, name: 'Salt Shore',        baseTimeHours: 12, xpReward: 1200, artifact: false },
-      { id: 2, name: 'Kelp Maze',         baseTimeHours: 12, xpReward: 2000, artifact: true  },
-      { id: 3, name: 'Drowned Citadel',   baseTimeHours: 12, xpReward: 3500, artifact: false },
-      { id: 4, name: 'Abyss Gate',        baseTimeHours: 12, xpReward: 6000, artifact: true  },
-      { id: 5, name: 'The Sunken Throne', baseTimeHours: 12, xpReward: 9000, artifact: false },
+      { id: 1, name: 'Salt Shore',        baseTimeHours: 5, xpReward: 1200, artifact: false },
+      { id: 2, name: 'Kelp Maze',         baseTimeHours: 5, xpReward: 2000, artifact: true  },
+      { id: 3, name: 'Drowned Citadel',   baseTimeHours: 5, xpReward: 3500, artifact: false },
+      { id: 4, name: 'Abyss Gate',        baseTimeHours: 5, xpReward: 6000, artifact: true  },
+      { id: 5, name: 'The Sunken Throne', baseTimeHours: 5, xpReward: 9000, artifact: false },
     ],
   },
   {
-    id: 4, name: 'The Void', tier: 'IV', xpRequired: 120000,
+    id: 4, name: 'The Void', tier: 'IV', xpRequired: 250000,
     artifactLocation: 'The Void',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/ecaf76f4607a37f03cfaac5babbc2826.jpg',
-    energyCost: 20,
+    energyCost: MAX_ENERGY,
     chambers: [
-      { id: 1, name: 'Cloud Vestibule', baseTimeHours: 24, xpReward: 3000,  artifact: false },
-      { id: 2, name: 'Star Corridor',   baseTimeHours: 24, xpReward: 5000,  artifact: true  },
-      { id: 3, name: 'Void Sanctum',    baseTimeHours: 24, xpReward: 8000,  artifact: true  },
-      { id: 4, name: 'Ether Pinnacle',  baseTimeHours: 24, xpReward: 11000, artifact: true  },
-      { id: 5, name: 'The Apex',        baseTimeHours: 24, xpReward: 15000, artifact: true  },
+      { id: 1, name: 'Cloud Vestibule', baseTimeHours: 5, xpReward: 3000,  artifact: false },
+      { id: 2, name: 'Star Corridor',   baseTimeHours: 5, xpReward: 5000,  artifact: true  },
+      { id: 3, name: 'Void Sanctum',    baseTimeHours: 5, xpReward: 8000,  artifact: true  },
+      { id: 4, name: 'Ether Pinnacle',  baseTimeHours: 5, xpReward: 11000, artifact: true  },
+      { id: 5, name: 'The Apex',        baseTimeHours: 5, xpReward: 15000, artifact: true  },
     ],
   },
 ]
@@ -91,20 +94,14 @@ const MAPS: ExplorationMap[] = [
 const MAP5_IMAGE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/edbe74644bf60a82c20ad2e3b69cb5ff.jpg'
 const AVATAR_PLACEHOLDER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/ac50a770bef6d3a9b94eac44e946924f.jpg'
 
-const MAX_ENERGY = 200
-// Refill rate (29% of max per 50 min) is computed server-side in the
-// get_exploration_energy / spend_exploration_energy RPCs, so it stays
-// correct regardless of how long the client was closed.
+// Refill rate is computed server-side in the get_exploration_energy /
+// spend_exploration_energy RPCs (kept out of the client on purpose so the
+// exact refill time isn't exposed), so it stays correct regardless of how
+// long the client was closed.
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmtXP(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(0)}k` : `${n}`
-}
-
-function fmtHours(h: number) {
-  if (h < 1) return `${Math.round(h * 60)}m`
-  if (h === Math.floor(h)) return `${h}h`
-  return `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`
 }
 
 // ── No Avatar Modal ───────────────────────────────────────────
@@ -399,7 +396,7 @@ function MapCard({ map, playerXP, onClick }: { map: ExplorationMap; playerXP: nu
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Battery size={11} style={{ color: locked ? 'rgba(255,255,255,0.12)' : tierColor }} />
             <span style={{ fontSize: 11, fontWeight: 800, color: locked ? 'rgba(255,255,255,0.12)' : tierColor }}>
-              {map.energyCost} energy/chamber
+              Full energy per chamber
             </span>
           </div>
         </div>
@@ -478,13 +475,14 @@ function ChamberRow({
             {isDone ? (
               <>
                 <span style={{ color: '#f5c542', fontWeight: 700 }}>+{chamber.xpReward} XP</span>
-                {chamber.artifact && <span style={{ color: '#9b6dff' }}>🏺 Artifact found</span>}
+                {chamber.artifact && (
+                  state?.artifactFound
+                    ? <span style={{ color: '#9b6dff' }}>🏺 Artifact found</span>
+                    : <span style={{ color: 'rgba(255,255,255,0.35)' }}>Oops, you didn't successfully claim an artifact</span>
+                )}
               </>
             ) : (
               <>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Clock size={10} />{fmtHours(chamber.baseTimeHours)}
-                </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                   <Zap size={10} style={{ color: '#f5c542' }} />+{fmtXP(chamber.xpReward)} XP
                 </span>
@@ -589,10 +587,12 @@ function MapView({
     setTimeout(() => setToast(null), 4000)
   }
 
-  // 15% drop — picks a random artifact from this map's location the player doesn't own
-  async function tryArtifactDrop() {
-    if (!userId) return
-    if (Math.random() > 0.15) return  // 85% chance of no drop
+  // 15% drop — picks a random artifact from this map's location the player doesn't own.
+  // Returns true only if an artifact was actually granted, so the UI never claims
+  // "Artifact found" unless something was really added to the player's inventory.
+  async function tryArtifactDrop(): Promise<boolean> {
+    if (!userId) return false
+    if (Math.random() > 0.15) return false  // 85% chance of no drop
 
     // Fetch all artifacts in this location that the player doesn't own yet
     const { data: owned } = await supabase
@@ -608,7 +608,7 @@ function MapView({
       .eq('location', map.artifactLocation)
 
     const eligible = (available ?? []).filter((a: { id: string; name: string }) => !ownedIds.has(a.id))
-    if (!eligible.length) return  // player owns them all from this location
+    if (!eligible.length) return false  // player owns them all from this location
 
     // Pick one at random
     const pick = eligible[Math.floor(Math.random() * eligible.length)]
@@ -619,7 +619,9 @@ function MapView({
 
     if (!error) {
       showToast(`🏺 Artifact found — ${pick.name}!`, '#f5c542')
+      return true
     }
+    return false
   }
 
   // Load this map's chamber runs from the DB — this is what makes the
@@ -629,7 +631,7 @@ function MapView({
     if (!userId) { setLoadingRuns(false); return }
     const { data, error } = await supabase
       .from('exploration_chamber_runs')
-      .select('chamber_id, started_at, ends_at, claimed')
+      .select('chamber_id, started_at, ends_at, claimed, artifact_awarded')
       .eq('user_id', userId)
       .eq('map_id', map.id)
 
@@ -643,6 +645,7 @@ function MapView({
         status: row.claimed ? 'done' : 'running',
         startedAt,
         durationMs: endsAt - startedAt,
+        artifactFound: !!row.artifact_awarded,
       }
     }
     setChamberStates(next)
@@ -683,8 +686,21 @@ function MapView({
           await supabase.rpc('award_xp', { p_user_id: userId, p_xp: chamber.xpReward })
           setTotalXP(x => x + chamber.xpReward)
           showToast(`+${chamber.xpReward} XP earned from ${chamber.name}!`, '#3ecf8e')
-          if (chamber.artifact) await tryArtifactDrop()
-          setChamberStates(s => ({ ...s, [chamber.id]: { ...s[chamber.id], status: 'done' } }))
+
+          let artifactFound = false
+          if (chamber.artifact) {
+            artifactFound = await tryArtifactDrop()
+            // Persist the real outcome so the "Artifact found" label survives
+            // navigation/refresh and never shows unless something was granted.
+            await supabase
+              .from('exploration_chamber_runs')
+              .update({ artifact_awarded: artifactFound })
+              .eq('user_id', userId)
+              .eq('map_id', map.id)
+              .eq('chamber_id', chamber.id)
+          }
+
+          setChamberStates(s => ({ ...s, [chamber.id]: { ...s[chamber.id], status: 'done', artifactFound } }))
         }
 
         claimingRef.current.delete(chamber.id)
