@@ -186,11 +186,17 @@ interface MessageRowProps {
   myId: string | null
   formatTime: (iso: string) => string
   readReceipt: ReadReceipt
+  /** Avatars and per-message sender-name labels only make sense where more than
+   *  two people share the thread (Global Chat). In a DM, which side of the
+   *  screen a bubble sits on already tells you who sent it — showing a
+   *  redundant name/avatar per bubble is not how WhatsApp/iMessage/Telegram
+   *  render 1:1 conversations, and it was eating extra vertical space. */
+  isGroupChat: boolean
 }
 
 const MessageRow = memo(function MessageRow({
   msg, isMine, senderLabel, avatarUrl, myProfile, emojiForMsg,
-  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt,
+  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt, isGroupChat,
 }: MessageRowProps) {
   const AVATAR_COL = 38 // avatar width (30) + gap (8) — used as spacer for grouped bubbles
 
@@ -199,17 +205,21 @@ const MessageRow = memo(function MessageRow({
       display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:8,
       marginBottom: msg.isGroupLast ? 6 : 0,
     }}>
-      {/* Avatar — only on first bubble of a consecutive group; otherwise an equal-width spacer keeps alignment */}
-      {msg.isGroupFirst ? (
-        <button
-          type="button"
-          onClick={() => onOpenProfile(msg)}
-          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
-          title={senderLabel}>
-          <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
-        </button>
-      ) : (
-        <div style={{ width:AVATAR_COL, flexShrink:0 }} />
+      {/* Avatar — only in group chats (Global Chat), and only on the first bubble of a
+          consecutive group there; a DM never shows one, since which side of the screen
+          a bubble is on already identifies the sender. */}
+      {isGroupChat && (
+        msg.isGroupFirst ? (
+          <button
+            type="button"
+            onClick={() => onOpenProfile(msg)}
+            style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, alignSelf:'flex-start', marginTop:2 }}
+            title={senderLabel}>
+            <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
+          </button>
+        ) : (
+          <div style={{ width:AVATAR_COL, flexShrink:0 }} />
+        )
       )}
 
       {/* Bubble column */}
@@ -246,8 +256,8 @@ const MessageRow = memo(function MessageRow({
               </div>
             )}
 
-            {/* Sender name — only on the first bubble of a consecutive group */}
-            {!msg.deleted && msg.isGroupFirst && (
+            {/* Sender name — only in group chats, and only on the first bubble of a consecutive group */}
+            {isGroupChat && !msg.deleted && msg.isGroupFirst && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenProfile(msg) }}
@@ -291,19 +301,25 @@ const MessageRow = memo(function MessageRow({
               ))}
             </div>
           )}
+
+          {/* Hover-revealed reaction trigger — absolutely positioned beside the bubble so it
+              never affects layout height. Touch devices don't get a persistent visible copy
+              of this (there's no hover state to reveal it on tap-and-hold anyway); long-press
+              already opens the context menu's "React" option, so nothing is lost. */}
+          {!msg.deleted && (
+            <button
+              type="button"
+              onClick={() => onToggleEmojiPicker(msg.id)}
+              className="msg-react-trigger"
+              style={{
+                position:'absolute', top:'50%', transform:'translateY(-50%)',
+                ...(isMine ? { right:'100%', marginRight:6 } : { left:'100%', marginLeft:6 }),
+                background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:2, opacity:0, transition:'opacity 0.15s',
+              }}>
+              <Smile size={12} />
+            </button>
+          )}
         </div>
-
-
-        {/* Hover-revealed reaction trigger (reduces inline clutter) */}
-        {!msg.deleted && (
-          <button
-            type="button"
-            onClick={() => onToggleEmojiPicker(msg.id)}
-            className="msg-react-trigger"
-            style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:2, marginTop:2, opacity:0, transition:'opacity 0.15s' }}>
-            <Smile size={12} />
-          </button>
-        )}
 
         {emojiForMsg === msg.id && (
           <div style={{ display:'flex', gap:4, flexWrap:'wrap', padding:8, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', marginTop:4, maxWidth:220, zIndex:3, position:'relative' }}>
@@ -1718,6 +1734,7 @@ export default function Chat() {
                           myId={myId}
                           formatTime={formatTime}
                           readReceipt={readReceipt}
+                          isGroupChat={activeRoom.type === 'global'}
                         />
                       )
                     })}
@@ -1980,9 +1997,6 @@ export default function Chat() {
         .msg-react-trigger { opacity: 0; }
         @media (hover: hover) {
           .msg-bubble-col:hover .msg-react-trigger { opacity: 1; }
-        }
-        @media (hover: none) {
-          .msg-react-trigger { opacity: 0.55; }
         }
       `}</style>
     </div>
