@@ -1,28 +1,28 @@
 // src/components/Footer.tsx
 import Wordmark from './Wordmark'
 
+const FOOTER_LINKS: Array<[href: string, label: string]> = [
+  ['https://cvwtplatform.vercel.app/', 'Platform'],
+  ['#', 'About'],
+  ['/privacy', 'Privacy'],
+  ['/terms', 'Terms'],
+  ['#', 'Contact'],
+]
+
 export default function Footer() {
   return (
-    <footer style={{
-      padding: '28px 40px', borderTop: '1px solid rgba(255,106,44,0.16)',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      flexWrap: 'wrap', gap: 16, background: 'rgba(18,6,4,0.6)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <footer className="flex items-center justify-between flex-wrap gap-4 px-5 md:px-10 py-7 bg-[rgba(5,5,6,0.6)] border-t border-chill-border">
+      <div className="flex items-center gap-2.5">
         <Wordmark size={18} animated={false} />
-        <span style={{ fontSize: 13, color: '#8a6552' }}>© 2026 · All rights reserved</span>
+        <span className="text-[13px] text-chill-textMuted">© 2026 · All rights reserved</span>
       </div>
-      <div style={{ display: 'flex', gap: 24 }}>
-        {[
-          ['https://cvwtplatform.vercel.app/','Platform'],
-          ['#','About'],
-          ['/privacy','Privacy'],
-          ['/terms','Terms'],
-          ['#','Contact'],
-        ].map(([href, label]) => (
-          <a key={label} href={href} style={{ fontSize: 13, color: '#8a6552', textDecoration: 'none', transition: 'color 0.2s' }}
-            onMouseEnter={e => { (e.target as HTMLElement).style.color = '#e0b8a0' }}
-            onMouseLeave={e => { (e.target as HTMLElement).style.color = '#8a6552' }}>
+      <div className="flex gap-6 flex-wrap">
+        {FOOTER_LINKS.map(([href, label]) => (
+          <a
+            key={label}
+            href={href}
+            className="text-[13px] text-chill-textMuted hover:text-chill-textSecondary transition-colors no-underline"
+          >
             {label}
           </a>
         ))}
