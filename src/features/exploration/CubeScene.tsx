@@ -71,17 +71,29 @@ export default function CubeScene({ containerRef }: CubeSceneProps) {
       glassCubeRef.current.style.transform = `rotateX(${s.curX}deg) rotateY(${s.curY}deg)`
     }
 
-    const scale = 1 - s.curP * 0.28
-    const lift = s.curP * -36
-    const opacity = String(1 - s.curP * 0.85)
+    // Background layer (grid floor, glows, embers) fully dissolves as the
+    // hero scrolls past — this is what sells the "pulling back into the
+    // page" transition.
+    const bgScale = 1 - s.curP * 0.28
+    const bgLift = s.curP * -36
+    const bgOpacity = String(1 - s.curP * 0.85)
 
     if (sceneRef.current) {
-      sceneRef.current.style.transform = `translateY(${lift}px) scale(${scale})`
-      sceneRef.current.style.opacity = opacity
+      sceneRef.current.style.transform = `translateY(${bgLift}px) scale(${bgScale})`
+      sceneRef.current.style.opacity = bgOpacity
     }
+
+    // Glass layer stays glass. Only a gentle recede + near-imperceptible
+    // fade — the cube should read as a constant, physical object refracting
+    // the headline throughout the scroll, not something that dissolves
+    // away like the rest of the scene.
+    const glassScale = 1 - s.curP * 0.1
+    const glassLift = s.curP * -20
+    const glassOpacity = String(1 - s.curP * 0.15)
+
     if (glassSceneRef.current) {
-      glassSceneRef.current.style.transform = `translateY(${lift}px) scale(${scale})`
-      glassSceneRef.current.style.opacity = opacity
+      glassSceneRef.current.style.transform = `translateY(${glassLift}px) scale(${glassScale})`
+      glassSceneRef.current.style.opacity = glassOpacity
     }
 
     if (glowFarRef.current) glowFarRef.current.style.transform = `translate(-50%, calc(-50% + ${s.curP * 30}px))`
@@ -112,6 +124,22 @@ export default function CubeScene({ containerRef }: CubeSceneProps) {
 
   return (
     <>
+      {/* Hidden filter def — feTurbulence + feDisplacementMap is what actually
+         bends/warps the headline glyphs behind each glass face (the visible
+         "stretched, malformed-through-glass" look from the reference brief).
+         Referenced via `backdrop-filter: url(#glass-refraction)` in CSS.
+         Chromium and Firefox apply it; browsers without SVG-filter support in
+         backdrop-filter just fall back to the plain blur/saturate/brightness
+         already chained alongside it, so the cube still looks like glass. */}
+      <svg aria-hidden="true" focusable="false" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+        <defs>
+          <filter id="glass-refraction" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="7" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="46" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* Background layer — renders behind the headline text */}
       <div ref={sceneRef} className="hero-3d-bg">
         <div ref={glowFarRef} className="glow glow-violet" />
