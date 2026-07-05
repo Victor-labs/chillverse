@@ -26,23 +26,26 @@
     --radius:    18px;
     --radius-sm: 12px;
 
-    /* ── Landing/glass palette (public pages) — sunset ── */
-    --lbg:           #120604;
-    --lbg2:          #1f0a06;
-    --lsurface:      #1c0d08;
-    --lsurface2:     #26120a;
-    --lborder:       rgba(255,106,44,0.16);
-    --lborder-bright:rgba(255,106,44,0.42);
-    --violet:        #ff6a2c; /* ember (primary accent) */
-    --violet-soft:   #ffab7a; /* ember soft */
-    --cyan:          #ffb020; /* gold (secondary accent) */
-    --lpink:         #ff5d5d; /* coral */
-    --amber:         #ffd23f; /* warm gold-yellow */
-    --lgreen:        #2dd4bf; /* teal — single cool contrast note */
+    /* ── Landing/glass palette (public pages) — black premium ──
+       Mirrors tailwind.config.js `chill.*` exactly, so every public-page
+       component (Tailwind classes AND these CSS vars) draws from one
+       single source of truth instead of two different palettes. */
+    --lbg:           #050506;
+    --lbg2:          #0a0a10;
+    --lsurface:      #0d0d16;
+    --lsurface2:     #14141f;
+    --lborder:       rgba(124,102,255,0.14);
+    --lborder-bright:rgba(124,102,255,0.4);
+    --violet:        #6c50ff;
+    --violet-soft:   #a78bfa;
+    --cyan:          #00e5ff;
+    --lpink:         #ff4ecd;
+    --amber:         #ffb800;
+    --lgreen:        #00ff87;
     --lred:          #ff4f4f;
-    --ltext:         #fff1e6;
-    --ltext-sec:     #e0b8a0;
-    --ltext-muted:   #8a6552;
+    --ltext:         #f2f0fb;
+    --ltext-sec:     #9b96c0;
+    --ltext-muted:   #5a5678;
   }
 
   html { scroll-behavior: smooth; }
@@ -258,7 +261,7 @@
 /* Glass panel system */
 .glass-panel {
   position: relative; overflow: hidden;
-  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)), rgba(15,15,40,0.55);
+  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012)), rgba(10,10,18,0.6);
   backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid rgba(255,255,255,0.10); border-top-color: rgba(255,255,255,0.24);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 24px 60px rgba(0,0,0,0.55);
@@ -271,112 +274,102 @@
   filter: blur(40px); pointer-events: none; z-index: 0;
 }
 .glass-panel > * { position: relative; z-index: 1; }
-.glass-panel-strong { background: rgba(15,15,40,0.78); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%); }
-.glass-chip { background: rgba(15,15,40,0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.10); }
-.glow-violet-tint { --glass-glow: rgba(255,106,44,0.35); }
-.glow-orange-tint { --glass-glow: rgba(255,107,0,0.32); }
-.glow-pink-tint   { --glass-glow: rgba(255,93,93,0.30); }
-.glow-cyan-tint   { --glass-glow: rgba(255,176,32,0.28); }
-.glow-green-tint  { --glass-glow: rgba(45,212,191,0.28); }
+.glass-panel-strong { background: rgba(10,10,18,0.82); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%); }
+.glass-chip { background: rgba(10,10,18,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.10); }
+.glow-violet-tint { --glass-glow: rgba(108,80,255,0.35); }
+.glow-pink-tint   { --glass-glow: rgba(255,78,205,0.30); }
+.glow-cyan-tint   { --glass-glow: rgba(0,229,255,0.28); }
+.glow-green-tint  { --glass-glow: rgba(0,255,135,0.28); }
 
-/* ── 3D Hero cube scene ── */
-.hero-3d-bg {
+/* ══════════════════════════════════
+   3D HERO — interactive PS5 controller
+   (WebGL, via @react-three/fiber — see ControllerScene.tsx)
+   ══════════════════════════════════ */
+
+/* Background layer — ambient glows, floor grid, drifting sparks.
+   Recedes/fades on scroll via direct style mutation from ControllerScene. */
+.hero-controller-bg {
   position: absolute; inset: 0; z-index: 0;
   display: flex; align-items: center; justify-content: center;
   perspective: 900px; pointer-events: none;
   will-change: transform, opacity;
 }
-.hero-3d-bg::after {
+.hero-controller-bg::after {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, #120604 75%);
+  background: radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, #050506 75%);
 }
-.grid-floor {
+.hc-grid-floor {
   position: absolute; left: 50%; top: 50%;
   width: clamp(480px, 140vw, 900px); height: clamp(480px, 140vw, 900px);
-  background-image: linear-gradient(rgba(255,106,44,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,106,44,0.12) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(124,102,255,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(124,102,255,0.12) 1px, transparent 1px);
   background-size: 60px 60px;
-  transform: translateX(-50%) translateY(-50%) rotateX(75deg); opacity: 0.6;
+  transform: translateX(-50%) translateY(-50%) rotateX(75deg); opacity: 0.55;
   will-change: transform, opacity;
 }
 
-/* Ambient sunset glow blobs — layered for scroll parallax depth */
-.glow { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; will-change: transform, opacity; }
-.glow-violet { width: 480px; height: 480px; background: rgba(255,106,44,0.20); top: 50%; left: 50%; transform: translate(-50%,-50%); }
-.glow-cyan   { width: 340px; height: 340px; background: rgba(255,176,32,0.13); top: 28%; right: 8%; }
-.glow-pink   { width: 300px; height: 300px; background: rgba(255,93,93,0.11);  bottom: 16%; left: 6%; }
+/* Ambient glow blobs — layered for scroll parallax depth */
+.hc-glow { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; will-change: transform, opacity; }
+.hc-glow-violet { width: 480px; height: 480px; background: rgba(108,80,255,0.22); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.hc-glow-cyan   { width: 340px; height: 340px; background: rgba(0,229,255,0.13);  top: 28%; right: 8%; }
+.hc-glow-pink   { width: 300px; height: 300px; background: rgba(255,78,205,0.11); bottom: 16%; left: 6%; }
 
-/* Rising ember particles — ambient, independent of scroll */
-.ember-field { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.ember-particle {
+/* Rising accent sparks — ambient, independent of scroll */
+.hc-spark-field { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.hc-spark {
   position: absolute; bottom: -20px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,178,32,0.9) 0%, rgba(255,106,44,0.5) 55%, transparent 100%);
+  background: radial-gradient(circle, rgba(0,229,255,0.9) 0%, rgba(108,80,255,0.5) 55%, transparent 100%);
   filter: blur(0.5px);
-  animation: ember-rise linear infinite;
+  animation: hc-spark-rise linear infinite;
 }
-@keyframes ember-rise {
+@keyframes hc-spark-rise {
   0%   { transform: translateY(0) translateX(0); opacity: 0; }
   10%  { opacity: 0.8; }
   90%  { opacity: 0.3; }
-  100% { transform: translateY(-620px) translateX(var(--drift, 24px)); opacity: 0; }
+  100% { transform: translateY(-620px) translateX(var(--hc-drift, 24px)); opacity: 0; }
 }
 
-/* ══════════════════════════════════
-   GLASS HERO CUBE — foreground layer
-   Sits ABOVE the headline text (z-index set in .hero-glass-layer below the
-   grid-floor/glow layer's z:0) so its refractive faces visually bend/blur
-   the words behind them as it rotates, per the reference brief.
-   ══════════════════════════════════ */
-.hero-glass-layer {
-  position: absolute; inset: 0; z-index: 5;
-  display: flex; align-items: center; justify-content: center;
-  perspective: 1000px; pointer-events: none;
-  will-change: transform, opacity;
-}
-.glass-cube-diamond {
-  /* Single source of truth for cube size — everything below reads this
-     custom property (it inherits to all descendants), so the whole cube
-     scales fluidly from phones to ultra-wide monitors with no separate
-     breakpoint rules to keep in sync. */
-  --glass-size: clamp(120px, 34vw, 230px);
-  position: absolute; left: 50%; top: 50%;
-  width: var(--glass-size); height: var(--glass-size);
-  transform: translate(-50%, -50%) rotateZ(45deg);
-}
-.glass-cube {
-  position: absolute; inset: 0;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-.glass-cube .gf {
-  position: absolute; inset: 0; width: var(--glass-size); height: var(--glass-size);
-  border-radius: 22px; overflow: hidden;
-  background: linear-gradient(150deg, rgba(255,241,230,0.16) 0%, rgba(255,106,44,0.07) 45%, rgba(255,176,32,0.12) 100%);
-  border: 1px solid rgba(255,241,230,0.38);
-  /* url(#glass-refraction) is what actually bends/stretches the headline
-     glyphs visible through each face (feTurbulence + feDisplacementMap,
-     defined in CubeScene.tsx) — the light blur+saturate+brightness chained
-     after it is the fallback for browsers that ignore the SVG filter ref
-     inside backdrop-filter, so the cube still reads as glass either way. */
-  backdrop-filter: url(#glass-refraction) blur(2px) saturate(160%) brightness(1.08);
-  -webkit-backdrop-filter: blur(3px) saturate(160%) brightness(1.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.5),
-    inset 0 -14px 26px rgba(0,0,0,0.32),
-    0 30px 70px rgba(0,0,0,0.5);
-}
-.glass-cube .gf::before {
-  /* diagonal specular streak — sells the "light catching glass" look */
-  content: ''; position: absolute; top: -70%; left: -30%; width: 55%; height: 240%;
-  background: linear-gradient(115deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 65%);
-  transform: rotate(8deg);
+/* WebGL canvas layer — the R3F <Canvas> is transparent and never blocks
+   pointer events itself (see ControllerScene.tsx / gl style). */
+.hero-controller-canvas-wrap {
+  position: absolute; inset: 0; z-index: 3;
   pointer-events: none;
 }
-.gf.gfr { transform: translateZ(calc(var(--glass-size) / 2)); }
-.gf.gbk { transform: rotateY(180deg) translateZ(calc(var(--glass-size) / 2)); }
-.gf.grt { transform: rotateY(90deg)  translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,176,32,0.45); }
-.gf.glt { transform: rotateY(-90deg) translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,93,93,0.4); }
-.gf.gtp { transform: rotateX(90deg)  translateZ(calc(var(--glass-size) / 2)); border-color: rgba(45,212,191,0.4); }
-.gf.gbt { transform: rotateX(-90deg) translateZ(calc(var(--glass-size) / 2)); border-color: rgba(255,210,63,0.4); }
+.hero-controller-canvas-wrap canvas {
+  display: block;
+}
+
+/* Interaction hit-zone — sized to roughly where the controller renders,
+   not the full hero, so page scroll on mobile still works everywhere else. */
+.hero-controller-hitzone {
+  position: absolute; left: 50%; top: 52%;
+  width: clamp(260px, 46vw, 460px); height: clamp(260px, 46vw, 460px);
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+}
+.hero-controller-hitzone.is-dragging { cursor: grabbing; }
+
+/* Loading indicator shown while the .glb streams in */
+.hero-controller-loader {
+  position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%);
+  z-index: 7;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--ltext-sec);
+  font-family: monospace;
+  pointer-events: none;
+}
+.hero-controller-loader-track {
+  width: 140px; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.08); overflow: hidden;
+}
+.hero-controller-loader-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  transition: width 0.2s ease-out;
+}
 
 /* ══════════════════════════════════
    WORDMARK — "Chillverse" custom lockup
@@ -407,7 +400,7 @@
 
 /* Faint scattered star field behind the mark — depth without clutter */
 .wordmark-stars { position: absolute; inset: 0; pointer-events: none; }
-.wordmark-stars i { position: absolute; border-radius: 50%; background: #fff1e6; }
+.wordmark-stars i { position: absolute; border-radius: 50%; background: var(--ltext); }
 .wordmark-stars .ws1 { width: 0.09em; height: 0.09em; top: 0.02em;    left: 0.18em;  opacity: 0.35; }
 .wordmark-stars .ws2 { width: 0.07em; height: 0.07em; top: 0.72em;    left: -0.22em; opacity: 0.22; }
 .wordmark-stars .ws3 { width: 0.07em; height: 0.07em; bottom: -0.06em; right: 0.4em;  opacity: 0.18; }
@@ -425,7 +418,7 @@
 .wordmark-ring {
   position: absolute; inset: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255,241,230,0.4);
+  border: 1px solid rgba(167,139,250,0.4);
   transform: rotate(-18deg) scaleY(0.62);
 }
 .wordmark-orbit-spin {
@@ -443,8 +436,8 @@
   position: absolute; top: -1px; left: 50%;
   margin-left: -1px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffe9c4, #ffb020 55%, #ff6a2c 100%);
-  box-shadow: 0 0 6px rgba(255,176,32,0.85);
+  background: radial-gradient(circle at 35% 30%, #e4dcff, #a78bfa 55%, #6c50ff 100%);
+  box-shadow: 0 0 6px rgba(108,80,255,0.85);
 }
 @keyframes wordmark-orbit-rotate {
   from { transform: rotate(-18deg) scaleY(0.62) rotate(0deg); }
@@ -454,8 +447,8 @@
 /* Nav spinning logo */
 @keyframes nav-spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
 @keyframes nav-logo-glow {
-  0%, 100% { box-shadow: 0 0 6px rgba(255,106,44,0.35), 0 0 0 rgba(255,176,32,0); }
-  50%      { box-shadow: 0 0 16px rgba(255,106,44,0.65), 0 0 10px rgba(255,176,32,0.35); }
+  0%, 100% { box-shadow: 0 0 6px rgba(108,80,255,0.35), 0 0 0 rgba(0,229,255,0); }
+  50%      { box-shadow: 0 0 16px rgba(108,80,255,0.65), 0 0 10px rgba(0,229,255,0.35); }
 }
 .nav-logo-face { animation: nav-logo-glow 3.2s ease-in-out infinite; }
 
