@@ -5,6 +5,8 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import AchievementToast from '../features/achievements/AchievementToast'
 import NotificationToastRenderer from '../features/notifications/NotificationToastRenderer'
+import PromoOverlay from '../features/notifications/PromoOverlay'
+import { useReferralPromoAd } from '../features/referral/useReferralPromoAd'
 import { useProfile } from '../features/profile/useProfile'
 import { useAuth } from '../features/auth/useAuth'
 import { getUserRankTier } from '../features/profile/ranks'
@@ -37,6 +39,7 @@ export default function AppLayout() {
   const { profile } = useProfile()
   const { user, session } = useAuth()
   const myId = session?.user?.id ?? null
+  const { active: referralAd, dismiss: dismissReferralAd } = useReferralPromoAd(myId)
 
   // ── Sidebar responsiveness ──
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function AppLayout() {
 
       <AchievementToast />
       <NotificationToastRenderer />
+      {referralAd && <PromoOverlay notification={referralAd} onDismiss={dismissReferralAd} />}
 
       <main
         className="pt-[68px] pb-12 relative z-10 transition-all duration-300"
