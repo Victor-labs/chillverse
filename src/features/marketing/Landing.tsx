@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../../layout/Nav'
 import Footer from '../../layout/Footer'
-import ControllerScene from '../exploration/ControllerScene'
+import CubeScene from './CubeScene'
 import { useReveal } from './useReveal'
 import { useAuth } from '../auth/useAuth'
 
@@ -82,7 +82,7 @@ export default function Landing() {
           height, driving the 3D controller's recede/fade + parallax. */}
       <div ref={heroContainerRef} className="relative h-[150vh] sm:h-[180vh] md:h-[200vh] lg:h-[220vh]">
         <section className="sticky top-0 min-h-screen h-screen relative flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
-          <ControllerScene containerRef={heroContainerRef} />
+          <CubeScene />
 
           {/* pointer-events-none so drag/tilt on the controller works right
              through this wrapper; the two links below opt back in. */}
