@@ -24,6 +24,13 @@ const HOVER_YAW_MAX = 0.22
 const HOVER_PITCH_MAX = 0.12
 const IDLE_SPIN_SPEED = 0.18
 const SPARK_COUNT = 14
+/** Target size (largest bounding-box dimension, in scene units) the loaded
+ *  model is normalized to. At camera z≈4.4 / fov 32°, the visible frame
+ *  height is ~2.5 units — this was previously set to 2.6, i.e. larger than
+ *  the frame itself, which is why the model looked "zoomed in" and clipped
+ *  off-screen regardless of whether the .glb contains a controller, a cube,
+ *  or anything else. 1.5 leaves comfortable margin on all sides. */
+const MODEL_TARGET_SIZE = 1.5
 
 interface ControllerSceneProps {
   /** The tall pinned hero wrapper this scene's scroll progress is measured against. */
@@ -83,7 +90,7 @@ function ControllerModel({
       }
     })
 
-    return { model: cloned, baseScale: 2.6 / maxDim }
+    return { model: cloned, baseScale: MODEL_TARGET_SIZE / maxDim }
   }, [scene])
 
   useFrame((_, delta) => {
@@ -294,7 +301,7 @@ export default function ControllerScene({ containerRef }: ControllerSceneProps) 
         <Canvas
           shadows
           dpr={[1, 2]}
-          camera={{ position: [0, 0.15, 4.4], fov: 32 }}
+          camera={{ position: [0, 0.15, 5.2], fov: 32 }}
           gl={{ alpha: true, antialias: true }}
           style={{ pointerEvents: 'none' }}
         >
