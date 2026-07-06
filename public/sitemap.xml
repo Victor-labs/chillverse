@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://chillverse.com.ng/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://chillverse.com.ng/og-image.png</image:loc>
+      <image:title>Chillverse — Play. Win. Dominate.</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chillverse.com.ng/og-image-2.jpg</image:loc>
+      <image:title>Chillverse landing page</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chillverse.com.ng/web-app-manifest-512x512.png</image:loc>
+      <image:title>Chillverse logo</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://chillverse.com.ng/login</loc>
