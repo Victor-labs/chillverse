@@ -133,3 +133,69 @@ export interface UserInventoryItem {
   is_equipped: boolean
   quantity: number
 }
+
+// ── Support center ──────────────────────────────────────────────────────────
+
+export interface SupportCategory {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  icon: string
+  sort_order: number
+  created_at: string
+}
+
+export interface SupportArticle {
+  id: string
+  category_id: string
+  slug: string
+  title: string
+  summary: string | null
+  content: string
+  tags: string[]
+  is_published: boolean
+  view_count: number
+  helpful_count: number
+  not_helpful_count: number
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/** Row shape returned by the `search_support_articles` RPC. */
+export interface SupportArticleSearchResult {
+  id: string
+  category_id: string
+  slug: string
+  title: string
+  summary: string | null
+  tags: string[]
+  view_count: number
+  helpful_count: number
+  not_helpful_count: number
+  rank: number
+}
+
+export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+export type SupportTicketPriority = 'low' | 'normal' | 'high' | 'urgent'
+
+export interface SupportTicket {
+  id: string
+  user_id: string
+  category_id: string | null
+  subject: string
+  message: string
+  contact_email: string | null
+  status: SupportTicketStatus
+  priority: SupportTicketPriority
+  created_at: string
+  updated_at: string
+}
+
+export interface NewSupportTicketInput {
+  categoryId: string | null
+  subject: string
+  message: string
+  contactEmail: string | null
+}
