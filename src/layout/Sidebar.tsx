@@ -6,6 +6,7 @@ import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
   User, Settings, Zap, X, ChevronLeft, ChevronRight,
   Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers,
+  LifeBuoy,
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 
@@ -53,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Wallet',   to: '/wallet',   icon: Wallet },
     ],
   },
+  { label: 'Support',      to: '/support',      icon: LifeBuoy,    badge: null },
   {
     label: 'Settings',
     to: '/settings',

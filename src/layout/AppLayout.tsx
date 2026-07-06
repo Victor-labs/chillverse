@@ -24,11 +24,12 @@ const ROUTE_TITLES: Record<string, string> = {
   '/mall':       'Mall',
   '/streak':     'Streak',
   '/settings':   'Settings',
+  '/support':    'Support',
 }
 
 const TOP_LEVEL_ROUTES = [
   '/dashboard', '/games', '/chat', '/profile',
-  '/ranks', '/mall', '/streak', '/settings',
+  '/ranks', '/mall', '/streak', '/settings', '/support',
 ]
 
 export default function AppLayout() {
