@@ -146,6 +146,11 @@ export interface SupportCategory {
   created_at: string
 }
 
+/** Row shape returned by the `list_support_categories_with_counts` RPC. */
+export interface SupportCategoryWithCount extends SupportCategory {
+  article_count: number
+}
+
 export interface SupportArticle {
   id: string
   category_id: string
