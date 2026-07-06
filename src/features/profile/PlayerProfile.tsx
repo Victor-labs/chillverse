@@ -367,30 +367,14 @@ export default function PlayerProfile() {
     setActionLoading(false)
   }
 
-  async function handleMessage() {
+  function handleMessage() {
     if (!myId || !userId) return
-    const { data: myRooms } = await supabase.from('room_members').select('room_id').eq('user_id', myId)
-    const roomIds = (myRooms ?? []).map((r: { room_id: string }) => r.room_id)
-    let existingRoomId: string | null = null
-    if (roomIds.length > 0) {
-      const { data: theirRooms } = await supabase.from('room_members').select('room_id').eq('user_id', userId).in('room_id', roomIds)
-      if (theirRooms && theirRooms.length > 0) {
-        const { data: dmRoom } = await supabase.from('chat_rooms').select('id').eq('type', 'dm').in('id', theirRooms.map((r: { room_id: string }) => r.room_id)).maybeSingle()
-        if (dmRoom) existingRoomId = dmRoom.id
-      }
-    }
-    let newRoom = null
-    if (!existingRoomId) {
-      const { data } = await supabase.from('chat_rooms').insert({ type: 'dm', created_by: myId }).select().single()
-      newRoom = data
-    }
-    if (newRoom) {
-      await supabase.from('room_members').insert([
-        { room_id: newRoom.id, user_id: myId },
-        { room_id: newRoom.id, user_id: userId },
-      ])
-    }
-    navigate('/chat')
+    // Room creation/lookup previously happened here, but it inserted a
+    // chat_rooms.created_by column that doesn't exist in the schema — the
+    // insert failed silently and you'd land on an empty chat list with no
+    // conversation opened. Chat.tsx's startDmWith() already does this
+    // correctly (find-existing-or-create + open), so just hand off to it.
+    navigate('/chat', { state: { openDmWith: userId } })
   }
 
   if (loading || !player) {
