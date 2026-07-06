@@ -1,0 +1,36 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /signup
+Allow: /privacy
+Allow: /terms
+
+Disallow: /dashboard
+Disallow: /games
+Disallow: /exploration
+Disallow: /mall
+Disallow: /gift
+Disallow: /buy-diamonds
+Disallow: /profile
+Disallow: /chat
+Disallow: /streak
+Disallow: /settings
+Disallow: /ranks
+Disallow: /achievements
+Disallow: /artifacts
+Disallow: /notifications
+Disallow: /inventory
+Disallow: /wallet
+Disallow: /weekly-missions
+Disallow: /version
+Disallow: /halo
+Disallow: /pro
+Disallow: /multiplayer
+Disallow: /rooms
+Disallow: /feed
+Disallow: /referral
+Disallow: /search
+Disallow: /watch
+Disallow: /coming-soon
+
+Sitemap: https://chillverse.com.ng/sitemap.xml
