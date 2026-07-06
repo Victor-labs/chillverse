@@ -115,17 +115,6 @@ export default function Games() {
 
   const [activeGame, setActiveGame]   = useState<GameId | null>(null)
 
-  // Deep-link support: navigate('/games', { state: { openGame: 'tac-zone' } })
-  // lets a post's game tag jump straight into that game.
-  useEffect(() => {
-    const openGame = (location.state as { openGame?: GameId } | null)?.openGame
-    if (openGame) {
-      setActiveGame(openGame)
-      navigate(location.pathname, { replace: true, state: null })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const [showProModal, setShowProModal] = useState(false)
   const [playsToday,  setPlaysToday]  = useState<Partial<Record<GameId, number>>>({})
   const [ranks,       setRanks]       = useState<Partial<Record<GameId, GameRank>>>({})
@@ -136,6 +125,28 @@ export default function Games() {
   const [globalCount, setGlobalCount] = useState(0)
   const [globalReset, setGlobalReset] = useState(0)
   const [sessionResetTime, setSessionResetTime] = useState('')
+
+  // Deep-link support: navigate('/games', { state: { openGame: 'tac-zone' } })
+  // lets a post's game tag jump straight into that game — but only if it's
+  // actually unlocked. Waits for dataLoaded so it can apply the exact same
+  // lock check LobbyCard uses; without that gate this silently bypassed the
+  // daily-play limit and the global session cooldown entirely.
+  useEffect(() => {
+    const openGame = (location.state as { openGame?: GameId } | null)?.openGame
+    if (!openGame || !dataLoaded) return
+
+    const meta = GAMES.find(g => g.id === openGame)
+    if (meta) {
+      const cost = meta.sessionCost ?? 1
+      const maxed = !meta.unlimitedPlays && (playsToday[meta.id] ?? 0) >= MAX_PLAYS
+      const notEnoughSessions = globalCount + cost > GLOBAL_LIMIT
+      if (!maxed && !notEnoughSessions) setActiveGame(openGame)
+    }
+
+    // Clear the pending nav state either way, so this can't re-fire or be raced.
+    navigate(location.pathname, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoaded])
 
   useEffect(() => {
     function computeReset() {
