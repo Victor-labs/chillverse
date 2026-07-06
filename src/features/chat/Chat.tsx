@@ -1,6 +1,6 @@
 // src/pages/Chat.tsx
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply,
@@ -470,6 +470,8 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat, onBlockChange
 export default function Chat() {
   const { session } = useAuth()
   const myId = session?.user?.id ?? null
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
@@ -491,6 +493,20 @@ export default function Chat() {
       .then(({ data }) => { if (!cancelled && data) setMyProfile(data) })
     return () => { cancelled = true }
   }, [myId])
+
+  // Arriving here via a "Message" button elsewhere (e.g. a player's profile page)
+  // passes the target user's id in navigation state instead of duplicating the
+  // find-existing-or-create-room logic in every caller. Open it once myId is
+  // available, then clear the state so it doesn't re-fire on back/forward nav.
+  const openedDmWithRef = useRef<string | null>(null)
+  useEffect(() => {
+    const targetUserId = (location.state as { openDmWith?: string } | null)?.openDmWith
+    if (!targetUserId || !myId) return
+    if (openedDmWithRef.current === targetUserId) return
+    openedDmWithRef.current = targetUserId
+    startDmWith(targetUserId)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, myId])
 
   // Users I've blocked — used to hide their content everywhere in this view (most
   // importantly Global Chat, where the server can't reject their messages the way
@@ -1613,7 +1629,7 @@ export default function Chat() {
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
                       <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
                     </div>
-                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id); setPlayerSearch(''); setPlayerResults([]) }}
+                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id) }}
                       title="Start chat"
                       style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor:'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0 }}>
                       <MessageCircle size={12} /> Chat
