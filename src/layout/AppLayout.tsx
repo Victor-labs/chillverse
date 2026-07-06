@@ -24,12 +24,11 @@ const ROUTE_TITLES: Record<string, string> = {
   '/mall':       'Mall',
   '/streak':     'Streak',
   '/settings':   'Settings',
-  '/support':    'Support',
 }
 
 const TOP_LEVEL_ROUTES = [
   '/dashboard', '/games', '/chat', '/profile',
-  '/ranks', '/mall', '/streak', '/settings', '/support',
+  '/ranks', '/mall', '/streak', '/settings',
 ]
 
 export default function AppLayout() {
@@ -77,7 +76,9 @@ export default function AppLayout() {
   const title =
     pathname === '/coming-soon'
       ? searchParams.get('feature') || 'Coming Soon'
-      : ROUTE_TITLES[pathname] || 'Dashboard'
+      : pathname.startsWith('/support')
+        ? 'Support'
+        : ROUTE_TITLES[pathname] || 'Dashboard'
 
   const isTopLevel = TOP_LEVEL_ROUTES.includes(pathname)
   const sidebarWidth = sidebarCollapsed ? 72 : 280
