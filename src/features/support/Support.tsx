@@ -107,7 +107,7 @@ export default function Support() {
         <SupportSearchBar
           initialValue={initialQuery}
           onSearch={runSearch}
-          placeholder="Search articles (e.g. \"reset password\", \"buy diamonds\")"
+          placeholder={'Search articles (e.g. "reset password", "buy diamonds")'}
         />
       </div>
 
