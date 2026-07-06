@@ -43,6 +43,11 @@ const SinglePostPage      = lazy(() => import('../features/posts/SinglePostPage'
 const HighlightsPage      = lazy(() => import('../features/highlights/HighlightsPage'))
 const ReferralPage        = lazy(() => import('../features/referral/Referral'))
 const SearchPage          = lazy(() => import('../features/search/SearchPage'))
+const Support             = lazy(() => import('../features/support/Support'))
+const SupportCategory     = lazy(() => import('../features/support/SupportCategory'))
+const SupportArticle      = lazy(() => import('../features/support/SupportArticle'))
+const NewTicket           = lazy(() => import('../features/support/NewTicket'))
+const MyTickets           = lazy(() => import('../features/support/MyTickets'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -115,6 +120,11 @@ export default function App() {
         <Route path="/feed/:postId"     element={<Suspense fallback={<Fallback />}><SinglePostPage /></Suspense>} />
         <Route path="/referral"         element={<Suspense fallback={<Fallback />}><ReferralPage /></Suspense>} />
         <Route path="/search"           element={<Suspense fallback={<Fallback />}><SearchPage /></Suspense>} />
+        <Route path="/support"                          element={<Suspense fallback={<Fallback />}><Support /></Suspense>} />
+        <Route path="/support/tickets"                  element={<Suspense fallback={<Fallback />}><MyTickets /></Suspense>} />
+        <Route path="/support/tickets/new"               element={<Suspense fallback={<Fallback />}><NewTicket /></Suspense>} />
+        <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
+        <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
       </Route>
     </Routes>
   )
