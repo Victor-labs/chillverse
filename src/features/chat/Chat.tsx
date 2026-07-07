@@ -1200,52 +1200,23 @@ export default function Chat() {
   async function startDmWith(targetUserId: string) {
     if (!myId || targetUserId === myId) return
 
-    // Guard against slow-network double-taps: if a DM-room creation for this exact
-    // target is already in flight, ignore the repeat tap instead of racing a second
-    // "does a room exist?" check that hasn't seen the first call's insert yet.
+    // Guard against slow-network double-taps piling up UI work while the RPC
+    // (below) is in flight — the RPC itself is what actually prevents duplicate
+    // rooms now, this just avoids redundant profile fetches / room opens.
     if (creatingDmWithRef.current.has(targetUserId)) return
     creatingDmWithRef.current.add(targetUserId)
 
     try {
-      // Check if a DM room already exists between the two users
-      const { data: myRooms } = await supabase
-        .from('room_members')
-        .select('room_id, chat_rooms(type)')
-        .eq('user_id', myId)
-      const { data: theirRooms } = await supabase
-        .from('room_members')
-        .select('room_id, chat_rooms(type)')
-        .eq('user_id', targetUserId)
-
-      let roomId: string | null = null
-
-      if (myRooms && theirRooms) {
-        const myDmIds = new Set(
-          myRooms
-            .filter((r: Record<string, unknown>) => (r.chat_rooms as { type: string } | null)?.type === 'dm')
-            .map((r: Record<string, unknown>) => r.room_id as string)
-        )
-        const commonDm = theirRooms.find((r: Record<string, unknown>) =>
-          (r.chat_rooms as { type: string } | null)?.type === 'dm' && myDmIds.has(r.room_id as string)
-        )
-        if (commonDm) roomId = commonDm.room_id as string
-      }
-
-      if (!roomId) {
-        // Create brand new DM room
-        const { data: newRoom, error } = await supabase
-          .from('chat_rooms').insert({ type: 'dm', name: null }).select('id').single()
-        if (error || !newRoom) { console.error('Failed to create DM room:', error); return }
-        roomId = newRoom.id
-
-        await supabase.from('room_members').insert({ room_id: roomId, user_id: myId })
-        const { error: memberErr } = await supabase.from('room_members').insert({ room_id: roomId, user_id: targetUserId })
-        if (memberErr) console.warn('Could not pre-add target member:', memberErr.message)
-      } else {
-        // Re-opening an existing DM: if I'd previously hidden it ("delete chat"),
-        // un-hide it now that I'm actively re-entering the conversation.
-        await supabase.from('room_members').update({ hidden_at: null }).eq('room_id', roomId).eq('user_id', myId)
-      }
+      // Find-or-create the DM room atomically in the database (see
+      // get_or_create_dm_room migration). Previously this was a client-side
+      // "check if a room exists, then insert if not" — two rapid taps (or a
+      // retry after a slow network) could both pass the "does it exist" check
+      // before either had inserted, producing duplicate DM rooms for the same
+      // pair of people. The RPC uses a per-pair advisory lock so this can't
+      // happen no matter how many times or how fast it's called.
+      const { data: roomId, error: rpcErr } = await supabase
+        .rpc('get_or_create_dm_room', { other_user_id: targetUserId })
+      if (rpcErr || !roomId) { console.error('Failed to open DM room:', rpcErr); return }
 
       // Fetch the target user's profile for the room member list
       const { data: targetProfile } = await supabase
