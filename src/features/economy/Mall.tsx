@@ -391,28 +391,25 @@ function ItemModal({
 }
 
 /* ══════════════════════════════════════════════════════
-   SUB-PAGE WRAPPER — matches Settings.tsx SubPage pattern
+   SUB-PAGE WRAPPER — inline back-button row, same pattern as Gift.tsx.
+   (Previously this was a `position: fixed` full-viewport overlay with its
+   own fixed header. That fought the app's own Topbar — which is ALSO
+   `position: fixed; top: 0` — for the same strip of screen, so depending on
+   stacking order the back arrow ended up hidden behind the "Mall" topbar
+   instead of showing "Avatars"/"Profile Pics" above it. Gift.tsx never had
+   this bug because its back button is just normal inline content that sits
+   below the Topbar and scrolls with the page — so that's what we do here too.)
 ══════════════════════════════════════════════════════ */
 function SubPage({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 700, background: 'var(--bg)', overflowY: 'auto', animation: 'slideInRight 0.28s cubic-bezier(0.4,0,0.2,1) both' }}>
-      {/*
-        Header is `position: fixed` (not `sticky`) and pinned to the viewport.
-        Some mobile browsers (iOS Safari in particular) fail to keep a
-        `position: sticky` element stuck once it also has `backdrop-filter`
-        applied — it scrolls away with the content instead of staying put,
-        which is why the back arrow disappeared once you scrolled inside a
-        sub-category like "Others" or "Animated Characters". `fixed` doesn't
-        have that quirk, so the button now always stays visible. The content
-        div below gets matching top padding so nothing sits underneath it.
-      */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 60, display: 'flex', alignItems: 'center', gap: 14, padding: '0 20px', background: 'rgba(17,17,19,0.98)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)', zIndex: 710 }}>
-        <button onClick={onBack} style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)', flexShrink: 0 }}>
+    <div style={{ maxWidth: 700, margin: '0 auto', animation: 'feedIn 0.25s ease-out both' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <button type="button" onClick={onBack} style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)', flexShrink: 0 }}>
           <ArrowLeft size={16} />
         </button>
         <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
       </div>
-      <div style={{ padding: '80px 20px 48px', maxWidth: 700, margin: '0 auto' }}>{children}</div>
+      {children}
     </div>
   )
 }
@@ -616,6 +613,7 @@ export default function Mall() {
         @keyframes feedIn { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform: translateY(0) } }
       `}</style>
 
+      {!openSection && (
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {/* Topbar row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -717,6 +715,7 @@ export default function Mall() {
           </div>
         )}
       </div>
+      )}
 
       {/* Sub-pages */}
       {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
