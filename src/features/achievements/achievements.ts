@@ -346,6 +346,28 @@ export async function notifyMessage(senderId: string, recipientId: string, conte
   })
 }
 
+// Notify the callee of a missed voice/video call. Only called for a genuine
+// timeout (the caller rang for RING_TIMEOUT_MS with no answer) — not for a
+// call the callee explicitly declined (they obviously know already) or one
+// the caller canceled before it rang out, matching how phone/WhatsApp calling
+// only surfaces a "missed call" notification for the unanswered case.
+export async function notifyMissedCall(callerId: string, calleeId: string) {
+  if (callerId === calleeId) return
+  const { data: caller } = await supabase
+    .from('profiles').select('display_name, username').eq('id', callerId).single()
+  if (!caller) return
+  const name = caller.display_name || caller.username
+
+  await supabase.rpc('insert_notification', {
+    p_user_id: calleeId,
+    p_type:    'missed_call',
+    p_title:   `Missed call from ${name}`,
+    p_body:    `You missed a voice call from ${name}.`,
+    p_icon:    'phone-missed',
+    p_meta:    { caller_id: callerId },
+  })
+}
+
 export async function notifyRankUp(userId: string, rankTitle: string) {
   await supabase.rpc('insert_notification', {
     p_user_id: userId,
