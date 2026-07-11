@@ -194,7 +194,7 @@ function EquipModal({
         {/* Equip / Unequip button */}
         {isEquipped ? (
           <button
-            onClick={(e) => { ripple(e as any); onUnequip() }}
+            onClick={(e) => { ripple(e); onUnequip() }}
             className="ripple-wrap"
             style={{
               width: '100%', padding: 13, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)',
@@ -207,7 +207,7 @@ function EquipModal({
           </button>
         ) : (
           <button
-            onClick={(e) => { ripple(e as any); onEquip() }}
+            onClick={(e) => { ripple(e); onEquip() }}
             className="ripple-wrap"
             style={{
               width: '100%', padding: 13, borderRadius: 14, border: 'none',

@@ -252,7 +252,7 @@ function PackCard({
       {/* Buy button */}
       <button
         onClick={(e) => {
-          ripple(e as Parameters<typeof ripple>[0])
+          ripple(e)
           onBuy(pack as unknown as Pack & { image: string })
         }}
         disabled={loading}
@@ -470,7 +470,7 @@ function PurchaseModal({
             {kind === 'cancelled' && onRetry && (
               <button
                 onClick={(e) => {
-                  ripple(e as Parameters<typeof ripple>[0])
+                  ripple(e)
                   onRetry()
                 }}
                 className="ripple-wrap"
@@ -493,7 +493,7 @@ function PurchaseModal({
             )}
             <button
               onClick={(e) => {
-                ripple(e as Parameters<typeof ripple>[0])
+                ripple(e)
                 onClose()
               }}
               className="ripple-wrap"
@@ -590,8 +590,6 @@ export default function BuyDiamonds() {
               body: {
                 reference: response.reference,
                 user_id: user.id,
-                diamonds: pack.diamonds,
-                is_first_purchase: isFirstPurchase,
               },
             })
             if (error) throw error
@@ -838,7 +836,7 @@ export default function BuyDiamonds() {
                 {/* Right — price button */}
                 <button
                   onClick={(e) => {
-                    ripple(e as Parameters<typeof ripple>[0])
+                    ripple(e)
                     if (!session?.user?.email || !user || !window.PaystackPop) return
                     const ref = `cv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
                     window.PaystackPop.setup({
@@ -853,7 +851,7 @@ export default function BuyDiamonds() {
                         (async () => {
                           try {
                             const { error } = await supabase.functions.invoke('credit-diamonds', {
-                              body: { reference: response.reference, user_id: user.id, diamonds: fp.diamonds, is_first_purchase: false },
+                              body: { reference: response.reference, user_id: user.id },
                             })
                             if (error) throw error
                             setModal('success')

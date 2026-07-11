@@ -84,8 +84,6 @@ export default function Pro() {
               body: {
                 reference: response.reference,
                 user_id: user.id,
-                tier,
-                interval,
               },
             })
             if (error) throw error

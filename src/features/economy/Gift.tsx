@@ -266,7 +266,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
 
           {/* Gift button */}
           <button
-            onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); handleGift() }}
+            onClick={(e) => { ripple(e); handleGift() }}
             disabled={!hasValidPick || !canAfford || sending}
             className="ripple-wrap"
             style={{ width:'100%', padding:'13px', borderRadius:14, border:'none', cursor: !hasValidPick || !canAfford || sending ? 'not-allowed' : 'pointer', background: !hasValidPick || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)', color: !hasValidPick || !canAfford || sending ? 'var(--text-muted)' : '#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow: hasValidPick && canAfford && !sending ? '0 4px 20px rgba(255,107,0,0.35)' : 'none', transition:'all 0.2s', marginTop:4 }}>
@@ -309,7 +309,7 @@ function ReceiveModal({ itemName, senderName, onClose }: { itemName: string; sen
             <span style={{ color:'var(--text)' }}>{senderName}</span> gifted you <span style={{ color:'var(--accent)', fontWeight:700 }}>"{itemName}"</span>. It's now in your inventory.
           </div>
           <button
-            onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); onClose() }}
+            onClick={(e) => { ripple(e); onClose() }}
             className="ripple-wrap"
             style={{ width:'100%', padding:13, borderRadius:14, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#3ecf8e,#4f8ef7)', color:'#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', boxShadow:'0 4px 20px rgba(62,207,142,0.35)' }}>
             Confirm ✓
@@ -324,7 +324,7 @@ function ReceiveModal({ itemName, senderName, onClose }: { itemName: string; sen
 function GiftCard({ item, onSelect }: { item: MallItem; onSelect: () => void }) {
   const meta = RARITY_META[item.rarity]
   return (
-    <div onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); onSelect() }} className="ripple-wrap"
+    <div onClick={(e) => { ripple(e); onSelect() }} className="ripple-wrap"
       style={{ background:'var(--surface)', border: item.rarity === 'Mythic' ? '1px solid rgba(255,107,0,0.3)' : '1px solid rgba(255,255,255,0.05)', borderRadius:16, padding:12, cursor:'pointer', position:'relative', overflow:'hidden', boxShadow:'3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}>
       {item.rarity === 'Mythic' && <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(255,107,0,0.04),rgba(245,197,66,0.04))', pointerEvents:'none' }} />}
       <div style={{ width:'100%', aspectRatio:'1', borderRadius:10, overflow:'hidden', marginBottom:10, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>

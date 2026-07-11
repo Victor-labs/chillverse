@@ -257,39 +257,36 @@ function ItemModal({
     if (!isXpUnlock && !canAfford) return
     setBuying(true)
     try {
-      // 1. Deduct diamonds — only applies to gem-priced items. XP-unlock
-      // items have no cost to pay, the XP threshold check already
-      // happened in getLockInfo (the modal wouldn't be buyable otherwise).
       if (!isXpUnlock) {
-        const { error: walletErr, count: walletCount } = await supabase
-          .from('user_wallets')
-          .update({ gem_balance: walletBalance - item.price_gems! }, { count: 'exact' })
-          .eq('user_id', userId)
-        if (walletErr) throw walletErr
-        if (walletCount === 0) throw new Error('Wallet update blocked — check user_wallets RLS update policy.')
-      }
-
-      // 2. Add to inventory (upsert: consumables stack quantity, others are unique)
-      if (item.is_consumable) {
-        const { data: existing } = await supabase
-          .from('user_inventory').select('id, quantity').eq('user_id', userId).eq('item_id', item.id).maybeSingle()
-        if (existing) {
-          await supabase.from('user_inventory').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id)
+        // Atomic, server-priced purchase: balance check, deduction, inventory
+        // insert, and transaction log all happen in one DB transaction.
+        const { error } = await supabase.rpc('purchase_mall_item', {
+          p_user_id: userId,
+          p_item_id: item.id,
+        })
+        if (error) {
+          if (error.message === 'insufficient_funds') {
+            alert('Purchase failed — not enough diamonds.')
+          } else {
+            console.error('purchase error:', error)
+            alert('Purchase failed. Please try again.')
+          }
+          return
+        }
+      } else {
+        // XP-unlock items have no cost to pay (the XP threshold check already
+        // happened in getLockInfo), so just add to inventory directly.
+        if (item.is_consumable) {
+          const { data: existing } = await supabase
+            .from('user_inventory').select('id, quantity').eq('user_id', userId).eq('item_id', item.id).maybeSingle()
+          if (existing) {
+            await supabase.from('user_inventory').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id)
+          } else {
+            await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, is_equipped: false, quantity: 1 })
+          }
         } else {
           await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, is_equipped: false, quantity: 1 })
         }
-      } else {
-        await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, is_equipped: false, quantity: 1 })
-      }
-
-      // 3. Log diamond spend (skip for free XP-unlocks — nothing was spent)
-      if (!isXpUnlock) {
-        await supabase.from('diamond_transactions').insert({
-          user_id: userId,
-          amount: -(item.price_gems!),
-          description: `Purchased: ${item.name}`,
-          pack_id: item.id,
-        })
       }
 
       onPurchased(item)
@@ -369,7 +366,7 @@ function ItemModal({
             )}
             <button
               disabled={checkingOwn || buying || (!isXpUnlock && !canAfford)}
-              onClick={(e) => { ripple(e as any); handleBuy() }}
+              onClick={(e) => { ripple(e); handleBuy() }}
               className="ripple-wrap"
               style={{
                 width: '100%', padding: 13, borderRadius: 14, border: 'none',
@@ -447,7 +444,7 @@ function AvatarsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCoun
         {AVATAR_SUB_CATEGORIES.map(tab => (
           <button
             key={tab}
-            onClick={(e) => { ripple(e as any); setActiveTab(tab) }}
+            onClick={(e) => { ripple(e); setActiveTab(tab) }}
             className="ripple-wrap"
             style={{
               padding: '7px 14px', borderRadius: 20, cursor: 'pointer', whiteSpace: 'nowrap',
