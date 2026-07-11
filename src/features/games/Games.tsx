@@ -70,7 +70,7 @@ function LobbyCard({
   return (
     <div
       className="neu-card ripple-wrap"
-      onClick={(e) => { if (!locked) { ripple(e as Parameters<typeof ripple>[0]); onPlay() } }}
+      onClick={(e) => { if (!locked) { ripple(e); onPlay() } }}
       style={{ padding: 18, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.6 : 1, position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${game.accent}18`, filter: 'blur(20px)', pointerEvents: 'none' }} />
@@ -343,7 +343,7 @@ export default function Games() {
               </div>
             </div>
             {!isPro && (
-              <button type="button" onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); setShowProModal(true) }} className="ripple-wrap"
+              <button type="button" onClick={(e) => { ripple(e); setShowProModal(true) }} className="ripple-wrap"
                 style={{ display:'inline-flex', alignItems:'center', gap:6, background:'linear-gradient(135deg,#9b6dff,#4f8ef7)', color:'#fff', border:'none', borderRadius:10, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                 <Zap size={12} /> Upgrade to Pro
               </button>
