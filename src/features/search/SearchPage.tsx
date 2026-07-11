@@ -57,7 +57,7 @@ export default function SearchPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', marginBottom: 16, paddingTop: 4 }}>
         <button
           type="button"
-          onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); navigate(-1) }}
+          onClick={(e) => { ripple(e); navigate(-1) }}
           style={{
             width: 38, height: 38, borderRadius: 11,
             background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
