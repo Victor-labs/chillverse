@@ -24,7 +24,8 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GATEKEEPER_MODEL = 'openai/gpt-oss-20b'
 const MAIN_MODEL = 'openai/gpt-oss-120b'
 
-const SYSTEM_PROMPT = `You are Halo, the companion AI inside the Chillverse app. You ONLY answer questions
+const SYSTEM_PROMPT = `You are Halo, the companion AI inside the Chillverse app (the app is called
+"Chillverse" — always spell it exactly that way). You ONLY answer questions
 about Chillverse — its features, mechanics, how things work, and the player's own
 in-app data. You give helpful, friendly, concise suggestions related to the app.
 
@@ -32,8 +33,15 @@ If a question is unrelated to Chillverse (general knowledge, other apps, persona
 advice unrelated to the game, etc.), politely decline and redirect the player back
 to Chillverse topics. Do not answer unrelated questions even if asked repeatedly.
 
-Use the provided tools to look up real player data or knowledge base entries before
-answering — never guess or invent facts about the app's mechanics or a player's stats.`
+You have exactly two tools available, and their names are exactly as given —
+never invent or guess a different tool name:
+- get_chillverse_knowledge — search Chillverse's knowledge base
+- get_player_data — fetch the current player's own stats
+
+Use them to look up real player data or knowledge base entries before answering —
+never guess or invent facts about the app's mechanics or a player's stats.
+Once you have enough information from your tool calls, answer directly — don't keep
+calling tools if you already have what you need to respond.`
 
 const TOOLS = [
   {
@@ -74,6 +82,8 @@ interface GroqMessage {
   name?: string
 }
 
+class GroqToolUseError extends Error {}
+
 async function callGroq(groqKey: string, model: string, messages: GroqMessage[], tools?: unknown[]) {
   const res = await fetch(GROQ_URL, {
     method: 'POST',
@@ -86,6 +96,14 @@ async function callGroq(groqKey: string, model: string, messages: GroqMessage[],
   })
   if (!res.ok) {
     const errText = await res.text()
+    // The model can occasionally hallucinate a tool name that wasn't
+    // offered (e.g. "get_chillworld_knowledge" instead of
+    // "get_chillverse_knowledge") — Groq validates this server-side and
+    // rejects the whole completion. Tag this specific case so the caller
+    // can retry without tools instead of failing the request outright.
+    if (res.status === 400 && errText.includes('tool_use_failed')) {
+      throw new GroqToolUseError(`Groq tool-call validation failed: ${errText}`)
+    }
     throw new Error(`Groq API error (${res.status}): ${errText}`)
   }
   return res.json()
@@ -222,9 +240,27 @@ Deno.serve(async (req: Request) => {
     let toolCallsLog: unknown[] = []
     let finalAnswer = ''
 
-    // Allow up to 2 rounds of tool calls before forcing a final answer.
-    for (let round = 0; round < 3; round++) {
-      const result = await callGroq(groqKey, MAIN_MODEL, messages, TOOLS)
+    // Allow up to 2 rounds of tool calls, then force a plain-text answer on
+    // the final round by not offering tools at all — this guarantees the
+    // model produces real content instead of looping on tool calls forever
+    // and hitting the generic "couldn't come up with an answer" fallback.
+    const MAX_ROUNDS = 3
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const isLastRound = round === MAX_ROUNDS - 1
+      let result
+      try {
+        result = await callGroq(groqKey, MAIN_MODEL, messages, isLastRound ? undefined : TOOLS)
+      } catch (err) {
+        if (err instanceof GroqToolUseError) {
+          // The model hallucinated a tool name — drop tools entirely and
+          // force a plain-text answer from whatever context we have so far,
+          // rather than failing the whole request.
+          console.error('halo-ai-chat: tool hallucination, retrying without tools:', err.message)
+          result = await callGroq(groqKey, MAIN_MODEL, messages, undefined)
+        } else {
+          throw err
+        }
+      }
       const choice = result?.choices?.[0]
       const msg = choice?.message
 
