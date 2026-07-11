@@ -149,7 +149,7 @@ export default function Room() {
 
       {!meInRoom || room.status !== 'waiting' ? null : isHost ? (
         <button
-          onClick={(e) => { ripple(e as any); handleStart() }}
+          onClick={(e) => { ripple(e); handleStart() }}
           disabled={busy || players.length < 2}
           style={{ width: '100%', padding: '13px 0', borderRadius: 12, border: 'none', background: players.length < 2 ? 'var(--surface2)' : 'var(--accent)', color: players.length < 2 ? 'var(--text-muted)' : '#fff', fontWeight: 800, fontSize: 14, cursor: players.length < 2 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >

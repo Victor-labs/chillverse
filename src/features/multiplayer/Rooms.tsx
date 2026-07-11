@@ -105,7 +105,7 @@ export default function Rooms() {
             ))}
           </div>
         </div>
-        <button onClick={(e) => { ripple(e as any); handleCreate() }} disabled={creating} className="ripple-wrap" style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: creating ? 0.7 : 1 }}>
+        <button onClick={(e) => { ripple(e); handleCreate() }} disabled={creating} className="ripple-wrap" style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: creating ? 0.7 : 1 }}>
           <Plus size={14} /> {creating ? 'Creating…' : 'Create Room'}
         </button>
       </div>

@@ -19,7 +19,7 @@ function GameCard({ game, onSelect }: { game: GameMeta; onSelect: () => void }) 
   return (
     <div
       className="neu-card ripple-wrap"
-      onClick={(e) => { ripple(e as Parameters<typeof ripple>[0]); onSelect() }}
+      onClick={(e) => { ripple(e); onSelect() }}
       style={{ padding: 18, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${game.accent}18`, filter: 'blur(20px)', pointerEvents: 'none' }} />
@@ -124,7 +124,7 @@ function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void 
               {game.name} isn't playable live yet — this room will just be a waiting room for now.
             </div>
           )}
-          <button onClick={(e) => { ripple(e as any); handleCreate() }} disabled={creating} className="ripple-wrap" style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: creating ? 0.7 : 1 }}>
+          <button onClick={(e) => { ripple(e); handleCreate() }} disabled={creating} className="ripple-wrap" style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: creating ? 0.7 : 1 }}>
             <Plus size={14} /> {creating ? 'Creating…' : 'Create Room'}
           </button>
         </div>
