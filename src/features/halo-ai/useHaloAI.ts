@@ -156,22 +156,14 @@ export function useHaloAI(): UseHaloAIReturn {
         }
         setMessages(prev => [...prev, haloMessage])
 
-        const today = todayStr()
-        const isNewDay = profile.halo_last_message_date !== today
-        const newCount = isNewDay ? 1 : (profile.halo_messages_today ?? 0) + 1
-
-        await supabase
-          .from('profiles')
-          .update({
-            halo_messages_today: newCount,
-            halo_last_message_date: today,
-          })
-          .eq('id', profile.id)
-
+        // Counter is now incremented atomically server-side (in the edge
+        // function, after a successful Gemini reply) — refetch to pick up
+        // the new count rather than computing/writing it here.
         refetch()
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        setError(msg)
+        console.error('[HaloAI]', msg) // full detail (incl. any DEBUG: internals) stays in devtools/logs
+        setError('Halo is having trouble responding right now. Try again in a moment.')
       } finally {
         setLoading(false)
       }
