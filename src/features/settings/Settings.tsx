@@ -5,7 +5,7 @@ import {
   ArrowLeft, ChevronRight, Trash2,
   Calendar, Tag, Lock, Eye,
   Circle, Moon, EyeOff, Check, Mail, Key,
-  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy,
+  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy, Crown,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { isGameSoundEnabled, setGameSoundEnabled } from '../games/soundSettings'
@@ -146,11 +146,14 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function Settings() {
   const navigate = useNavigate()
-  const { profile } = useProfile()
+  const { profile, refetch: refetchProfile } = useProfile()
   const isPro = isProActive(profile)
   const { session } = useAuth()
 
-  const [modal, setModal] = useState<'logout' | 'delete' | 'email' | 'username' | 'password' | null>(null)
+  const [modal, setModal] = useState<'logout' | 'delete' | 'email' | 'username' | 'password' | 'cancelSub' | null>(null)
+  const [cancellingSub, setCancellingSub] = useState(false)
+  const [cancelSubError, setCancelSubError] = useState('')
+  const [cancelSubDone, setCancelSubDone] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newUsername, setNewUsername] = useState('')
   const [newPass, setNewPass] = useState('')
@@ -272,6 +275,34 @@ export default function Settings() {
   async function handleLogoutAllDevices() {
     await supabase.auth.signOut({ scope: 'global' })
     navigate('/login')
+  }
+
+  async function handleCancelSubscription() {
+    setCancellingSub(true)
+    setCancelSubError('')
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-premium')
+      if (error) {
+        // Supabase's functions.invoke wraps a non-2xx response in a generic
+        // error — the actual message from cancel-premium is on the context body.
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context
+        const body = await ctx?.json?.().catch(() => null)
+        setCancelSubError(body?.error || 'Failed to cancel your subscription. Please try again.')
+        setCancellingSub(false)
+        return
+      }
+      if (data?.error) {
+        setCancelSubError(data.error)
+        setCancellingSub(false)
+        return
+      }
+      setCancellingSub(false)
+      setCancelSubDone(true)
+      refetchProfile()
+    } catch {
+      setCancelSubError('Failed to cancel your subscription. Please try again.')
+      setCancellingSub(false)
+    }
   }
 
   async function handleDeleteAccount() {
@@ -434,6 +465,33 @@ export default function Settings() {
           onClick={(e) => { ripple(e); navigate('/version') }}
         />
 
+        {isPro && (
+          <>
+            <SectionTitle>Subscription</SectionTitle>
+            <Row icon={<Crown size={15} />} iconBg="rgba(255,107,0,0.12)" iconColor="var(--accent)"
+              label={profile?.pro_tier === 'void' ? 'Void' : 'Orbit'}
+              value={profile?.pro_cancel_at_period_end
+                ? `Ends ${profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
+                : `Renews ${profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`}
+              onClick={(e) => { ripple(e); navigate('/pro') }}
+            />
+            {!profile?.pro_cancel_at_period_end && (
+              <Row icon={<X size={15} />} iconBg="rgba(255,107,107,0.12)" iconColor="#ff6b6b"
+                label="Cancel subscription" danger
+                onClick={(e) => { ripple(e); setCancelSubError(''); setCancelSubDone(false); setModal('cancelSub') }}
+              />
+            )}
+            {profile?.pro_cancel_at_period_end && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '-4px 0 10px', padding: '7px 12px', background: 'rgba(245,197,66,0.08)', border: '1px solid rgba(245,197,66,0.18)', borderRadius: 10 }}>
+                <AlertTriangle size={12} color="#f5c542" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 11.5, color: '#f5c542', fontWeight: 600 }}>
+                  Cancelled — you'll keep your perks until {profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'your plan expires'}, then it won't renew.
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
         <SectionTitle>Danger zone</SectionTitle>
         <Row icon={<LogOut size={15} />} iconBg="rgba(255,107,0,0.12)" iconColor="var(--accent)"
           label="Log out"
@@ -448,6 +506,41 @@ export default function Settings() {
           onClick={(e) => { ripple(e); setModal('delete') }}
         />
       </div>
+
+      {modal === 'cancelSub' && (
+        <Modal title={cancelSubDone ? 'Subscription cancelled' : 'Cancel subscription?'} onClose={() => { if (!cancellingSub) setModal(null) }}>
+          {cancelSubDone ? (
+            <>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 20 }}>
+                You won't be charged again. You'll keep your {profile?.pro_tier === 'void' ? 'Void' : 'Orbit'} perks until{' '}
+                {profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'your plan expires'}.
+              </p>
+              <button onClick={() => setModal(null)} style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+                Done
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: cancelSubError ? 10 : 20 }}>
+                You'll keep your {profile?.pro_tier === 'void' ? 'Void' : 'Orbit'} perks until{' '}
+                {profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'your plan expires'},
+                then it won't renew and you won't be charged again.
+              </p>
+              {cancelSubError && (
+                <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 14 }}>{cancelSubError}</p>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setModal(null)} disabled={cancellingSub} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: cancellingSub ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, opacity: cancellingSub ? 0.6 : 1 }}>
+                  Keep subscription
+                </button>
+                <button onClick={handleCancelSubscription} disabled={cancellingSub} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', cursor: cancellingSub ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, opacity: cancellingSub ? 0.6 : 1 }}>
+                  {cancellingSub ? 'Cancelling…' : 'Cancel it'}
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
 
       {modal === 'logout' && (
         <Modal title="Log out?" onClose={() => setModal(null)}>
