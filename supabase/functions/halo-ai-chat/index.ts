@@ -39,7 +39,7 @@ You have exactly three tools available, and their names are exactly as given —
 never invent or guess a different tool name:
 - get_chillverse_knowledge — search Chillverse's knowledge base for game mechanics/features
 - search_support_articles — search Chillverse's official help center (account, billing, how-tos)
-- get_player_data — fetch the current player's own stats, ranks, and recent activity
+- get_player_data — fetch the current player's own stats, ranks, and recent activity (takes no arguments — never ask the player for their ID or player_id, you already know who's asking)
 
 Use them to look up real player data or documented facts before answering — never
 guess or invent facts about the app's mechanics, features, or a player's stats.
@@ -79,13 +79,10 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_player_data',
-      description: "Fetch the current player's own stats, game ranks, and recent activity to personalize the answer.",
+      description: "Fetch the CURRENT player's own stats, game ranks, and recent activity to personalize the answer. Takes no arguments — it always returns the data for whoever is asking, you never need to provide or ask for a player ID.",
       parameters: {
         type: 'object',
-        properties: {
-          player_id: { type: 'string' },
-        },
-        required: ['player_id'],
+        properties: {},
       },
     },
   },
