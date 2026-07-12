@@ -29,6 +29,7 @@ export interface Profile {
   pro_tier: 'orbit' | 'void' | null
   pro_billing_interval: 'monthly' | 'yearly' | null
   pro_expires_at: string | null          // ISO timestamp; renewed by webhook on each successful charge
+  pro_cancel_at_period_end: boolean      // true once the player has cancelled — keeps access until pro_expires_at, just won't renew
   // ── Presence / account housekeeping ──
   presence: string | null                // 'online' | 'away' | 'invisible' etc.; nullable, defaults to 'online'
   username_changed_at: string | null     // ISO timestamp of last username change, null if never changed
