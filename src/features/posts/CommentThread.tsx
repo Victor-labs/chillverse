@@ -11,6 +11,7 @@ export default function CommentThread({ postId }: { postId: string }) {
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
+  const [commentError, setCommentError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -22,10 +23,13 @@ export default function CommentThread({ postId }: { postId: string }) {
     const body = draft.trim()
     if (!body || !user || posting) return
     setPosting(true)
+    setCommentError('')
     const { data, error } = await addComment(postId, user.id, body)
     if (!error && data) {
       setComments(c => [...c, data as Comment])
       setDraft('')
+    } else if (error) {
+      setCommentError(error.message || 'Failed to post comment. Please try again.')
     }
     setPosting(false)
   }
@@ -72,6 +76,9 @@ export default function CommentThread({ postId }: { postId: string }) {
             <Send size={14} />
           </button>
         </div>
+      )}
+      {commentError && (
+        <p style={{ fontSize: 11, color: '#ff6b6b', marginTop: 6 }}>{commentError}</p>
       )}
     </div>
   )

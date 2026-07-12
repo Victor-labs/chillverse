@@ -1,5 +1,6 @@
 // src/features/posts/posts.ts
 import { supabase } from '../../shared/lib/supabase'
+import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/profanityFilter'
 import type { Post, Comment, PostTag, PostingEligibility } from './types'
 
 // ── Feed ──────────────────────────────────────────────────────
@@ -84,6 +85,10 @@ export async function createPost(input: {
   tags: PostTag[]
   commentable: boolean
 }) {
+  if (containsProfanity(input.body)) {
+    return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
+  }
+
   const { data, error } = await supabase
     .from('posts')
     .insert({
@@ -98,6 +103,9 @@ export async function createPost(input: {
 
   if (error) {
     console.error('createPost error:', error)
+    if (error.message?.includes('CV_PROFANITY')) {
+      return { data, error: { message: PROFANITY_BLOCKED_MESSAGE } }
+    }
     return { data, error }
   }
 
@@ -189,13 +197,22 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
 }
 
 export async function addComment(postId: string, authorId: string, body: string) {
+  if (containsProfanity(body)) {
+    return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
+  }
+
   const { data, error } = await supabase
     .from('comments')
     .insert({ post_id: postId, author_id: authorId, body })
     .select()
     .single()
 
-  if (error) console.error('addComment error:', error)
+  if (error) {
+    console.error('addComment error:', error)
+    if (error.message?.includes('CV_PROFANITY')) {
+      return { data, error: { message: PROFANITY_BLOCKED_MESSAGE } }
+    }
+  }
   return { data, error }
 }
 

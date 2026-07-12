@@ -41,6 +41,7 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
   const [tagQuery, setTagQuery] = useState('')
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [followerUsernames, setFollowerUsernames] = useState<Set<string>>(new Set())
 
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -94,6 +95,7 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
   async function handleSubmit() {
     if (!user || !body.trim() || submitting) return
     setSubmitting(true)
+    setSubmitError('')
     const { error } = await createPost({ authorId: user.id, body: body.trim(), tags, commentable })
     setSubmitting(false)
     if (!error) {
@@ -102,6 +104,8 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
       setCommentable(false)
       onPosted()
       onClose()
+    } else {
+      setSubmitError(error.message || 'Failed to post. Please try again.')
     }
   }
 
@@ -207,6 +211,10 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
               <input type="checkbox" checked={commentable} onChange={e => setCommentable(e.target.checked)} />
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Allow comments on this post</span>
             </label>
+
+            {submitError && (
+              <p style={{ fontSize: 11.5, color: '#ff6b6b', marginTop: 10 }}>{submitError}</p>
+            )}
 
             <button
               type="button"

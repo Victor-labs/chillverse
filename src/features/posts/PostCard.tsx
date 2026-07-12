@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Sparkles, MoreVertical, Share2, Trash2, Check } from 'lucide-react'
+import { Heart, MessageCircle, Sparkles, MoreVertical, Share2, Trash2, Check, Flag } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { toggleLike, deletePost } from './posts'
 import { ripple } from '../../shared/lib/ripple'
@@ -12,6 +12,7 @@ import InfluenceModal from './InfluenceModal'
 import { AchievementTagInline, AchievementTagModal } from './AchievementTagPreview'
 import PostBody from './PostBody'
 import { getTagColor } from './tagColor'
+import ReportModal from '../safety/ReportModal'
 import type { Post, PostTag } from './types'
 
 const TAG_ICON: Record<string, string> = {
@@ -31,6 +32,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isAuthor = !!user && post.author_type === 'user' && post.author_id === user.id
@@ -193,6 +195,15 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
                   <Trash2 size={14} /> Delete
                 </button>
               )}
+              {!isAuthor && !isSystemOrAdmin && user && (
+                <button
+                  type="button"
+                  onClick={() => { setMenuOpen(false); setReportOpen(true) }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', color: 'var(--red)', fontSize: 12.5, textAlign: 'left' }}
+                >
+                  <Flag size={14} /> Report
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -314,6 +325,15 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
           </div>
         </div>,
         document.body,
+      )}
+      {reportOpen && user && (
+        <ReportModal
+          reporterId={user.id}
+          targetType="post"
+          targetId={post.id}
+          targetLabel="this post"
+          onClose={() => setReportOpen(false)}
+        />
       )}
     </div>
   )
