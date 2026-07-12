@@ -33,13 +33,14 @@ If a question is unrelated to Chillverse (general knowledge, other apps, persona
 advice unrelated to the game, etc.), politely decline and redirect the player back
 to Chillverse topics. Do not answer unrelated questions even if asked repeatedly.
 
-You have exactly two tools available, and their names are exactly as given —
+You have exactly three tools available, and their names are exactly as given —
 never invent or guess a different tool name:
-- get_chillverse_knowledge — search Chillverse's knowledge base
-- get_player_data — fetch the current player's own stats
+- get_chillverse_knowledge — search Chillverse's knowledge base for game mechanics/features
+- search_support_articles — search Chillverse's official help center (account, billing, how-tos)
+- get_player_data — fetch the current player's own stats, ranks, and recent activity
 
-Use them to look up real player data or knowledge base entries before answering —
-never guess or invent facts about the app's mechanics or a player's stats.
+Use them to look up real player data or documented facts before answering — never
+guess or invent facts about the app's mechanics, features, or a player's stats.
 Once you have enough information from your tool calls, answer directly — don't keep
 calling tools if you already have what you need to respond.`
 
@@ -61,8 +62,22 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'search_support_articles',
+      description: "Search Chillverse's official help center for account, billing, and how-to articles (published, human-written content).",
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Keywords describing what the player needs help with' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_player_data',
-      description: "Fetch the current player's own stats/progress to personalize the answer.",
+      description: "Fetch the current player's own stats, game ranks, and recent activity to personalize the answer.",
       parameters: {
         type: 'object',
         properties: {
@@ -289,16 +304,41 @@ Deno.serve(async (req: Request) => {
             .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
             .limit(5)
           toolResult = data ?? []
+        } else if (fnName === 'search_support_articles') {
+          const query = (args.query as string) ?? ''
+          const { data } = await admin
+            .from('support_articles')
+            .select('title, summary, content, tags')
+            .eq('is_published', true)
+            .or(`title.ilike.%${query}%,summary.ilike.%${query}%,content.ilike.%${query}%`)
+            .limit(5)
+          toolResult = data ?? []
         } else if (fnName === 'get_player_data') {
           // player_id argument from the model is IGNORED — always scope to
           // the authenticated caller, exactly like every other tool/RPC in
           // this app. A player can only ever fetch their own data.
-          const { data } = await admin
-            .from('profiles')
-            .select('username, xp, level, streak, is_pro, pro_tier, version_level, referral_count, last_active_date')
-            .eq('id', playerId)
-            .maybeSingle()
-          toolResult = data ?? {}
+          const [{ data: profileData }, { data: ranksData }, { data: sessionsData }] = await Promise.all([
+            admin
+              .from('profiles')
+              .select('username, xp, level, streak, is_pro, pro_tier, version_level, referral_count, last_active_date')
+              .eq('id', playerId)
+              .maybeSingle(),
+            admin
+              .from('player_game_ranks')
+              .select('game, rank, current_streak, all_time_streak')
+              .eq('user_id', playerId),
+            admin
+              .from('game_sessions')
+              .select('game, result, played_at')
+              .eq('user_id', playerId)
+              .order('played_at', { ascending: false })
+              .limit(5),
+          ])
+          toolResult = {
+            profile: profileData ?? {},
+            ranks: ranksData ?? [],
+            recent_games: sessionsData ?? [],
+          }
         } else {
           toolResult = { error: `Unknown tool: ${fnName}` }
         }
