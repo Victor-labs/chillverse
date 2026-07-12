@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import type React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, UserPlus, UserCheck, ShieldOff, X,
+  ArrowLeft, UserPlus, UserCheck, ShieldOff, X, Flag,
   MessageCircle, Zap, Heart, Star, Package,
   Gamepad2, Trophy, Users, ImageIcon, Film,
   Sparkles, Sunrise, Moon as MoonIcon, Globe2,
@@ -16,6 +16,7 @@ import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import { getUserRankTier, type RankTier } from './ranks'
 import { GAMES, getGameMeta } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
+import ReportModal from '../safety/ReportModal'
 
 function getRank(xp: number): RankTier { return getUserRankTier(xp) }
 
@@ -125,6 +126,7 @@ export default function PlayerProfile() {
   const [followers, setFollowers] = useState<number>(0)
   const [following, setFollowing] = useState<number>(0)
   const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
+  const [reportOpen, setReportOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [presence, setPresence] = useState<Presence>('offline')
   const [lbPosition, setLbPosition] = useState<number | null>(null)
@@ -573,7 +575,21 @@ export default function PlayerProfile() {
           style={{ padding: '10px 12px', borderRadius: 13, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: 'none', cursor: actionLoading ? 'not-allowed' : 'pointer', background: followStatus === 'blocked' ? 'rgba(255,107,107,0.2)' : 'rgba(255,107,107,0.08)', color: followStatus === 'blocked' ? '#ff6b6b' : 'var(--text-muted)', transition: 'all 0.15s' }}>
           <ShieldOff size={13} />
         </button>
+        <button type="button" onClick={(e) => { ripple(e); setReportOpen(true) }}
+          style={{ padding: '10px 12px', borderRadius: 13, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: 'none', cursor: 'pointer', background: 'rgba(255,107,107,0.08)', color: 'var(--text-muted)', transition: 'all 0.15s' }}>
+          <Flag size={13} />
+        </button>
       </div>
+
+      {reportOpen && myId && userId && (
+        <ReportModal
+          reporterId={myId}
+          targetType="user"
+          targetId={userId}
+          targetLabel={`@${player.username}`}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       {/* ── Middle Advert: favorite game ── */}
       {player.favorite_game && (() => {
