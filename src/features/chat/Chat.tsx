@@ -366,7 +366,7 @@ interface PlayerProfileModalProps {
   profile: SearchedProfile | { id: string; username: string; display_name: string | null; avatar: string }
   myId: string | null
   onClose: () => void
-  onStartChat?: (userId: string) => void
+  onStartChat?: (userId: string) => Promise<boolean>
   onBlockChange?: (userId: string, blocked: boolean) => void
 }
 
@@ -374,6 +374,8 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat, onBlockChange
   const navigate = useNavigate()
   const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
   const [actionLoading, setActionLoading] = useState(false)
+  const [messaging, setMessaging] = useState(false)
+  const [messageError, setMessageError] = useState('')
 
   useEffect(() => {
     if (!myId || profile.id === myId) return
@@ -418,6 +420,16 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat, onBlockChange
     setActionLoading(false)
   }
 
+  async function handleMessage() {
+    if (!onStartChat || messaging) return
+    setMessaging(true)
+    setMessageError('')
+    const ok = await onStartChat(profile.id)
+    setMessaging(false)
+    if (ok) onClose()
+    else setMessageError("Couldn't open this conversation. Please try again.")
+  }
+
   const isOwnProfile = profile.id === myId
   const displayLabel = profile.display_name || profile.username
 
@@ -442,10 +454,13 @@ function PlayerProfileModal({ profile, myId, onClose, onStartChat, onBlockChange
               {followStatus === 'following' ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
             </button>
             {onStartChat && (
-              <button type="button" onClick={() => { onStartChat(profile.id); onClose() }}
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 16px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'var(--text-dim)', fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.15s' }}>
-                <MessageCircle size={14} /> Message
+              <button type="button" onClick={handleMessage} disabled={messaging}
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 16px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'var(--text-dim)', fontSize:13, fontWeight:600, cursor: messaging ? 'not-allowed' : 'pointer', opacity: messaging ? 0.6 : 1, transition:'all 0.15s' }}>
+                <MessageCircle size={14} /> {messaging ? 'Opening…' : 'Message'}
               </button>
+            )}
+            {messageError && (
+              <p style={{ fontSize:11.5, color:'#ff6b6b', textAlign:'center', margin:0 }}>{messageError}</p>
             )}
             <button type="button" onClick={() => { onClose(); navigate(`/profile/${profile.id}`) }}
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 16px', borderRadius:12, border:'1px solid rgba(79,142,247,0.3)', background:'rgba(79,142,247,0.08)', color:'#4f8ef7', fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.15s' }}>
@@ -485,6 +500,13 @@ export default function Chat() {
   const [loadingOlder, setLoadingOlder] = useState(false)
   const roomMembersRef = useRef<RoomMember[]>([])
   const creatingDmWithRef = useRef<Set<string>>(new Set()) // guards startDmWith against double-taps/slow-network races
+  const [startingDmId, setStartingDmId] = useState<string | null>(null)
+  const [dmStartError, setDmStartError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!dmStartError) return
+    const t = setTimeout(() => setDmStartError(null), 5000)
+    return () => clearTimeout(t)
+  }, [dmStartError])
 
   // Own profile (avatar, display_name, pro status) — loaded once on mount
   const [myProfile, setMyProfile] = useState<{ username: string; display_name: string | null; avatar: string | null; is_pro: boolean | null; pro_expires_at: string | null } | null>(null)
@@ -1194,12 +1216,14 @@ export default function Chat() {
   useEffect(() => () => { if (subRef.current) supabase.removeChannel(subRef.current) }, [])
 
   // ── Start private DM with a user ────────────────────────────
-  async function startDmWith(targetUserId: string) {
-    if (!myId || targetUserId === myId) return
+  async function startDmWith(targetUserId: string): Promise<boolean> {
+    if (!myId || targetUserId === myId) return false
 
     // Guard against slow-network double-taps.
-    if (creatingDmWithRef.current.has(targetUserId)) return
+    if (creatingDmWithRef.current.has(targetUserId)) return false
     creatingDmWithRef.current.add(targetUserId)
+    setStartingDmId(targetUserId)
+    setDmStartError(null)
 
     try {
       // Atomic, server-side: looks up an existing DM or creates one and adds
@@ -1208,7 +1232,11 @@ export default function Chat() {
       // person never actually added to a brand-new DM room.
       const { data: roomIdResult, error: rpcError } = await supabase.rpc('get_or_create_dm_room', { p_other_user_id: targetUserId })
       const roomId = roomIdResult as string | null
-      if (rpcError || !roomId) { console.error('Failed to start DM:', rpcError?.message); return }
+      if (rpcError || !roomId) {
+        console.error('Failed to start DM:', rpcError?.message)
+        setDmStartError(rpcError?.message || "Couldn't open that conversation. Please try again.")
+        return false
+      }
 
       // Fetch the target user's profile for the room member list
       const { data: targetProfile } = await supabase
@@ -1261,10 +1289,26 @@ export default function Chat() {
         const dms = prev.filter(r => r.type !== 'global')
         return globalRoom ? [globalRoom, roomObj, ...dms] : [roomObj, ...dms]
       })
-      // Small tick to ensure state is settled before opening
-      setTimeout(() => openRoom(roomToOpen), 0)
+      // Small tick to ensure state is settled before opening. openRoom is
+      // async and normally not awaited by its other callers (room-list
+      // clicks), so a throw inside it would otherwise vanish as an unhandled
+      // promise rejection with nothing telling the player it failed.
+      try {
+        await new Promise(resolve => setTimeout(resolve, 0))
+        await openRoom(roomToOpen)
+      } catch (openErr) {
+        console.error('Failed to open DM room:', openErr)
+        setDmStartError("Couldn't open that conversation. Please try again.")
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error('startDmWith unexpected error:', err)
+      setDmStartError("Couldn't open that conversation. Please try again.")
+      return false
     } finally {
       creatingDmWithRef.current.delete(targetUserId)
+      setStartingDmId(null)
     }
   }
 
@@ -1277,8 +1321,11 @@ export default function Chat() {
   useEffect(() => {
     const targetUserId = (location.state as { openDmWith?: string } | null)?.openDmWith
     if (!targetUserId || !myId || roomsLoading) return
-    startDmWith(targetUserId)
-    navigate(location.pathname, { replace: true, state: {} })
+    let cancelled = false
+    startDmWith(targetUserId).finally(() => {
+      if (!cancelled) navigate(location.pathname, { replace: true, state: {} })
+    })
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, myId, roomsLoading])
 
@@ -1616,10 +1663,14 @@ export default function Chat() {
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
                       <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
                     </div>
-                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id); setPlayerSearch(''); setPlayerResults([]) }}
+                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id) }}
+                      disabled={startingDmId === p.id}
                       title="Start chat"
-                      style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor:'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0 }}>
-                      <MessageCircle size={12} /> Chat
+                      style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor: startingDmId === p.id ? 'not-allowed' : 'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0, opacity: startingDmId === p.id ? 0.6 : 1 }}>
+                      {startingDmId === p.id
+                        ? <span style={{ width:12, height:12, border:'2px solid rgba(79,142,247,0.3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                        : <MessageCircle size={12} />}
+                      {startingDmId === p.id ? 'Opening…' : 'Chat'}
                     </button>
                   </button>
                 ))
@@ -1628,6 +1679,11 @@ export default function Chat() {
           )}
 
           {/* Room list */}
+          {dmStartError && (
+            <div style={{ margin:'8px 16px', padding:'8px 12px', borderRadius:10, background:'rgba(255,107,107,0.1)', border:'1px solid rgba(255,107,107,0.25)', fontSize:12, color:'#ff6b6b' }}>
+              {dmStartError}
+            </div>
+          )}
           <div style={{ flex:1, overflowY:'auto' }}>
             {roomsLoading ? (
               <SkeletonRoomList />
