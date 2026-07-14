@@ -4,7 +4,10 @@
 // Registered by src/features/notifications/push.ts. Two jobs:
 //   1. Receive a `push` event from the browser's push service and show
 //      a real OS-level notification using the payload sent by the
-//      `send-push` Supabase edge function.
+//      `send-push` Supabase edge function — but ONLY if the user isn't
+//      already looking at an open Chillverse tab, since useNotificationToast.ts
+//      already shows an in-app toast for that same event in that case.
+//      Showing both for the same event is redundant and spammy.
 //   2. Handle the user clicking that notification — focus an existing
 //      Chillverse tab if one is open, otherwise open a new one, landing
 //      on the URL the notification points to.
@@ -20,6 +23,21 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+/**
+ * True if the user currently has a Chillverse tab open AND foregrounded
+ * (visibilityState === 'visible' on at least one WindowClient). A tab
+ * that's open but backgrounded/minimized/behind another window does NOT
+ * count as visible, so push still fires in that case — the in-app toast
+ * only reaches the user if they're actually looking at the page.
+ */
+async function hasVisibleChillverseTab() {
+  const clientList = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  })
+  return clientList.some((client) => client.visibilityState === 'visible')
+}
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
@@ -32,20 +50,31 @@ self.addEventListener('push', (event) => {
     payload = { title: 'Chillverse', body: event.data.text() }
   }
 
-  const title = payload.title || 'Chillverse'
-  const options = {
-    body: payload.body || '',
-    icon: payload.icon || '/web-app-manifest-192x192.png',
-    badge: payload.badge || '/favicon-96x96.png',
-    tag: payload.tag || 'chillverse-notification',
-    // Renotify so a second event with the same tag still alerts the
-    // user (e.g. two chat messages in a row), instead of silently
-    // replacing the first without a fresh alert.
-    renotify: true,
-    data: payload.data || {},
-  }
+  event.waitUntil(
+    (async () => {
+      // If the user is actively looking at Chillverse right now, the
+      // Realtime toast (useNotificationToast.ts) has already surfaced
+      // this exact notification in-app. Showing the OS banner too would
+      // just be a duplicate alert for the same event, so skip it.
+      const alreadyVisible = await hasVisibleChillverseTab()
+      if (alreadyVisible) return
 
-  event.waitUntil(self.registration.showNotification(title, options))
+      const title = payload.title || 'Chillverse'
+      const options = {
+        body: payload.body || '',
+        icon: payload.icon || '/web-app-manifest-192x192.png',
+        badge: payload.badge || '/favicon-96x96.png',
+        tag: payload.tag || 'chillverse-notification',
+        // Renotify so a second event with the same tag still alerts the
+        // user (e.g. two chat messages in a row), instead of silently
+        // replacing the first without a fresh alert.
+        renotify: true,
+        data: payload.data || {},
+      }
+
+      await self.registration.showNotification(title, options)
+    })(),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
