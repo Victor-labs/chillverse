@@ -10,6 +10,8 @@ import {
   type ContentReport, type ModerationLogEntry, type StaffRole,
 } from './moderation'
 import { REPORT_REASON_LABELS } from '../safety/reports'
+import { getAllBadges, getPlayerBadges, grantManualBadge, revokeManualBadge, BADGE_RARITY_COLOR, type BadgeDef } from '../badges/badges'
+import { BadgeIcon } from '../badges/badgeIcons'
 
 type Tab = 'reports' | 'users' | 'log'
 
@@ -21,7 +23,7 @@ const REASON_COLORS: Record<ContentReport['status'], string> = {
 }
 
 export default function ModerationPanel() {
-  const { isStaff, isAdmin, loading } = useModRole()
+  const { role, isStaff, isAdmin, loading } = useModRole()
   const [tab, setTab] = useState<Tab>('reports')
 
   if (loading) {
@@ -53,7 +55,7 @@ export default function ModerationPanel() {
           fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'rgba(255,107,0,0.12)',
           border: '1px solid rgba(255,107,0,0.3)', borderRadius: 999, padding: '3px 10px', marginLeft: 2,
         }}>
-          {isAdmin ? 'Admin' : 'Moderator'}
+          {isAdmin ? 'Admin' : role === 'staff' ? 'Staff' : 'Moderator'}
         </span>
       </div>
 
@@ -199,6 +201,17 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
   const [banReason, setBanReason] = useState('')
   const [banHours, setBanHours] = useState<'' | number>('')
   const [busy, setBusy] = useState(false)
+  const [manualBadges, setManualBadges] = useState<BadgeDef[]>([])
+  const [ownedBadgeIds, setOwnedBadgeIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    getAllBadges().then(all => setManualBadges(all.filter(b => b.grant_type === 'manual')))
+  }, [])
+
+  useEffect(() => {
+    if (!result) { setOwnedBadgeIds(new Set()); return }
+    getPlayerBadges(result.user_id).then(rows => setOwnedBadgeIds(new Set(rows.map(r => r.badge_id))))
+  }, [result])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -247,6 +260,24 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
     setBusy(false)
     if (error) { setError(error); return }
     refresh()
+  }
+
+  async function handleGrantBadge(badgeId: string) {
+    if (!result) return
+    setBusy(true)
+    const { error } = await grantManualBadge(result.user_id, badgeId)
+    setBusy(false)
+    if (error) { setError(error.message ?? 'Could not grant badge.'); return }
+    setOwnedBadgeIds(prev => new Set(prev).add(badgeId))
+  }
+
+  async function handleRevokeBadge(badgeId: string) {
+    if (!result) return
+    setBusy(true)
+    const { error } = await revokeManualBadge(result.user_id, badgeId)
+    setBusy(false)
+    if (error) { setError(error.message ?? 'Could not revoke badge.'); return }
+    setOwnedBadgeIds(prev => { const next = new Set(prev); next.delete(badgeId); return next })
   }
 
   return (
@@ -327,11 +358,36 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
             <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--surface2)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Staff role</div>
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['user', 'moderator', 'admin'] as StaffRole[]).map(r => (
+                {(['user', 'staff', 'moderator', 'admin'] as StaffRole[]).map(r => (
                   <SmallButton key={r} disabled={busy || result.role === r} onClick={() => handleSetRole(r)}>
                     Make {r}
                   </SmallButton>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {manualBadges.length > 0 && (
+            <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--surface2)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Badges (manually assigned)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {manualBadges.map(b => {
+                  const owned = ownedBadgeIds.has(b.id)
+                  const color = BADGE_RARITY_COLOR[b.rarity] ?? '#888899'
+                  return (
+                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c' }}>
+                        <BadgeIcon iconKey={b.icon} size={13} color={color} />
+                      </div>
+                      <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{b.title}</span>
+                      {owned ? (
+                        <SmallButton danger disabled={busy} onClick={() => handleRevokeBadge(b.id)}>Revoke</SmallButton>
+                      ) : (
+                        <SmallButton disabled={busy} onClick={() => handleGrantBadge(b.id)}>Grant</SmallButton>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -377,7 +433,7 @@ function LogTab() {
 
 function RoleBadge({ role }: { role: StaffRole }) {
   if (role === 'user') return null
-  const color = role === 'admin' ? 'var(--accent)' : '#5b9cff'
+  const color = role === 'admin' ? 'var(--accent)' : role === 'staff' ? '#4fd18a' : '#5b9cff'
   return <StatusPill label={role} color={color} />
 }
 

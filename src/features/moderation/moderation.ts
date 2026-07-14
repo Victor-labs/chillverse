@@ -1,7 +1,7 @@
 // src/features/moderation/moderation.ts
 import { supabase } from '../../shared/lib/supabase'
 
-export type StaffRole = 'user' | 'moderator' | 'admin'
+export type StaffRole = 'user' | 'staff' | 'moderator' | 'admin'
 
 export interface UserModerationRow {
   user_id: string

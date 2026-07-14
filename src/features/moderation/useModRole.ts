@@ -30,5 +30,5 @@ export function useModRole(): ModRoleState {
     return () => { active = false }
   }, [user])
 
-  return { role, isStaff: role === 'moderator' || role === 'admin', isAdmin: role === 'admin', loading }
+  return { role, isStaff: role === 'staff' || role === 'moderator' || role === 'admin', isAdmin: role === 'admin', loading }
 }
