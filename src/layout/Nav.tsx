@@ -1,6 +1,7 @@
 // src/components/Nav.tsx
 import { Link } from 'react-router-dom'
 import Wordmark from './Wordmark'
+import Logo from './Logo'
 
 const NAV_LINKS: Array<[href: string, label: string]> = [
   ['/#features', 'Features'],
@@ -12,20 +13,7 @@ export default function Nav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[300] flex items-center justify-between h-[60px] px-5 md:px-10 bg-[rgba(5,5,6,0.75)] backdrop-blur-2xl border-b border-chill-border">
       <Link to="/" className="flex items-center gap-2.5 no-underline">
-        {/* Spinning, glowing mini cube logo */}
-        <div className="w-[34px] h-[34px]" style={{ perspective: '130px' }}>
-          <div
-            className="w-[34px] h-[34px] relative"
-            style={{ transformStyle: 'preserve-3d', animation: 'nav-spin 16s linear infinite' }}
-          >
-            <div
-              className="nav-logo-face absolute w-[34px] h-[34px] flex items-center justify-center rounded-md text-[10px] font-extrabold font-mono text-chill-violetSoft bg-chill-violet/12 border-[1.5px] border-chill-violet/70"
-              style={{ transform: 'translateZ(17px)' }}
-            >
-              CV
-            </div>
-          </div>
-        </div>
+        <Logo size={34} className="drop-shadow-[0_0_14px_rgba(255,107,0,0.35)]" />
         <Wordmark size={20} animated />
       </Link>
 

@@ -1,5 +1,6 @@
 // src/components/Footer.tsx
 import Wordmark from './Wordmark'
+import Logo from './Logo'
 
 const FOOTER_LINKS: Array<[href: string, label: string]> = [
   ['https://cvwtplatform.vercel.app/', 'Platform'],
@@ -13,6 +14,7 @@ export default function Footer() {
   return (
     <footer className="flex items-center justify-between flex-wrap gap-4 px-5 md:px-10 py-7 bg-[rgba(5,5,6,0.6)] border-t border-chill-border">
       <div className="flex items-center gap-2.5">
+        <Logo size={22} />
         <Wordmark size={18} animated={false} />
         <span className="text-[13px] text-chill-textMuted">© 2026 · All rights reserved</span>
       </div>
