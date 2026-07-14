@@ -11,10 +11,10 @@
 // openai/gpt-oss-20b, so that's what's wired in here instead.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { preflightResponse } from '../_shared/cors.ts'
-import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { authenticate } from '../_shared/auth.ts'
-import { enforceRateLimit } from '../_shared/rateLimit.ts'
+import { preflightResponse } from './_shared/cors.ts'
+import { jsonResponse, errorResponse } from './_shared/response.ts'
+import { authenticate } from './_shared/auth.ts'
+import { enforceRateLimit } from './_shared/rateLimit.ts'
 
 const BASE_DAILY_LIMIT = 5
 const INCREASED_DAILY_LIMIT = 10
@@ -25,24 +25,14 @@ const GATEKEEPER_MODEL = 'openai/gpt-oss-20b'
 const MAIN_MODEL = 'openai/gpt-oss-120b'
 const PROVIDER_TIMEOUT_MS = 15000
 
-// Base persona/on-topic rules — sent on every round, regardless of whether
-// tools are being offered that round.
-const SYSTEM_PROMPT_BASE = `You are Halo, the companion AI inside the Chillverse app (the app is called
+const SYSTEM_PROMPT = `You are Halo, the companion AI inside the Chillverse app (the app is called
 "Chillverse" — always spell it exactly that way). You ONLY answer questions
 about Chillverse — its features, mechanics, how things work, and the player's own
 in-app data. You give helpful, friendly, concise suggestions related to the app.
 
 If a question is unrelated to Chillverse (general knowledge, other apps, personal
 advice unrelated to the game, etc.), politely decline and redirect the player back
-to Chillverse topics. Do not answer unrelated questions even if asked repeatedly.`
-
-// Tool-specific instructions — ONLY included on rounds where `tools` is
-// actually being sent to the provider. Including this text on a round where
-// no tools are attached causes the model to attempt a tool call anyway
-// (it's primed by this text + by its own prior tool_calls turns still in the
-// message history), which Groq then rejects with a 400
-// "Tool choice is none, but model called a tool" tool_use_failed error.
-const SYSTEM_PROMPT_TOOLS = `
+to Chillverse topics. Do not answer unrelated questions even if asked repeatedly.
 
 You have exactly three tools available, and their names are exactly as given —
 never invent or guess a different tool name:
@@ -54,16 +44,6 @@ Use them to look up real player data or documented facts before answering — ne
 guess or invent facts about the app's mechanics, features, or a player's stats.
 Once you have enough information from your tool calls, answer directly — don't keep
 calling tools if you already have what you need to respond.`
-
-// Sent instead of SYSTEM_PROMPT_TOOLS on the forced final round: makes it
-// explicit that tools are not available THIS turn, so the model doesn't try
-// to call one anyway based on the earlier rounds still in its context.
-const SYSTEM_PROMPT_NO_TOOLS_FINAL = `
-
-No tools are available this turn. Do not attempt to call any tool, function,
-or use any tool syntax — just answer the player directly, in plain text, using
-whatever information you already gathered from earlier tool results in this
-conversation.`
 
 const TOOLS = [
   {
@@ -107,29 +87,12 @@ const TOOLS = [
   },
 ]
 
-interface GroqToolCall {
-  id: string
-  type: string
-  function: { name: string; arguments: string }
-}
-
 interface GroqMessage {
   role: string
   content: string | null
-  tool_calls?: GroqToolCall[]
+  tool_calls?: { id: string; type: string; function: { name: string; arguments: string } }[]
   tool_call_id?: string
   name?: string
-}
-
-interface GroqChoice {
-  message?: {
-    content?: string | null
-    tool_calls?: GroqToolCall[]
-  }
-}
-
-interface GroqCompletionResponse {
-  choices?: GroqChoice[]
 }
 
 class ToolUseError extends Error {}
@@ -145,7 +108,7 @@ async function callProvider(
   messages: GroqMessage[],
   tools: unknown[] | undefined,
   extraHeaders: Record<string, string> = {},
-): Promise<GroqCompletionResponse> {
+) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS)
 
@@ -157,7 +120,15 @@ async function callProvider(
       body: JSON.stringify({
         model,
         messages,
-        ...(tools ? { tools, tool_choice: 'auto' } : {}),
+        // IMPORTANT: when we don't want the model to call a tool (the
+        // forced-plain-text final round), we still declare the `tools`
+        // schema and explicitly set tool_choice: 'none' — omitting `tools`
+        // entirely does NOT reliably stop the model from attempting a tool
+        // call when the conversation history already contains earlier
+        // tool_calls turns, and Groq then rejects the completion with
+        // "Tool choice is none, but model called a tool" (tool_use_failed)
+        // instead of just returning plain text.
+        ...(tools ? { tools, tool_choice: 'auto' } : { tools: TOOLS, tool_choice: 'none' }),
       }),
       signal: controller.signal,
     })
@@ -178,11 +149,10 @@ async function callProvider(
 
     // The model can occasionally hallucinate a tool name that wasn't
     // offered (e.g. "get_chillworld_knowledge" instead of
-    // "get_chillverse_knowledge"), or attempt a tool call on a round where
-    // no tools were sent at all — the provider validates this server-side
-    // and rejects the whole completion. This is a same-provider
-    // retry-without-tools case, not a fallback-to-other-provider case (the
-    // other provider would likely fail the same way).
+    // "get_chillverse_knowledge") — the provider validates this
+    // server-side and rejects the whole completion. This is a same-
+    // provider retry-without-tools case, not a fallback-to-other-provider
+    // case (the other provider would likely hallucinate the same way).
     if (res.status === 400 && errText.includes('tool_use_failed')) {
       throw new ToolUseError(`${providerName} tool-call validation failed: ${errText}`)
     }
@@ -223,7 +193,7 @@ async function callAI(
   model: string,
   messages: GroqMessage[],
   tools?: unknown[],
-): Promise<{ result: GroqCompletionResponse; provider: 'groq' | 'openrouter' }> {
+): Promise<{ result: any; provider: 'groq' | 'openrouter' }> {
   try {
     return { result: await callGroq(groqKey, model, messages, tools), provider: 'groq' }
   } catch (err) {
@@ -234,8 +204,6 @@ async function callAI(
     throw err
   }
 }
-
-const FALLBACK_ANSWER = "Sorry, I couldn't come up with an answer just now — try again in a moment."
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -351,79 +319,43 @@ Deno.serve(async (req: Request) => {
 
     // ── 4. Main pass with tool calling ──
     const messages: GroqMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT_BASE + SYSTEM_PROMPT_TOOLS },
+      { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: question },
     ]
 
-    const toolCallsLog: unknown[] = []
+    let toolCallsLog: unknown[] = []
     let finalAnswer = ''
 
     // Allow up to 2 rounds of tool calls, then force a plain-text answer on
     // the final round by not offering tools at all — this guarantees the
     // model produces real content instead of looping on tool calls forever
     // and hitting the generic "couldn't come up with an answer" fallback.
-    //
-    // IMPORTANT: on the forced final round, the system prompt's tool
-    // description is swapped out for an explicit "no tools this turn"
-    // instruction (see SYSTEM_PROMPT_NO_TOOLS_FINAL above). Leaving the
-    // tool-advertising text in place while omitting the `tools` array is
-    // what previously caused Groq to reject the completion with
-    // "Tool choice is none, but model called a tool" — the model, primed by
-    // its own prior tool_calls turns plus a system prompt still describing
-    // three tools, tried to call one anyway on a request that declared none.
     const MAX_ROUNDS = 3
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const isLastRound = round === MAX_ROUNDS - 1
-
-      // messages[0] is always the system message — swap its content for the
-      // final round instead of mutating the shared `messages` array
-      // permanently, so a retry-without-tools below can reuse it safely.
-      const roundMessages: GroqMessage[] = isLastRound
-        ? [
-            { role: 'system', content: SYSTEM_PROMPT_BASE + SYSTEM_PROMPT_NO_TOOLS_FINAL },
-            ...messages.slice(1),
-          ]
-        : messages
-
-      let result: GroqCompletionResponse
+      let result
       try {
-        const r = await callAI(groqKey, openrouterKey, MAIN_MODEL, roundMessages, isLastRound ? undefined : TOOLS)
+        const r = await callAI(groqKey, openrouterKey, MAIN_MODEL, messages, isLastRound ? undefined : TOOLS)
         result = r.result
         providersUsed.add(r.provider)
       } catch (err) {
         if (err instanceof ToolUseError) {
-          // The model either hallucinated a tool name, or (on the final
-          // round) tried to call a tool despite none being offered. Retry
-          // once, forcing the explicit "no tools" system prompt regardless
-          // of which round we're actually on, so the retry can't hit the
-          // exact same failure mode.
-          console.error('halo-ai-chat: tool_use_failed, retrying with explicit no-tools prompt:', err.message)
-          const retryMessages: GroqMessage[] = [
-            { role: 'system', content: SYSTEM_PROMPT_BASE + SYSTEM_PROMPT_NO_TOOLS_FINAL },
-            ...messages.slice(1),
-          ]
-          try {
-            const r = await callAI(groqKey, openrouterKey, MAIN_MODEL, retryMessages, undefined)
-            result = r.result
-            providersUsed.add(r.provider)
-          } catch (retryErr) {
-            // Even the explicit no-tools retry failed — don't let this take
-            // down the whole request. Log it and fall through to the
-            // friendly fallback answer below instead of a 500.
-            console.error('halo-ai-chat: retry after tool_use_failed also failed:', retryErr)
-            finalAnswer = FALLBACK_ANSWER
-            break
-          }
+          // The model hallucinated a tool name — drop tools entirely and
+          // force a plain-text answer from whatever context we have so far,
+          // rather than failing the whole request.
+          console.error('halo-ai-chat: tool hallucination, retrying without tools:', err.message)
+          const r = await callAI(groqKey, openrouterKey, MAIN_MODEL, messages, undefined)
+          result = r.result
+          providersUsed.add(r.provider)
         } else {
           throw err
         }
       }
-
       const choice = result?.choices?.[0]
       const msg = choice?.message
 
       if (!msg?.tool_calls?.length) {
-        finalAnswer = msg?.content ?? FALLBACK_ANSWER
+        finalAnswer = msg?.content ?? "Sorry, I couldn't come up with an answer just now — try again in a moment."
         break
       }
 
@@ -496,7 +428,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!finalAnswer) {
-      finalAnswer = FALLBACK_ANSWER
+      finalAnswer = "Sorry, I couldn't come up with an answer just now — try again in a moment."
     }
 
     // ── 5. Log the exchange ──
