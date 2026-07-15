@@ -1,9 +1,10 @@
 // src/features/search/SearchPage.tsx
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search as SearchIcon, User } from 'lucide-react'
+import { ArrowLeft, Search as SearchIcon } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { searchPlayers, searchGames, searchMallItems, type PlayerResult } from './search'
+import Avatar from '../../shared/components/Avatar'
 import type { GameMeta } from '../games/games'
 import type { MallItem } from '../../shared/types'
 
@@ -122,20 +123,20 @@ export default function SearchPage() {
             <p style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No players found</p>
           )}
           {tab === 'players' && players.map(p => (
-            <button
+            <div
               key={p.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => goToPlayer(p.id)}
+              onKeyDown={e => { if (e.key === 'Enter') goToPlayer(p.id) }}
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, overflow: 'hidden' }}>
-                {p.avatar?.startsWith('http') ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.avatar || <User size={16} />)}
-              </div>
+              <Avatar src={p.avatar} name={p.display_name || p.username} userId={p.id} size={36} radius={10} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.display_name || p.username}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>@{p.username}</div>
               </div>
-            </button>
+            </div>
           ))}
 
           {query.trim() && !loading && tab === 'games' && games.length === 0 && (
