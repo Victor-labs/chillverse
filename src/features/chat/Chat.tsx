@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
-import SharedAvatar from '../../shared/components/Avatar'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import { notifyMessage } from '../achievements/achievements'
 import { useAuth } from '../auth/useAuth'
@@ -22,6 +21,7 @@ import type { VoiceRecorderResult } from './voiceNotes/useVoiceRecorder'
 import ReportModal from '../safety/ReportModal'
 import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/profanityFilter'
 import { isProActive } from '../../shared/lib/proPlans'
+import HiddenContentNotice from '../moderation/HiddenContentNotice'
 
 // ─── Types ──────────────────────────────────────────────────
 interface RoomMember {
@@ -47,6 +47,8 @@ interface Message {
   content: string
   created_at: string
   deleted: boolean
+  hidden: boolean
+  hidden_reason: string | null
   reply_to_id: string | null
   replyPreview?: string
   reactions: { emoji: string; user_id: string }[]
@@ -119,10 +121,29 @@ function IBtn({ onClick, children, style }: {
 }
 
 function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; avatarUrl?: string | null; size?: number; radius?: number }) {
-  // Thin wrapper over the shared Avatar so every call site in this file
-  // (which uses the avatarUrl/name/size/radius shape) keeps working
-  // unchanged, while gaining a real fallback for missing/broken images.
-  return <SharedAvatar src={avatarUrl} name={name} size={size} radius={radius} disabled />
+  const colors = ['#ff6b6b','#4f8ef7','#9b6dff','#3ecf8e','#f5c542','#ff4d8b','#ff9a3c','#00e5ff']
+  const color = colors[(name.charCodeAt(0) || 0) % colors.length]
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={{ width:size, height:size, borderRadius:radius, objectFit:'cover', flexShrink:0, display:'block' }}
+        onError={e => {
+          // fall back to initials if image fails to load
+          const el = e.currentTarget
+          el.style.display = 'none'
+          const fallback = el.nextElementSibling as HTMLElement | null
+          if (fallback) fallback.style.display = 'flex'
+        }}
+      />
+    )
+  }
+  return (
+    <div style={{ width:size, height:size, borderRadius:radius, background:color, color:'#fff', fontWeight:700, fontSize:size*0.35, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+      {(name || '?').charAt(0).toUpperCase()}
+    </div>
+  )
 }
 
 /** Small green presence dot, absolutely positioned over the bottom-right corner
@@ -267,7 +288,9 @@ const MessageRow = memo(function MessageRow({
             {/* Message content + inline trailing timestamp (bottom-right, inside the bubble) */}
             <div style={{ display:'flex', alignItems:'flex-end', gap:6 }}>
               <span style={{ flex:1, minWidth:0 }}>
-                {msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
+                {msg.hidden ? (
+                  <HiddenContentNotice reason={msg.hidden_reason} inline />
+                ) : msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
                   msg.audio_path ? (
                     <VoiceNotePlayer audioPath={msg.audio_path} durationSeconds={msg.audio_duration_seconds ?? 0} tint={isMine ? 'light' : 'dark'} />
                   ) : (
@@ -883,7 +906,7 @@ export default function Chat() {
     // If I've cleared this chat, only fetch messages after that cutoff.
     let query = supabase
       .from('messages')
-      .select('id, sender_id, content, created_at, deleted, reply_to_id, type, audio_path, audio_duration_seconds, call_id')
+      .select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id')
       .eq('room_id', room.id)
     if (room.clearedAt) query = query.gt('created_at', room.clearedAt)
     const { data, error } = await query
@@ -954,6 +977,7 @@ export default function Chat() {
       return {
         ...m,
         deleted: m.deleted ?? false,
+        hidden: m.hidden ?? false,
         reactions: reactionsByMsg.get(m.id) ?? [],
         senderName,
         senderUsername,
@@ -993,7 +1017,7 @@ export default function Chat() {
         table: 'messages',
         filter: `room_id=eq.${room.id}`
       }, async (payload) => {
-        const raw = payload.new as { id: string; sender_id: string; content: string; created_at: string; deleted: boolean; reply_to_id: string | null; type: 'text' | 'voice_note' | 'call_log'; audio_path: string | null; audio_duration_seconds: number | null; call_id: string | null }
+        const raw = payload.new as { id: string; sender_id: string; content: string; created_at: string; deleted: boolean; hidden: boolean; hidden_reason: string | null; reply_to_id: string | null; type: 'text' | 'voice_note' | 'call_log'; audio_path: string | null; audio_duration_seconds: number | null; call_id: string | null }
 
         // Resolve sender name (may be a new global chat participant not in original members)
         let senderName = 'Unknown'
@@ -1032,9 +1056,9 @@ export default function Chat() {
         // to Storage happens after the DB row exists, since the storage path is
         // keyed by message id). Without this, other viewers see "Message
         // deleted" or a perpetually-uploading voice note until they reload.
-        const raw = payload.new as { id: string; content: string; deleted: boolean; audio_path: string | null }
+        const raw = payload.new as { id: string; content: string; deleted: boolean; hidden: boolean; hidden_reason: string | null; audio_path: string | null }
         setMessages(ms => ms.map(m => m.id === raw.id
-          ? { ...m, deleted: raw.deleted, content: raw.deleted ? 'Message deleted' : raw.content, audio_path: raw.audio_path }
+          ? { ...m, deleted: raw.deleted, hidden: raw.hidden, hidden_reason: raw.hidden_reason, content: raw.deleted ? 'Message deleted' : raw.content, audio_path: raw.audio_path }
           : m))
       })
       .on('postgres_changes', {
@@ -1112,7 +1136,7 @@ export default function Chat() {
     const oldestCreatedAt = messages[0].created_at
     let query = supabase
       .from('messages')
-      .select('id, sender_id, content, created_at, deleted, reply_to_id, type, audio_path, audio_duration_seconds, call_id')
+      .select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id')
       .eq('room_id', activeRoom.id)
       .lt('created_at', oldestCreatedAt)
     // Never page past a soft-clear cutoff — that history is hidden for me.
@@ -1159,6 +1183,7 @@ export default function Chat() {
       return {
         ...m,
         deleted: m.deleted ?? false,
+        hidden: m.hidden ?? false,
         reactions: reactionsByMsg.get(m.id) ?? [],
         senderName,
         senderUsername,
@@ -1336,7 +1361,7 @@ export default function Chat() {
 
     const payload: MessageInsertPayload = { room_id: activeRoom.id, sender_id: myId, content: trimmed }
     if (replyTo) payload.reply_to_id = replyTo.id
-    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, reply_to_id, type, audio_path, audio_duration_seconds, call_id').single()
+    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id').single()
     if (!error && inserted) {
       // Weekly mission: messages_sent
       if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
@@ -1385,7 +1410,7 @@ export default function Chat() {
     if (replyTo) payload.reply_to_id = replyTo.id
 
     const { data: inserted, error } = await supabase.from('messages').insert(payload)
-      .select('id, sender_id, content, created_at, deleted, reply_to_id, type, audio_path, audio_duration_seconds, call_id').single()
+      .select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id').single()
 
     if (error || !inserted) {
       if (error?.message?.includes('CV_VOICE_NOTES_PRO_ONLY')) {
