@@ -1,5 +1,6 @@
 // src/features/admin/adminStats.ts
 import { supabase } from '../../shared/lib/supabase'
+import type { StaffRole } from '../moderation/moderation'
 
 export interface AdminOverviewStats {
   total_users: number
@@ -18,6 +19,10 @@ export interface AdminEconomyStats {
   diamonds_in_circulation: number
   diamonds_credited_30d: number
   purchase_tx_30d: number
+  /** Wallets over the 3,000 diamond threshold — added in migration 0034
+   *  alongside admin_list_users()/admin_get_user_detail() so a suspicious
+   *  cluster is visible without opening the Users drill-down. */
+  flagged_balance_count: number
   top_mall_items: { name: string; category: string; owners: number }[]
 }
 
@@ -78,4 +83,122 @@ export async function fetchAdminDashboardStats(): Promise<{ data: AdminDashboard
   }
 
   return { data: data as AdminDashboardStats, error: null }
+}
+
+// ── User drill-down (list + detail) ──────────────────────────────────
+// Backs admin_list_users() / admin_get_user_detail() from migration
+// 0030 — both SECURITY DEFINER + is_admin_role()-gated server-side, same
+// posture as admin_dashboard_stats() above.
+
+export interface AdminUserRow {
+  id: string
+  username: string
+  display_name: string | null
+  email: string
+  avatar: string
+  gem_balance: number
+  balance_flagged: boolean
+  is_pro: boolean
+  pro_tier: string | null
+  staff_role: StaffRole | null
+  is_banned: boolean
+  created_at: string
+  last_seen_at: string | null
+}
+
+export interface AdminUserListResult {
+  rows: AdminUserRow[]
+  total: number
+  page: number
+  page_size: number
+}
+
+/** Fetches one page of the admin user list, optionally filtered by a
+ *  username / display name / email search term. `search` is trimmed and
+ *  sent as `null` when empty so the RPC's `p_search is null or p_search = ''`
+ *  short-circuit returns everyone rather than matching on an empty string. */
+export async function fetchAdminUserList(
+  page: number,
+  pageSize: number,
+  search: string,
+): Promise<{ data: AdminUserListResult | null; error: string | null }> {
+  const trimmed = search.trim()
+  const { data, error } = await supabase.rpc('admin_list_users', {
+    p_page: page,
+    p_page_size: pageSize,
+    p_search: trimmed === '' ? null : trimmed,
+  })
+
+  if (error) {
+    console.error('fetchAdminUserList error:', error)
+    if (error.message?.includes('CV_ADMIN_FORBIDDEN')) {
+      return { data: null, error: "You don't have permission to view this." }
+    }
+    return { data: null, error: 'Failed to load users. Please try again.' }
+  }
+
+  return { data: data as AdminUserListResult, error: null }
+}
+
+export interface AdminUserWalletBreakdown {
+  gem_balance: number
+  balance_flagged: boolean
+  total_purchased: number
+  total_earned_ledger: number
+  total_spent_ledger: number
+}
+
+export interface AdminUserWalletActivity {
+  type: string
+  label: string
+  amount: number
+  created_at: string
+}
+
+export interface AdminUserDetail {
+  id: string
+  username: string
+  display_name: string | null
+  email: string
+  avatar: string
+  country: string | null
+  bio: string | null
+  xp: number
+  level: number
+  streak: number
+  is_pro: boolean
+  pro_tier: string | null
+  pro_expires_at: string | null
+  staff_role: StaffRole | null
+  is_banned: boolean
+  banned_until: string | null
+  ban_reason: string | null
+  created_at: string
+  last_login_at: string | null
+  last_seen_at: string | null
+  referral_count: number
+  wallet: AdminUserWalletBreakdown
+  recent_wallet_activity: AdminUserWalletActivity[]
+}
+
+/** Fetches the full detail record — profile, role/ban status, and a
+ *  wallet breakdown (current balance, lifetime purchased/earned/spent,
+ *  and the last 15 ledger entries) — for a single user. */
+export async function fetchAdminUserDetail(
+  userId: string,
+): Promise<{ data: AdminUserDetail | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_get_user_detail', { p_user_id: userId })
+
+  if (error) {
+    console.error('fetchAdminUserDetail error:', error)
+    if (error.message?.includes('CV_ADMIN_FORBIDDEN')) {
+      return { data: null, error: "You don't have permission to view this." }
+    }
+    if (error.message?.includes('CV_USER_NOT_FOUND')) {
+      return { data: null, error: 'That user no longer exists.' }
+    }
+    return { data: null, error: 'Failed to load user detail. Please try again.' }
+  }
+
+  return { data: data as AdminUserDetail, error: null }
 }

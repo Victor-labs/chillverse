@@ -1,17 +1,39 @@
 // src/features/admin/AdminDashboard.tsx
 import { useEffect, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ShieldAlert, Users, UserPlus, Crown, ShieldBan, Gem,
-  ShoppingBag, Gamepad2, Swords, Sparkles, Flag, LifeBuoy, RefreshCw,
+  ShoppingBag, Gamepad2, Swords, Sparkles, Flag, LifeBuoy, RefreshCw, AlertTriangle,
 } from 'lucide-react'
 import { useModRole } from '../moderation/useModRole'
 import { ripple } from '../../shared/lib/ripple'
 import { fetchAdminDashboardStats, type AdminDashboardStats } from './adminStats'
+import AdminUsersDrawer from './AdminUsersDrawer'
 
-function StatCard({ icon: Icon, label, value, tint }: { icon: typeof Users; label: string; value: string | number; tint?: string }) {
+function StatCard({
+  icon: Icon, label, value, tint, onClick,
+}: {
+  icon: typeof Users
+  label: string
+  value: string | number
+  tint?: string
+  /** When present, the card renders as a button — used for stats that open
+   *  an AdminDrawer drill-down (e.g. "Total users" → AdminUsersDrawer). */
+  onClick?: (e: MouseEvent<HTMLDivElement>) => void
+}) {
   return (
-    <div className="neu-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+    <div
+      className="neu-card"
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click() } : undefined}
+      style={{
+        padding: 16, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
       <div className="flex items-center gap-2">
         <div style={{
           width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -69,6 +91,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [usersDrawerOpen, setUsersDrawerOpen] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -149,7 +172,12 @@ export default function AdminDashboard() {
           <>
             <SectionHeader title="Overview" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-              <StatCard icon={Users} label="Total users" value={stats.overview.total_users} />
+              <StatCard
+                icon={Users}
+                label="Total users"
+                value={stats.overview.total_users}
+                onClick={(e) => { ripple(e); setUsersDrawerOpen(true) }}
+              />
               <StatCard icon={UserPlus} label="New (7d)" value={stats.overview.new_users_7d} tint="var(--gold)" />
               <StatCard icon={UserPlus} label="New (30d)" value={stats.overview.new_users_30d} tint="var(--gold)" />
               <StatCard icon={Users} label="Active (7d)" value={stats.overview.active_7d} tint="var(--blue)" />
@@ -163,6 +191,13 @@ export default function AdminDashboard() {
               <StatCard icon={Gem} label="Diamonds in circulation" value={stats.economy.diamonds_in_circulation.toLocaleString()} tint="var(--blue)" />
               <StatCard icon={Gem} label="Diamonds credited (30d)" value={stats.economy.diamonds_credited_30d.toLocaleString()} tint="var(--gold)" />
               <StatCard icon={ShoppingBag} label="Purchases (30d)" value={stats.economy.purchase_tx_30d} />
+              <StatCard
+                icon={AlertTriangle}
+                label="Flagged balances (>3,000)"
+                value={stats.economy.flagged_balance_count}
+                tint="var(--red)"
+                onClick={(e) => { ripple(e); setUsersDrawerOpen(true) }}
+              />
             </div>
             <div className="neu-card" style={{ padding: 16 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 10 }}>Top Mall items (by owners)</p>
@@ -219,6 +254,8 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
+
+      <AdminUsersDrawer open={usersDrawerOpen} onClose={() => setUsersDrawerOpen(false)} />
     </div>
   )
 }
