@@ -14,7 +14,7 @@ import { ripple } from '../../shared/lib/ripple'
 import { notifyFollow, notifyProfileView, notifyProfileLike } from '../achievements/achievements'
 import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import { getUserRankTier, type RankTier } from './ranks'
-import { GAMES, getGameMeta } from '../games/games'
+import { getGameMeta, getGameById } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 import ReportModal from '../safety/ReportModal'
 import { usePlayerBadges } from '../badges/usePlayerBadges'
@@ -22,7 +22,6 @@ import BadgeRow from '../badges/BadgeRow'
 import BadgesStatRow from '../badges/BadgesStatRow'
 import BadgesModal from '../badges/BadgesModal'
 import Avatar from '../../shared/components/Avatar'
-import ModeratorProfile from './ModeratorProfile'
 
 function getRank(xp: number): RankTier { return getUserRankTier(xp) }
 
@@ -30,7 +29,6 @@ function getRank(xp: number): RankTier { return getUserRankTier(xp) }
 // achievements to show off, instead of just the 3 most recently earned.
 const RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
 
-const GAME_LABELS: Record<string, string> = Object.fromEntries(GAMES.map(g => [g.dbKey, g.name]))
 
 const GAME_RANK_STARS: Record<string, number> = {
   beginner: 1, intermediate: 3, advanced: 4, master: 5,
@@ -122,34 +120,7 @@ interface PlayerData {
 }
 interface AlbumPic { id: string; label: string; imageUrl: string; equippedAsBanner?: boolean }
 
-// Thin wrapper: checks whether the viewed account is a moderator BEFORE
-// mounting the full stats-heavy profile below, so none of PlayerProfileInner's
-// data-fetching effects (XP, streak, ranks, wishlist, album, etc.) run for
-// moderator showcase profiles that don't display any of that.
 export default function PlayerProfile() {
-  const { userId } = useParams<{ userId: string }>()
-  const [isModerator, setIsModerator] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    if (!userId) return
-    setIsModerator(null)
-    supabase.from('user_moderation').select('role').eq('user_id', userId).maybeSingle()
-      .then(({ data }) => setIsModerator(data?.role === 'moderator'))
-  }, [userId])
-
-  if (!userId || isModerator === null) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-        <span style={{ display: 'block', width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
-  }
-
-  return isModerator ? <ModeratorProfile userId={userId} /> : <PlayerProfileInner />
-}
-
-function PlayerProfileInner() {
   const { userId } = useParams<{ userId: string }>()
   const navigate = useNavigate()
   const { session } = useAuth()
@@ -166,6 +137,7 @@ function PlayerProfileInner() {
   const [lbPosition, setLbPosition] = useState<number | null>(null)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
   const [watchingMovie, setWatchingMovie] = useState(false)
+  const [exploring, setExploring] = useState(false)
   const [equippedAvatar, setEquippedAvatar] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
   const [albumPics, setAlbumPics] = useState<AlbumPic[]>([])
@@ -265,9 +237,11 @@ function PlayerProfileInner() {
       const entries = Object.values(state).flat()
       const movieEntry = entries.find(e => e.activity === 'watching_movie')
       const gameEntry  = entries.find(e => e.activity === 'playing' && e.game)
+      const exploreEntry = entries.find(e => e.activity === 'exploring')
 
       setWatchingMovie(!!movieEntry)
       setCurrentlyPlaying(gameEntry?.game ?? null)
+      setExploring(!!exploreEntry)
     }
 
     channel
@@ -510,13 +484,25 @@ function PlayerProfileInner() {
       )}
 
       {/* ── Currently playing game ── */}
-      {currentlyPlaying && (
-        <div style={{ margin: `0 20px ${watchingMovie ? '6px' : '16px'}`, padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Gamepad2 size={14} style={{ color: '#4f8ef7', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
-            Playing <strong style={{ color: '#4f8ef7' }}>{GAME_LABELS[currentlyPlaying] ?? currentlyPlaying}</strong>
-          </span>
+      {currentlyPlaying && (() => {
+        const gameMeta = getGameById(currentlyPlaying)
+        const GameIcon = gameMeta?.icon ?? Gamepad2
+        return (
+          <div style={{ margin: `0 20px ${watchingMovie ? '6px' : '16px'}`, padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <GameIcon size={14} style={{ color: '#4f8ef7', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+              Playing <strong style={{ color: '#4f8ef7' }}>{gameMeta?.name ?? currentlyPlaying}</strong>
+            </span>
+          </div>
+        )
+      })()}
+
+      {/* ── Currently exploring ── */}
+      {exploring && (
+        <div style={{ margin: `0 20px ${(watchingMovie || currentlyPlaying) ? '6px' : '16px'}`, padding: '10px 14px', borderRadius: 14, background: 'rgba(62,207,142,0.1)', border: '1px solid rgba(62,207,142,0.28)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3ecf8e', boxShadow: '0 0 8px #3ecf8e', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>⛵️ Exploring</span>
         </div>
       )}
 

@@ -20,7 +20,11 @@ import Avatar from '../../shared/components/Avatar'
 import { getUserRankTier } from './ranks'
 import { usePlayerBadges } from '../badges/usePlayerBadges'
 import { BadgeIcon } from '../badges/badgeIcons'
-import { BADGE_RARITY_COLOR, BADGE_RARITY_RANK, badgeDisplayTitle } from '../badges/badges'
+import { BADGE_RARITY_COLOR, BADGE_RARITY_RANK, badgeDisplayTitle, type BadgeDef } from '../badges/badges'
+import BadgeToast from '../badges/BadgeToast'
+import { AchIcon, RARITY_COLOR as ACH_RARITY_COLOR } from '../achievements/Achievements'
+import AchievementMiniToast from '../achievements/AchievementMiniToast'
+import { getGameById } from '../games/games'
 import ReportModal from '../safety/ReportModal'
 import { useCall } from '../chat/calling/CallContext'
 import { MOD_AVATAR_URL } from '../moderation/modShowcase'
@@ -47,6 +51,24 @@ interface PreviewProfile {
 
 const BADGE_PREVIEW_COUNT = 6
 
+// Lower is better — rarest achievements shown first, mirrors the same
+// pattern used for badges and on the full profile page.
+const ACH_RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
+const BEST_ACHIEVEMENTS_COUNT = 3
+
+interface PreviewAchievement {
+  id: string
+  title: string
+  icon: string
+  rarity: string
+}
+
+interface LiveActivity {
+  movie: boolean
+  game: string | null
+  exploring: boolean
+}
+
 export default function ProfilePreviewModal({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -63,6 +85,10 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
   const [closing, setClosing] = useState(false)
   const [entered, setEntered] = useState(false)
   const [isModerator, setIsModerator] = useState(false)
+  const [badgeToast, setBadgeToast] = useState<BadgeDef | null>(null)
+  const [bestAchievements, setBestAchievements] = useState<PreviewAchievement[]>([])
+  const [achToast, setAchToast] = useState<PreviewAchievement | null>(null)
+  const [activity, setActivity] = useState<LiveActivity>({ movie: false, game: null, exploring: false })
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isMe = user?.id === userId
@@ -110,6 +136,59 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
   }, [user, userId, isMe])
 
   const { badges, defs } = usePlayerBadges(userId)
+
+  // Best 3 achievements (rarest first, mirrors PlayerProfile.tsx) — the
+  // preview only has room to show a highlight reel, not the full case.
+  useEffect(() => {
+    let active = true
+    supabase.from('player_achievements').select('achievement_id, unlocked_at, achievements(title, icon, rarity)')
+      .eq('user_id', userId)
+      .then(({ data }) => {
+        if (!active) return
+        const rows = (data ?? []) as unknown as { achievement_id: string; unlocked_at: string; achievements: { title: string; icon: string; rarity: string } | null }[]
+        const best = [...rows]
+          .sort((a, b) => {
+            const rA = ACH_RARITY_RANK[a.achievements?.rarity ?? 'common'] ?? 3
+            const rB = ACH_RARITY_RANK[b.achievements?.rarity ?? 'common'] ?? 3
+            if (rA !== rB) return rA - rB
+            return new Date(b.unlocked_at).getTime() - new Date(a.unlocked_at).getTime()
+          })
+          .slice(0, BEST_ACHIEVEMENTS_COUNT)
+        setBestAchievements(best.map(r => ({
+          id: r.achievement_id,
+          title: r.achievements?.title ?? 'Achievement',
+          icon: r.achievements?.icon ?? 'trophy',
+          rarity: r.achievements?.rarity ?? 'common',
+        })))
+      })
+    return () => { active = false }
+  }, [userId])
+
+  // Live activity ticker — subscribes to the viewed user's presence
+  // channel so "watching a movie" / "playing a game" / "exploring"
+  // shows up (and disappears) instantly, same as PlayerProfile.tsx.
+  useEffect(() => {
+    const channel = supabase.channel(`user-activity:${userId}`, {
+      config: { presence: { key: userId } },
+    })
+
+    function syncActivity() {
+      const state = channel.presenceState<{ activity: string; game?: string }>()
+      const entries = Object.values(state).flat()
+      const movieEntry = entries.find(e => e.activity === 'watching_movie')
+      const gameEntry = entries.find(e => e.activity === 'playing' && e.game)
+      const exploreEntry = entries.find(e => e.activity === 'exploring')
+      setActivity({ movie: !!movieEntry, game: gameEntry?.game ?? null, exploring: !!exploreEntry })
+    }
+
+    channel
+      .on('presence', { event: 'sync' }, syncActivity)
+      .on('presence', { event: 'join' }, syncActivity)
+      .on('presence', { event: 'leave' }, syncActivity)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -318,6 +397,34 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                 <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{memberSince}</p>
               </div>
 
+              {activity.movie && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>🎬 Watching movies</span>
+                </div>
+              )}
+
+              {activity.game && (() => {
+                const gameMeta = getGameById(activity.game as string)
+                const GameIcon = gameMeta?.icon
+                return (
+                  <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                    {GameIcon && <GameIcon size={13} style={{ color: '#4f8ef7', flexShrink: 0 }} />}
+                    <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+                      Playing <strong style={{ color: '#4f8ef7' }}>{gameMeta?.name ?? activity.game}</strong>
+                    </span>
+                  </div>
+                )
+              })()}
+
+              {activity.exploring && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(62,207,142,0.1)', border: '1px solid rgba(62,207,142,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ecf8e', boxShadow: '0 0 8px #3ecf8e', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>⛵️ Exploring</span>
+                </div>
+              )}
+
               {!isModerator && ownedBadges.length > 0 && (
                 <div style={{ marginTop: 12 }}>
                   <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Badges</p>
@@ -325,13 +432,40 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                     {ownedBadges.map(def => {
                       const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
                       return (
-                        <div
+                        <button
                           key={def.id}
+                          type="button"
+                          onClick={() => setBadgeToast(def)}
                           title={badgeDisplayTitle(def, profile.original_username)}
-                          style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33` }}
+                          style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
                         >
                           <BadgeIcon iconKey={def.icon} size={16} color={color} />
-                        </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!isModerator && bestAchievements.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Achievements</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {bestAchievements.map(a => {
+                      const color = ACH_RARITY_COLOR[a.rarity] ?? '#888899'
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setAchToast(a)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 6px', borderRadius: 20,
+                            background: color + '18', border: `1px solid ${color}44`, cursor: 'pointer',
+                          }}
+                        >
+                          <AchIcon iconKey={a.icon} size={10} color={color} />
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color }}>{a.title}</span>
+                        </button>
                       )
                     })}
                   </div>
@@ -393,6 +527,26 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
           onClose={() => setReportOpen(false)}
         />
       )}
+
+      {badgeToast && profile && (
+        <BadgeToast
+          title={badgeDisplayTitle(badgeToast, profile.original_username)}
+          icon={badgeToast.icon}
+          rarity={badgeToast.rarity}
+          onDone={() => setBadgeToast(null)}
+        />
+      )}
+
+      {achToast && (
+        <AchievementMiniToast
+          title={achToast.title}
+          icon={achToast.icon}
+          rarity={achToast.rarity}
+          onDone={() => setAchToast(null)}
+        />
+      )}
+
+      <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>,
     document.body,
   )

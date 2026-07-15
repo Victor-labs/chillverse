@@ -13,7 +13,7 @@ import { isProActive } from '../../shared/lib/proPlans'
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
 import { getUserRankTier, type RankTier } from './ranks'
-import { GAMES, getGameMeta } from '../games/games'
+import { getGameMeta, getGameById } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 import EditProfileModal, { type EditProfileSavedFields } from './EditProfileModal'
 import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
@@ -24,7 +24,6 @@ import { checkAndAwardAutoBadges } from '../badges/badges'
 import BadgeRow from '../badges/BadgeRow'
 import BadgesStatRow from '../badges/BadgesStatRow'
 import BadgesModal from '../badges/BadgesModal'
-import ModeratorSelfProfile from './ModeratorSelfProfile'
 
 /** Use the real rank system (lib/ranks.ts) everywhere on this page —
  *  this used to be a hardcoded 7-tier placeholder ("Newcomer" etc).
@@ -35,7 +34,7 @@ function getRank(xp: number): RankTier { return getUserRankTier(xp) }
 // achievements to show off, instead of just the 3 most recently earned.
 const RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
 
-const GAME_LABELS: Record<string, string> = Object.fromEntries(GAMES.map(g => [g.dbKey, g.name]))
+
 
 // Real presence values, matching Settings.tsx / the profiles.presence column.
 type Presence = 'online' | 'idle' | 'offline' | 'invisible'
@@ -525,36 +524,7 @@ function AlbumDetailModal({
 
 
 // ── Main Profile Page ─────────────────────────────────────────
-// Thin wrapper: checks whether the signed-in user is themselves a
-// moderator BEFORE mounting the full stats-heavy self-profile below, so
-// none of ProfileInner's data-fetching effects (XP, streak, ranks,
-// wishlist, album, equipped items, etc.) run for the moderator showcase
-// self-view, which only shows badges/achievements/likes/followers/
-// following/posts.
 export default function Profile() {
-  const { profile, loading } = useProfile()
-  const [isModerator, setIsModerator] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    if (!profile?.id) return
-    setIsModerator(null)
-    supabase.from('user_moderation').select('role').eq('user_id', profile.id).maybeSingle()
-      .then(({ data }) => setIsModerator(data?.role === 'moderator'))
-  }, [profile?.id])
-
-  if (loading || !profile || isModerator === null) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-        <span style={{ display: 'block', width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
-  }
-
-  return isModerator ? <ModeratorSelfProfile profile={profile} /> : <ProfileInner />
-}
-
-function ProfileInner() {
   const { profile, loading, refetch: refetchProfile } = useProfile()
   const navigate = useNavigate()
 
@@ -718,15 +688,32 @@ function ProfileInner() {
       .then(({ count }) => setAchievementCount(count ?? 0))
   }, [profile?.id])
 
-  // Check if currently playing a game (active session in last 5 mins)
+  // Live "currently playing" ticker — was previously a poll of game_sessions
+  // for "any session in the last 5 minutes", which is why it used to keep
+  // showing "Playing X" for up to 5 minutes after a game actually ended.
+  // Now subscribes to the same Realtime Presence channel useGamePresence
+  // broadcasts to, so it appears and disappears instantly, matching the
+  // "watching movie" ticker's behavior on the viewer-facing profile page.
   useEffect(() => {
     if (!profile?.id) return
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    supabase.from('game_sessions').select('game').eq('user_id', profile.id)
-      .gte('played_at', fiveMinAgo).order('played_at', { ascending: false }).limit(1)
-      .then(({ data }) => {
-        if (data && data.length > 0) setCurrentlyPlaying(data[0].game as string)
-      })
+    const channel = supabase.channel(`user-activity:${profile.id}`, {
+      config: { presence: { key: profile.id } },
+    })
+
+    function syncActivity() {
+      const state = channel.presenceState<{ activity: string; game?: string }>()
+      const entries = Object.values(state).flat()
+      const gameEntry = entries.find(e => e.activity === 'playing' && e.game)
+      setCurrentlyPlaying(gameEntry?.game ?? null)
+    }
+
+    channel
+      .on('presence', { event: 'sync' }, syncActivity)
+      .on('presence', { event: 'join' }, syncActivity)
+      .on('presence', { event: 'leave' }, syncActivity)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [profile?.id])
 
   // Load like count + whether I've liked my own profile
@@ -888,15 +875,19 @@ function ProfileInner() {
       </div>
 
       {/* ── Currently playing ── */}
-      {currentlyPlaying && (
-        <div style={{ margin: '0 20px 16px', padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <Gamepad2 size={14} style={{ color: '#4f8ef7', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
-            Playing <strong style={{ color: '#4f8ef7' }}>{GAME_LABELS[currentlyPlaying] ?? currentlyPlaying}</strong>
-          </span>
-        </div>
-      )}
+      {currentlyPlaying && (() => {
+        const gameMeta = getGameById(currentlyPlaying)
+        const GameIcon = gameMeta?.icon ?? Gamepad2
+        return (
+          <div style={{ margin: '0 20px 16px', padding: '10px 14px', borderRadius: 14, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <GameIcon size={14} style={{ color: '#4f8ef7', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+              Playing <strong style={{ color: '#4f8ef7' }}>{gameMeta?.name ?? currentlyPlaying}</strong>
+            </span>
+          </div>
+        )
+      })()}
 
       {/* ── Grid Advert: rectangle bars, tap for detail ── */}
       <div style={{ padding: '0 20px', marginBottom: 20 }}>
