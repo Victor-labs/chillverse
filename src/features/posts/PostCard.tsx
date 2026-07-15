@@ -15,6 +15,8 @@ import { getTagColor } from './tagColor'
 import ReportModal from '../safety/ReportModal'
 import type { Post, PostTag } from './types'
 import HiddenContentNotice from '../moderation/HiddenContentNotice'
+import Avatar from '../../shared/components/Avatar'
+import { useProfilePreviewOptional } from '../../context/ProfilePreview'
 
 const TAG_ICON: Record<string, string> = {
   achievement: '🏆', game_result: '🎮', multiplayer_result: '⚔️', rank: '🎖️',
@@ -24,6 +26,7 @@ const TAG_ICON: Record<string, string> = {
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (postId: string) => void }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const preview = useProfilePreviewOptional()
   const [liked, setLiked] = useState(post.liked_by_me ?? false)
   const [likesCount, setLikesCount] = useState(post.likes_count)
   const [showComments, setShowComments] = useState(false)
@@ -71,7 +74,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
 
   function goToAuthorProfile() {
     if (isSystemOrAdmin || !post.author_id) return
-    navigate(post.author_id === user?.id ? '/profile' : `/profile/${post.author_id}`)
+    preview?.openProfilePreview(post.author_id)
   }
 
   function handleTagClick(tag: PostTag) {
@@ -126,22 +129,15 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   return (
     <div className="neu-card" style={{ padding: 16, marginBottom: 12 }}>
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={goToAuthorProfile}
+        <Avatar
+          src={author?.avatar}
+          name={authorName}
+          userId={isSystemOrAdmin ? null : post.author_id}
+          size={38}
+          radius={12}
           disabled={isSystemOrAdmin}
-          style={{
-            width: 38, height: 38, borderRadius: 12, flexShrink: 0, overflow: 'hidden',
-            background: 'linear-gradient(135deg, var(--purple), var(--blue))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 800, color: '#fff', border: 'none',
-            padding: 0, cursor: isSystemOrAdmin ? 'default' : 'pointer',
-          }}
-        >
-          {author?.avatar && author.avatar.startsWith('http')
-            ? <img src={author.avatar} alt={authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : authorName.charAt(0).toUpperCase()}
-        </button>
+          style={{ background: 'linear-gradient(135deg, var(--purple), var(--blue))' }}
+        />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="flex items-center">
             <button
@@ -211,6 +207,15 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       </div>
 
       {post.hidden ? <HiddenContentNotice reason={post.hidden_reason} /> : <PostBody body={post.body} />}
+
+      {!post.hidden && post.media_type === 'image' && post.media_url && (
+        <img
+          src={post.media_url}
+          alt=""
+          loading="lazy"
+          style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, marginTop: 10, display: 'block' }}
+        />
+      )}
 
       {/* Single achievement tag gets the rich inline card; anything else gets compact chips. */}
       {singleAchievementTag ? (

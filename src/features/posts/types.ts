@@ -44,6 +44,9 @@ export interface Post {
   created_at: string
   hidden: boolean
   hidden_reason: string | null
+  // attached image, if any (set by StaffComposer's uploadFeedImage — see staffPosts.ts)
+  media_url?: string | null
+  media_type?: 'image' | null
   // joined client-side, not a real column
   author?: PostAuthor
   liked_by_me?: boolean
