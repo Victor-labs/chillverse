@@ -118,7 +118,17 @@ export async function searchUserByUsername(username: string): Promise<{ data: (U
 
 export async function banUser(targetId: string, reason: string, durationHours: number | null): Promise<{ error: string | null }> {
   const { error } = await supabase.rpc('mod_ban_user', { p_target_id: targetId, p_reason: reason, p_duration_hours: durationHours })
-  return { error: friendlyError(error) }
+  if (error) return { error: friendlyError(error) }
+
+  // Best-effort: the ban itself already succeeded and is fully in effect
+  // regardless of whether the email goes out, so a failure here is logged
+  // but not surfaced as if the ban itself failed.
+  const { error: emailError } = await supabase.functions.invoke('send-ban-notice', {
+    body: { target_user_id: targetId },
+  })
+  if (emailError) console.error('[moderation] ban notice email failed to send:', emailError)
+
+  return { error: null }
 }
 
 export async function unbanUser(targetId: string): Promise<{ error: string | null }> {
