@@ -50,6 +50,7 @@ const SupportArticle      = lazy(() => import('../features/support/SupportArticl
 const NewTicket           = lazy(() => import('../features/support/NewTicket'))
 const MyTickets           = lazy(() => import('../features/support/MyTickets'))
 const ModerationPanel     = lazy(() => import('../features/moderation/ModerationPanel'))
+const AdminDashboard      = lazy(() => import('../features/admin/AdminDashboard'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -169,6 +170,7 @@ export default function App() {
         <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
         <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
         <Route path="/moderation"       element={<Suspense fallback={<Fallback />}><ModerationPanel /></Suspense>} />
+        <Route path="/admin"            element={<Suspense fallback={<Fallback />}><AdminDashboard /></Suspense>} />
       </Route>
     </Routes>
   )
