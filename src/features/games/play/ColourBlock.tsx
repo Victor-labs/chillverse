@@ -97,11 +97,11 @@ function gridCols(count: number) {
   return Math.min(4, Math.max(3, Math.ceil(Math.sqrt(count))))
 }
 function xpForRounds(roundsCleared: number, won: boolean): number {
-  if (won) return 590
-  if (roundsCleared >= 9) return 450
-  if (roundsCleared >= 6) return 150
-  if (roundsCleared >= 3) return 90
-  if (roundsCleared >= 1) return 40
+  if (won) return 90
+  if (roundsCleared >= 9) return 70
+  if (roundsCleared >= 6) return 40
+  if (roundsCleared >= 3) return 20
+  if (roundsCleared >= 1) return 10
   return 0
 }
 

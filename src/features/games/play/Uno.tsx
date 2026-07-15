@@ -87,10 +87,10 @@ function legalMoves(hand: UCard[], top: UCard, activeColor: UColor | null, pendi
 type AILevel = 'easy' | 'hard' | 'expert'
 interface UnoRankCfg { ai: AILevel; aiLabel: string; winXP: number; loseXPRange: [number, number]; streakRequired: number }
 const UNO_RANK_CONFIG: Record<GameRank, UnoRankCfg> = {
-  beginner:     { ai: 'easy',   aiLabel: 'Halo (Rookie)',  winXP: 590,  loseXPRange: [12, 24], streakRequired: 5 },
-  intermediate: { ai: 'easy',   aiLabel: 'Halo (Sharp)',   winXP: 720,  loseXPRange: [14, 26], streakRequired: 5 },
-  advanced:     { ai: 'hard',   aiLabel: 'Halo (Veteran)', winXP: 900,  loseXPRange: [16, 30], streakRequired: 5 },
-  master:       { ai: 'expert', aiLabel: 'Halo (Master)',  winXP: 1000, loseXPRange: [20, 38], streakRequired: 0 },
+  beginner:     { ai: 'easy',   aiLabel: 'Halo (Rookie)',  winXP: 90,   loseXPRange: [12, 24], streakRequired: 5 },
+  intermediate: { ai: 'easy',   aiLabel: 'Halo (Sharp)',   winXP: 110,  loseXPRange: [14, 26], streakRequired: 5 },
+  advanced:     { ai: 'hard',   aiLabel: 'Halo (Veteran)', winXP: 140,  loseXPRange: [16, 30], streakRequired: 5 },
+  master:       { ai: 'expert', aiLabel: 'Halo (Master)',  winXP: 170,  loseXPRange: [20, 38], streakRequired: 0 },
 }
 
 // ─── Mutable game state (kept in a ref; component force-renders on change) ───

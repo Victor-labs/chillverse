@@ -1,6 +1,6 @@
 // src/pages/games/PatternKing.tsx
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, Eye, Zap } from 'lucide-react'
+import { Sparkles, Eye, Zap, Flag } from 'lucide-react'
 import type { GameRank, GameEndPayload } from './types'
 import { useGamePresence } from '../useGamePresence'
 import { getRankConfig } from './types'
@@ -46,16 +46,17 @@ const RANK_CONFIG: Record<GameRank, RankPKConfig> = {
   master:       { cols: 6, rows: 4, peekMs: 3000, timeSec: 60, requiredTypes: 3, shuffles: 3, shuffleIntervalMs: 9000,  streakRequired: 0 },
 }
 
-// ─── Flat XP tiers (per design spec — not the usual per-correct formula) ───
-// Win, but used up most of the clock        → wasted time   = 780 XP
-// Win, finished with plenty of time to spare → no waste      = 900 XP
-// Lost, but found half or more of patterns   → solid attempt = 350 XP
-// Lost early / found less than half          → rough attempt = 150 XP
-const XP_WIN_EFFICIENT = 900
-const XP_WIN_WASTED     = 780
-const XP_LOSE_PARTIAL   = 350
-const XP_LOSE_WEAK      = 150
+// ─── Flat XP tiers per round (session-accumulated, capped like other games) ───
+// Win, but used up most of the clock        → wasted time   = 70 XP
+// Win, finished with plenty of time to spare → no waste      = 90 XP
+// Lost, but found half or more of patterns   → solid attempt = 35 XP
+// Lost early / found less than half          → rough attempt = 15 XP
+const XP_WIN_EFFICIENT = 90
+const XP_WIN_WASTED     = 70
+const XP_LOSE_PARTIAL   = 35
+const XP_LOSE_WEAK      = 15
 const WASTE_THRESHOLD   = 0.65 // used more than 65% of allotted time = "wasted time"
+const SESSION_XP_CAP    = 300  // total XP cap per session, same ceiling used across the app
 
 function shuffleArr<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -123,6 +124,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
   const [praise, setPraise] = useState<{ text: string; key: number } | null>(null)
   const [promoted, setPromoted] = useState<GameRank | null>(null)
   const [result, setResult] = useState<GameEndPayload | null>(null)
+  const [sessionXP, setSessionXP] = useState(0)
 
   const needRef = useRef<Record<string, number>>({})
   const doneCountRef = useRef<Record<string, number>>({})
@@ -133,6 +135,13 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
   const lockedRef = useRef(false)
   const gameOverRef = useRef(false)
 
+  // ─── Session-level accumulators (persist across rounds until End Session / loss) ───
+  const sessionXpRef = useRef(0)
+  const sessionStartRef = useRef(Date.now())
+  const roundsWonRef = useRef(0)
+  const matchedAggRef = useRef(0)   // total patterns matched across all rounds this session
+  const requiredAggRef = useRef(0)  // total patterns required across all rounds this session
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const peekTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -141,7 +150,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
   const wrongTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shuffleCountRef = useRef(0)
 
-  function getCfg() { return RANK_CONFIG[rankState.rank] }
+  function getCfg(rank?: GameRank) { return RANK_CONFIG[rank ?? rankState.rank] }
 
   function clearTimers() {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -186,13 +195,27 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
     }, 750)
   }
 
-  function start() {
-    const cfg = getCfg()
+  // Called once, when a fresh session starts (from the pre-game modal, or "Play Again" after the result screen)
+  function beginSession() {
+    sessionXpRef.current = 0
+    sessionStartRef.current = Date.now()
+    roundsWonRef.current = 0
+    matchedAggRef.current = 0
+    requiredAggRef.current = 0
+    scoreRef.current = 0
+    setScore(0)
+    setSessionXP(0)
+    startRound()
+  }
+
+  // Called for every round within the session (round 1, and every round after a win) —
+  // deliberately does NOT touch score/XP session totals so they keep accumulating.
+  function startRound(rankOverride?: GameRank) {
+    const cfg = getCfg(rankOverride)
     const { cards: deck, required: req, need } = buildDeck(cfg)
     needRef.current = need
     doneCountRef.current = {}
     req.forEach(p => { doneCountRef.current[p.sym] = 0 })
-    scoreRef.current = 0
     matchedTypesRef.current = 0
     shuffleCountRef.current = 0
     gameOverRef.current = false
@@ -203,7 +226,6 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
     setCards(deck)
     setRequired(req)
     setDone(new Set())
-    setScore(0)
     setTimeLeft(cfg.timeSec)
     setWrongId(null)
     setPromoted(null)
@@ -248,7 +270,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
     timerRef.current = setInterval(() => {
       if (gameOverRef.current) return
       setTimeLeft(t => {
-        if (t <= 1) { endGame(false); return 0 }
+        if (t <= 1) { finishRound(false); return 0 }
         return t - 1
       })
     }, 1000)
@@ -256,48 +278,72 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
     if (cfg.shuffles > 0) scheduleShuffle(cfg)
   }
 
-  function endGame(win: boolean) {
+  // Called whenever a round concludes — a win keeps the session going (straight into a
+  // fresh, harder round, no modal); a loss ends the whole session and shows the result screen.
+  function finishRound(win: boolean) {
     if (gameOverRef.current) return
     gameOverRef.current = true
     lockedRef.current = true
     clearTimers()
 
-    const dur = Math.floor((Date.now() - startRef.current) / 1000)
     const requiredCount = required.length
     const matchedCount = matchedTypesRef.current
     const timeUsedRatio = 1 - (timeLeft / totalTimeRef.current)
 
-    let xp: number
+    let roundXp: number
     if (win) {
-      xp = timeUsedRatio <= WASTE_THRESHOLD ? XP_WIN_EFFICIENT : XP_WIN_WASTED
+      roundXp = timeUsedRatio <= WASTE_THRESHOLD ? XP_WIN_EFFICIENT : XP_WIN_WASTED
     } else {
-      xp = requiredCount > 0 && matchedCount / requiredCount >= 0.5 ? XP_LOSE_PARTIAL : XP_LOSE_WEAK
+      roundXp = requiredCount > 0 && matchedCount / requiredCount >= 0.5 ? XP_LOSE_PARTIAL : XP_LOSE_WEAK
     }
+
+    sessionXpRef.current = Math.min(sessionXpRef.current + roundXp, SESSION_XP_CAP)
+    setSessionXP(sessionXpRef.current)
+    matchedAggRef.current += matchedCount
+    requiredAggRef.current += requiredCount
 
     const finishDelay = win ? 700 : 350
     setTimeout(() => {
-      const payload: GameEndPayload = {
-        gameId: GAME_ID,
-        gameName: 'Pattern King',
-        rank: rankState.rank,
-        score: scoreRef.current,
-        xpEarned: xp,
-        durationSec: dur,
-        streak: rankState.bestStreak,
-        correct: matchedCount,
-        total: requiredCount,
-        detail: { 'Patterns Found': `${matchedCount}/${requiredCount}` },
-      }
       if (win) {
+        roundsWonRef.current += 1
         const { promoted: promo } = onCorrect(getRankConfig(rankState.rank).streakRequired)
         if (promo) setPromoted(promo)
+        startRound(promo ?? undefined) // straight into the next round — harder immediately if just promoted
       } else {
         onWrong()
+        finalizeSession()
       }
-      setResult(payload)
-      setPhase('result')
-      onEnd(payload)
     }, finishDelay)
+  }
+
+  // Ends the session — either from a loss, or the player tapping "End Session" —
+  // submits everything accumulated across every round played this session.
+  function finalizeSession() {
+    clearTimers()
+    gameOverRef.current = true
+    lockedRef.current = true
+    const dur = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+    const payload: GameEndPayload = {
+      gameId: GAME_ID,
+      gameName: 'Pattern King',
+      rank: rankState.rank,
+      score: scoreRef.current,
+      xpEarned: sessionXpRef.current,
+      durationSec: dur,
+      streak: rankState.bestStreak,
+      correct: matchedAggRef.current,
+      total: requiredAggRef.current,
+      detail: { 'Rounds Won': roundsWonRef.current },
+    }
+    setResult(payload)
+    setPhase('result')
+    onEnd(payload)
+  }
+
+  function handleEndSession() {
+    if (phase !== 'play' && phase !== 'peek') return
+    if (scoreRef.current <= 0 && roundsWonRef.current <= 0) return
+    finalizeSession()
   }
 
   function onCardClick(id: number) {
@@ -319,7 +365,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
       setBanner('Wrong card!')
       wrongTimeoutRef.current = setTimeout(() => {
         setWrongId(null)
-        endGame(false)
+        finishRound(false)
       }, 900)
       return
     }
@@ -337,13 +383,14 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
       scoreRef.current += 300
       matchedTypesRef.current += 1
       setScore(scoreRef.current)
-      const praiseText = PRAISE[Math.floor(Math.random() * PRAISE.length)]
+      const roundWon = matchedTypesRef.current >= required.length
+      const praiseText = roundWon ? 'Level Up! ⚡' : PRAISE[Math.floor(Math.random() * PRAISE.length)]
       playPraiseSound(praiseText)
       setPraise({ text: praiseText, key: Date.now() })
       setTimeout(() => setPraise(null), 1300)
 
-      if (matchedTypesRef.current >= required.length) {
-        setTimeout(() => endGame(true), 600)
+      if (roundWon) {
+        setTimeout(() => finishRound(true), 600)
       }
     }
     // Card stays flipped face-up and locked (counted) until its pattern is fully found —
@@ -373,14 +420,14 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
       rules={rules}
       rankState={rankState}
       streakRequired={rankCfg.streakRequired}
-      onStart={start}
+      onStart={beginSession}
       onClose={onBack}
     />
   )
 
   if (phase === 'result' && result) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <ResultScreen payload={result} accent={ACCENT} onReplay={() => { setResult(null); start() }} onBack={onBack} promoted={promoted} sessionsLeft={sessionsLeft} sessionCost={sessionCost} />
+      <ResultScreen payload={result} accent={ACCENT} onReplay={() => { setResult(null); beginSession() }} onBack={onBack} promoted={promoted} sessionsLeft={sessionsLeft} sessionCost={sessionCost} />
     </div>
   )
 
@@ -394,9 +441,27 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
         icon={<Sparkles size={14} />}
         streak={rankState.currentStreak}
         onQuit={() => setPhase('quit')}
+        extraLeft={
+          (scoreRef.current > 0 || roundsWonRef.current > 0) ? (
+            <button
+              type="button"
+              onClick={handleEndSession}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                height: 32, borderRadius: 9, padding: '0 10px',
+                background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
+                boxShadow: '2px 2px 6px var(--neu-dark)', color: 'var(--text-dim)',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              <Flag size={12} /> End
+            </button>
+          ) : undefined
+        }
         extraRight={
           <div style={{ display: 'flex', gap: 6 }}>
             <StatChip label="Score" value={score} accent={ACCENT} />
+            <StatChip label="XP" value={sessionXP} accent="var(--gold)" />
             <StatChip label="Time" value={`${phase === 'peek' ? peekSecLeft : timeLeft}s`} />
           </div>
         }
