@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
+import SharedAvatar from '../../shared/components/Avatar'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import { notifyMessage } from '../achievements/achievements'
 import { useAuth } from '../auth/useAuth'
@@ -118,29 +119,10 @@ function IBtn({ onClick, children, style }: {
 }
 
 function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; avatarUrl?: string | null; size?: number; radius?: number }) {
-  const colors = ['#ff6b6b','#4f8ef7','#9b6dff','#3ecf8e','#f5c542','#ff4d8b','#ff9a3c','#00e5ff']
-  const color = colors[(name.charCodeAt(0) || 0) % colors.length]
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        style={{ width:size, height:size, borderRadius:radius, objectFit:'cover', flexShrink:0, display:'block' }}
-        onError={e => {
-          // fall back to initials if image fails to load
-          const el = e.currentTarget
-          el.style.display = 'none'
-          const fallback = el.nextElementSibling as HTMLElement | null
-          if (fallback) fallback.style.display = 'flex'
-        }}
-      />
-    )
-  }
-  return (
-    <div style={{ width:size, height:size, borderRadius:radius, background:color, color:'#fff', fontWeight:700, fontSize:size*0.35, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-      {(name || '?').charAt(0).toUpperCase()}
-    </div>
-  )
+  // Thin wrapper over the shared Avatar so every call site in this file
+  // (which uses the avatarUrl/name/size/radius shape) keeps working
+  // unchanged, while gaining a real fallback for missing/broken images.
+  return <SharedAvatar src={avatarUrl} name={name} size={size} radius={radius} disabled />
 }
 
 /** Small green presence dot, absolutely positioned over the bottom-right corner
