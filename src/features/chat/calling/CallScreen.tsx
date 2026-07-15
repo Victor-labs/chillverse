@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react'
 import { Mic, MicOff, PhoneOff, ChevronDown } from 'lucide-react'
 import { useCall } from './CallContext'
+import Avatar from '../../../shared/components/Avatar'
 
 function formatCallDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
@@ -73,13 +74,7 @@ export default function CallScreen() {
             width:120, height:120, borderRadius:'50%', overflow:'hidden', flexShrink:0,
             boxShadow:'0 20px 60px rgba(0,0,0,0.5)',
           }}>
-            {otherParticipant.avatar ? (
-              <img src={otherParticipant.avatar} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            ) : (
-              <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#4f8ef7', color:'#fff', fontSize:42, fontWeight:700 }}>
-                {name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <Avatar src={otherParticipant.avatar} name={name} size={120} radius="50%" disabled />
           </div>
           <div style={{ fontSize:22, fontWeight:700, color:'#fff' }}>{name}</div>
         </div>

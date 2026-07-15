@@ -1,6 +1,7 @@
 // src/features/chat/calling/MinimizedCallBar.tsx
 import { PhoneOff, ChevronUp } from 'lucide-react'
 import { useCall } from './CallContext'
+import Avatar from '../../../shared/components/Avatar'
 
 function formatCallDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
@@ -37,15 +38,7 @@ export default function MinimizedCallBar() {
         border:'1px solid rgba(255,107,0,0.3)', borderRadius:14,
         boxShadow:'0 8px 24px rgba(0,0,0,0.4)', cursor:'pointer', textAlign:'left',
       }}>
-      <div style={{
-        width:34, height:34, borderRadius:10, overflow:'hidden', flexShrink:0,
-        background: otherParticipant.avatar ? 'transparent' : '#4f8ef7',
-        display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:15, fontWeight:700,
-      }}>
-        {otherParticipant.avatar ? (
-          <img src={otherParticipant.avatar} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-        ) : name.charAt(0).toUpperCase()}
-      </div>
+      <Avatar src={otherParticipant.avatar} name={name} size={34} radius={10} disabled />
 
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>

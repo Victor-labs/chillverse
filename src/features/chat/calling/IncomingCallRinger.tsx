@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react'
 import { Phone, PhoneOff, Video } from 'lucide-react'
 import { useCall } from './CallContext'
+import Avatar from '../../../shared/components/Avatar'
 
 /** Generates a simple two-tone ring pattern with the Web Audio API so the
  *  feature doesn't depend on bundling/hosting an audio asset file. Loops
@@ -73,13 +74,7 @@ export default function IncomingCallRinger() {
           boxShadow:'0 0 0 4px rgba(255,107,0,0.25), 0 20px 60px rgba(0,0,0,0.5)',
           animation:'callPulse 1.6s ease-in-out infinite',
         }}>
-          {otherParticipant.avatar ? (
-            <img src={otherParticipant.avatar} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-          ) : (
-            <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#4f8ef7', color:'#fff', fontSize:42, fontWeight:700 }}>
-              {name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar src={otherParticipant.avatar} name={name} size={120} radius="50%" disabled />
         </div>
         <div style={{ fontSize:22, fontWeight:700, color:'var(--text)' }}>{name}</div>
         <div style={{ fontSize:13, color:'var(--text-muted)' }}>@{otherParticipant.username}</div>
