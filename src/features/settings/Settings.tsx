@@ -13,6 +13,7 @@ import { useProfile } from '../profile/useProfile'
 import { isProActive } from '../../shared/lib/proPlans'
 import { useAuth } from '../auth/useAuth'
 import { supabase } from '../../shared/lib/supabase'
+import Avatar from '../../shared/components/Avatar'
 import { signOut } from '../auth/auth'
 import PageOnboarding from '../onboarding/PageOnboarding'
 
@@ -343,12 +344,8 @@ export default function Settings() {
 
         <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '20px 18px', marginBottom: 8, boxShadow: '4px 4px 12px var(--neu-dark),-2px -2px 8px var(--neu-light)', animation: 'feedIn 0.3s ease-out both', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: 58, height: 58, borderRadius: 17, background: 'linear-gradient(135deg, var(--purple), var(--blue))', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 4px 16px rgba(155,109,255,0.3)' }}>
-              {profile?.avatar && profile.avatar.startsWith('http') ? (
-                <img src={profile.avatar} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }} />
-              ) : (
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{displayName.charAt(0).toUpperCase()}</span>
-              )}
+            <div style={{ width: 58, height: 58, borderRadius: 17, boxShadow: '0 4px 16px rgba(155,109,255,0.3)' }}>
+              <Avatar src={profile?.avatar} name={displayName} size={58} radius={17} disabled style={{ background: 'linear-gradient(135deg, var(--purple), var(--blue))' }} />
             </div>
             {isPro && (
               <span style={{
