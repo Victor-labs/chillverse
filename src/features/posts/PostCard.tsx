@@ -2,9 +2,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Sparkles, MoreVertical, Share2, Trash2, Check, Flag } from 'lucide-react'
+import { Heart, MessageCircle, Sparkles, MoreVertical, Share2, Trash2, Check, Flag, Pin, PinOff, Megaphone } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
+import { useModRole } from '../moderation/useModRole'
 import { toggleLike, deletePost } from './posts'
+import { setAnnouncementPinned } from './staffPosts'
 import { ripple } from '../../shared/lib/ripple'
 import CommentThread from './CommentThread'
 import FollowButton from './FollowButton'
@@ -22,12 +24,20 @@ const TAG_ICON: Record<string, string> = {
   streak: '🔥', mission: '📋', user: '👤', avatar: '🖼️', artifact: '💎', mall_item: '🛍️',
 }
 
+const KIND_LABEL: Record<string, string> = {
+  announcement: 'Announcement',
+  feature_update: 'Feature Update',
+}
+
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (postId: string) => void }) {
   const { user } = useAuth()
+  const { isStaff } = useModRole()
   const navigate = useNavigate()
   const { openProfilePreview } = useProfilePreview()
   const [liked, setLiked] = useState(post.liked_by_me ?? false)
   const [likesCount, setLikesCount] = useState(post.likes_count)
+  const [pinned, setPinned] = useState(post.pinned)
+  const [pinning, setPinning] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [showInfluenceModal, setShowInfluenceModal] = useState(false)
   const [modalAchievementId, setModalAchievementId] = useState<string | null>(null)
@@ -38,7 +48,11 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   const [reportOpen, setReportOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  const isSystemOrAdmin = post.author_type !== 'user'
   const isAuthor = !!user && post.author_type === 'user' && post.author_id === user.id
+  const isStaffPost = isSystemOrAdmin
+  const canManageAsStaff = isStaff && isStaffPost
+  const canDelete = isAuthor || canManageAsStaff
 
   useEffect(() => {
     if (!menuOpen) return
@@ -56,8 +70,8 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       ? (author?.display_name || author?.username || 'Admin')
       : (author?.display_name || author?.username || 'Unknown')
 
-  const isSystemOrAdmin = post.author_type !== 'user'
   const singleAchievementTag = post.tags.length === 1 && post.tags[0].type === 'achievement' ? post.tags[0] : null
+  const kindLabel = isStaffPost ? KIND_LABEL[post.post_kind] : undefined
 
   async function handleLike() {
     if (!user) return
@@ -68,6 +82,18 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
     if (!ok) {
       setLiked(!next)
       setLikesCount(c => c + (next ? -1 : 1))
+    }
+  }
+
+  async function handleTogglePin() {
+    if (pinning) return
+    setPinning(true)
+    const next = !pinned
+    const ok = await setAnnouncementPinned(post.id, next)
+    setPinning(false)
+    if (ok) {
+      setPinned(next)
+      setMenuOpen(false)
     }
   }
 
@@ -126,15 +152,29 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   }
 
   return (
-    <div className="neu-card" style={{ padding: 16, marginBottom: 12 }}>
+    <div className="neu-card" style={{ padding: 16, marginBottom: 12, position: 'relative' }}>
+      {pinned && isStaffPost && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10, fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <Pin size={11} fill="var(--gold)" /> Pinned
+        </div>
+      )}
       <div className="flex items-center gap-3">
-        <Avatar
-          src={author?.avatar} name={authorName} size={38}
-          onClick={isSystemOrAdmin ? undefined : goToAuthorProfile}
-          disabled={isSystemOrAdmin}
-        />
+        {isStaffPost ? (
+          <div style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            background: 'linear-gradient(135deg, var(--purple), var(--blue))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+          }}>
+            <Megaphone size={16} />
+          </div>
+        ) : (
+          <Avatar
+            src={author?.avatar} name={authorName} size={38}
+            onClick={goToAuthorProfile}
+          />
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="flex items-center">
+          <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={goToAuthorProfile}
@@ -151,6 +191,11 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
                 </span>
               )}
             </button>
+            {kindLabel && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--blue)', background: 'rgba(91,156,255,0.12)', padding: '1px 6px', borderRadius: 6 }}>
+                {kindLabel}
+              </span>
+            )}
             {user && !isSystemOrAdmin && post.author_id && (
               <FollowButton myId={user.id} authorId={post.author_id} />
             )}
@@ -169,7 +214,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
             <MoreVertical size={16} />
           </button>
           {menuOpen && (
-            <div className="neu-card" style={{ position: 'absolute', right: 0, top: '110%', zIndex: 20, padding: 6, minWidth: 150 }}>
+            <div className="neu-card" style={{ position: 'absolute', right: 0, top: '110%', zIndex: 20, padding: 6, minWidth: 170 }}>
               <button
                 type="button"
                 onClick={handleShare}
@@ -178,7 +223,18 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
                 {linkCopied ? <Check size={14} color="var(--gold)" /> : <Share2 size={14} />}
                 {linkCopied ? 'Link copied!' : 'Share'}
               </button>
-              {isAuthor && (
+              {canManageAsStaff && (
+                <button
+                  type="button"
+                  onClick={handleTogglePin}
+                  disabled={pinning}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', padding: '8px 10px', borderRadius: 8, cursor: pinning ? 'default' : 'pointer', color: 'var(--gold)', fontSize: 12.5, textAlign: 'left', opacity: pinning ? 0.6 : 1 }}
+                >
+                  {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                  {pinned ? 'Unpin' : 'Pin to top'}
+                </button>
+              )}
+              {canDelete && (
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); setConfirmingDelete(true) }}
@@ -202,6 +258,12 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       </div>
 
       <PostBody body={post.body} />
+
+      {post.media_url && (
+        <div style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden' }}>
+          <img src={post.media_url} alt="" style={{ width: '100%', maxHeight: 360, objectFit: 'cover', display: 'block' }} loading="lazy" />
+        </div>
+      )}
 
       {/* Single achievement tag gets the rich inline card; anything else gets compact chips. */}
       {singleAchievementTag ? (
