@@ -2,7 +2,7 @@
 import {
   Laptop, Gift, Target, Compass, UserCircle2, Sparkles,
   Shield, Star, Crown, BadgeCheck, Megaphone, Orbit, Moon, Gem,
-  HandMetal, Sailboat, HandFist,
+  HandMetal, Anchor, Medal,
 } from 'lucide-react'
 import type React from 'react'
 
@@ -28,8 +28,8 @@ export const BADGE_ICON_MAP: Record<string, LucideIcon> = {
   'gem': Gem,
   // Leaderboard / artifacts badges
   'hand-metal': HandMetal,
-  'sailboat': Sailboat,
-  'hand-fist': HandFist,
+  'anchor': Anchor,
+  'medal': Medal,
 }
 
 export function BadgeIcon({ iconKey, size = 16, color }: { iconKey: string; size?: number; color?: string }) {
