@@ -1,7 +1,7 @@
 // src/features/badges/badgeIcons.tsx
 import {
   Laptop, Gift, Target, Compass, UserCircle2, Sparkles,
-  Shield, Star, Crown, BadgeCheck, Megaphone,
+  Shield, Star, Crown, BadgeCheck, Megaphone, Orbit, Moon, Gem,
 } from 'lucide-react'
 import type React from 'react'
 
@@ -22,6 +22,9 @@ export const BADGE_ICON_MAP: Record<string, LucideIcon> = {
   'crown': Crown,
   'badge-check': BadgeCheck,
   'megaphone': Megaphone,
+  'orbit': Orbit,
+  'moon': Moon,
+  'gem': Gem,
 }
 
 export function BadgeIcon({ iconKey, size = 16, color }: { iconKey: string; size?: number; color?: string }) {
