@@ -51,6 +51,7 @@ const NewTicket           = lazy(() => import('../features/support/NewTicket'))
 const MyTickets           = lazy(() => import('../features/support/MyTickets'))
 const ModerationPanel     = lazy(() => import('../features/moderation/ModerationPanel'))
 const AdminDashboard      = lazy(() => import('../features/admin/AdminDashboard'))
+const Leaderboards        = lazy(() => import('../features/leaderboards/Leaderboards'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -137,6 +138,7 @@ export default function App() {
         <Route path="/dashboard"        element={<Dashboard />} />
         <Route path="/coming-soon"      element={<ComingSoon />} />
         <Route path="/games"            element={<Suspense fallback={<Fallback />}><Games /></Suspense>} />
+        <Route path="/leaderboards"     element={<Suspense fallback={<Fallback />}><Leaderboards /></Suspense>} />
         <Route path="/exploration"      element={<Suspense fallback={<Fallback />}><Exploration /></Suspense>} />
         <Route path="/mall"             element={<Suspense fallback={<Fallback />}><Mall /></Suspense>} />
         <Route path="/gift"             element={<Suspense fallback={<Fallback />}><GiftPage /></Suspense>} />

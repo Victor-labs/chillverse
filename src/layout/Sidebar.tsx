@@ -27,8 +27,9 @@ const NAV_ITEMS: NavItem[] = [
     icon: Gamepad2,
     badge: null,
     children: [
-      { label: 'Play Games',   to: '/games',       icon: GamepadIcon },
-      { label: 'Exploration',  to: '/exploration', icon: Compass     },
+      { label: 'Play Games',    to: '/games',        icon: GamepadIcon },
+      { label: 'Leaderboards',  to: '/leaderboards', icon: Trophy      },
+      { label: 'Exploration',   to: '/exploration',  icon: Compass     },
     ],
   },
   {
@@ -94,7 +95,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
     const s = new Set<string>()
     if (pathname === '/mall' || pathname === '/inventory') s.add('Mall')
     if (pathname === '/profile' || pathname === '/wallet') s.add('Profile')
-    if (pathname === '/games' || pathname === '/exploration') s.add('Games')
+    if (pathname === '/games' || pathname === '/leaderboards' || pathname === '/exploration') s.add('Games')
     if (pathname === '/settings' || pathname === '/version') s.add('Settings')
     return s
   })
