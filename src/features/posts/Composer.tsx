@@ -43,6 +43,15 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [followerUsernames, setFollowerUsernames] = useState<Set<string>>(new Set())
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!open) { setVisible(false); return }
+    const raf = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(raf)
+  }, [open])
+
+  function close() { setVisible(false); setTimeout(onClose, 280) }
 
   const backdropRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -103,7 +112,7 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
       setTags([])
       setCommentable(false)
       onPosted()
-      onClose()
+      close()
     } else {
       setSubmitError(error.message || 'Failed to post. Please try again.')
     }
@@ -112,21 +121,21 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
   const bodyTokens = tokenizeBody(body, followerUsernames)
 
   return createPortal(
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 100 }}
-      onClick={onClose}
-    >
-      <div
-        className="neu-card"
-        style={{
-          width: '100%', maxWidth: 800, margin: '0 auto', padding: 18, borderRadius: '20px 20px 0 0',
-          maxHeight: '85vh', overflowY: 'auto',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <>
+      <div className="overlay-backdrop" onClick={close} style={{ zIndex: 100 }} />
+      {/* Mobile: bottom sheet | Desktop (lg+): centered modal */}
+      <div className="sheet-or-modal sheet-or-modal-wide" style={{ zIndex: 105 }}>
+        <div
+          className="neu-card sheet-or-modal-inner"
+          style={{
+            padding: 18, maxHeight: '85vh', overflowY: 'auto',
+            transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
         <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>New Post</p>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)' }}>
+          <button type="button" onClick={close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)' }}>
             <X size={18} />
           </button>
         </div>
@@ -227,8 +236,9 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
             </button>
           </>
         )}
+        </div>
       </div>
-    </div>,
+    </>,
     document.body,
   )
 }
