@@ -9,6 +9,12 @@ export interface BadgeDef {
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
   grant_type: 'auto' | 'manual'
   is_dynamic_username: boolean
+  // When true, tapping the badge (BadgeRow / BadgesModal toast) shows the
+  // badge's `description` ("task") text instead of its `title`. Used for
+  // badges whose title alone doesn't say what was accomplished (e.g.
+  // "Leaderboard Legend" → shows "Top 1 on the leaderboard" on tap).
+  // Defaults to false for older rows that predate this column (title shown).
+  tap_shows_task?: boolean
 }
 
 export interface PlayerBadge {
@@ -47,7 +53,9 @@ export async function getPlayerBadges(userId: string): Promise<PlayerBadge[]> {
 //    is the exact bug this was built to avoid: the badge text would
 //    silently change on every rename instead of staying "legacy".
 export function badgeDisplayTitle(def: BadgeDef, originalUsername: string): string {
-  return def.is_dynamic_username ? `${def.title} ${originalUsername}` : def.title
+  if (def.is_dynamic_username) return `${def.title} ${originalUsername}`
+  if (def.tap_shows_task) return def.description
+  return def.title
 }
 
 // ── Re-checks and awards any automatic badges the player now qualifies
