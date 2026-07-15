@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
   User, Settings, Zap, X, ChevronLeft, ChevronRight,
-  Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers, ShieldCheck,
+  Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
@@ -81,11 +81,13 @@ interface SidebarProps {
 export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { isStaff } = useModRole()
+  const { isStaff, isAdmin } = useModRole()
 
-  const items: NavItem[] = isStaff
-    ? [...NAV_ITEMS, { label: 'Moderation', to: '/moderation', icon: ShieldCheck, badge: null }]
-    : NAV_ITEMS
+  const items: NavItem[] = [
+    ...NAV_ITEMS,
+    ...(isStaff ? [{ label: 'Moderation', to: '/moderation', icon: ShieldCheck, badge: null }] : []),
+    ...(isAdmin ? [{ label: 'Admin', to: '/admin', icon: LayoutDashboard, badge: null }] : []),
+  ]
 
   // Track which collapsible groups are open; default Mall open if active
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
