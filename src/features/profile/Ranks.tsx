@@ -213,6 +213,32 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
   )
 }
 
+// ─── Leaderboard exclusions ───────────────────────────
+// Dev/team accounts should never show up on the leaderboard — normal
+// players only. Two mechanisms, belt-and-suspenders:
+//  1. Anyone with a staff/moderator/admin role in `user_moderation` is
+//     excluded automatically (covers current + future team accounts).
+//  2. A hardcoded id backstop for specific accounts, in case a role ever
+//     gets reset/removed by accident. Confirmed via email lookup:
+//       - moderator.chillverse@gmail.com  → a7b1a79c-cd56-425d-b5e1-d8bcadf9b125 (moderator)
+//       - yungpresido76@gmail.com         → 5f971630-c7af-4aca-baab-d1f1f6571d12 (staff)
+//     "onyebobo@gmail.com" was a typo for onyebobo1234@gmail.com
+//     (username Victor_00) → e2a08967-976b-4abe-8e0f-df87ffbf5a18 (admin) — confirmed.
+const HARDCODED_EXCLUDED_IDS = [
+  'a7b1a79c-cd56-425d-b5e1-d8bcadf9b125',
+  '5f971630-c7af-4aca-baab-d1f1f6571d12',
+  'e2a08967-976b-4abe-8e0f-df87ffbf5a18',
+]
+
+async function getLeaderboardExclusionIds(): Promise<string[]> {
+  const { data } = await supabase
+    .from('user_moderation')
+    .select('user_id')
+    .in('role', ['staff', 'moderator', 'admin'])
+  const staffIds = (data ?? []).map(r => r.user_id)
+  return [...new Set([...staffIds, ...HARDCODED_EXCLUDED_IDS])]
+}
+
 // ══════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════
@@ -233,42 +259,55 @@ export default function Ranks() {
 
   // Load leaderboard — either everyone in the user's own rank tier (normal
   // view), or the full global ranking across all players (triggered by the
-  // "Check My Global Rank" toggle below).
+  // "Check My Global Rank" toggle below). Team/staff accounts are always
+  // excluded (see getLeaderboardExclusionIds above) — leaderboard is
+  // players only.
   useEffect(() => {
     if (!showLeaderboard) return
     setLbLoading(true)
 
-    if (lbMode === 'global') {
-      supabase
-        .from('profiles')
-        .select('id, display_name, username, xp, level, streak, avatar')
+    getLeaderboardExclusionIds().then(excludedIds => {
+      const excludeFilter = <T,>(q: T) =>
+        excludedIds.length > 0
+          ? (q as any).not('id', 'in', `(${excludedIds.join(',')})`)
+          : q
+
+      if (lbMode === 'global') {
+        excludeFilter(
+          supabase
+            .from('profiles')
+            .select('id, display_name, username, xp, level, streak, avatar')
+        )
+          .order('xp', { ascending: false })
+          .limit(200)
+          .then(({ data }: { data: LeaderboardEntry[] | null }) => {
+            setLeaderboard(data ?? [])
+            setLbLoading(false)
+          })
+        return
+      }
+
+      // Find user's rank tier bounds
+      const tier = getUserRankTier(userXp)
+      excludeFilter(
+        supabase
+          .from('profiles')
+          .select('id, display_name, username, xp, level, streak, avatar')
+          .gte('xp', tier.xpRequired)
+      )
         .order('xp', { ascending: false })
-        .limit(200)
-        .then(({ data }) => {
-          setLeaderboard((data ?? []) as LeaderboardEntry[])
+        .limit(100)
+        .then(({ data }: { data: LeaderboardEntry[] | null }) => {
+          const all = data ?? []
+          // filter to only this tier (xp < next tier threshold)
+          const nextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
+          const sameRank = nextTier
+            ? all.filter(p => p.xp < nextTier.xpRequired)
+            : all
+          setLeaderboard(sameRank)
           setLbLoading(false)
         })
-      return
-    }
-
-    // Find user's rank tier bounds
-    const tier = getUserRankTier(userXp)
-    supabase
-      .from('profiles')
-      .select('id, display_name, username, xp, level, streak, avatar')
-      .gte('xp', tier.xpRequired)
-      .order('xp', { ascending: false })
-      .limit(100)
-      .then(({ data }) => {
-        const all = (data ?? []) as LeaderboardEntry[]
-        // filter to only this tier (xp < next tier threshold)
-        const nextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
-        const sameRank = nextTier
-          ? all.filter(p => p.xp < nextTier.xpRequired)
-          : all
-        setLeaderboard(sameRank)
-        setLbLoading(false)
-      })
+    })
   }, [showLeaderboard, userXp, lbMode])
 
   // In global mode, once the (potentially long) full list loads, jump
