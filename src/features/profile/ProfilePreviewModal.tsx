@@ -1,0 +1,404 @@
+// src/features/profile/ProfilePreviewModal.tsx
+//
+// The "quick profile" card that pops up when you tap someone's avatar
+// anywhere in the app (feed, chat, search, comments, etc). Mirrors
+// Discord's profile popover: a small preview with the essentials and a
+// 3-dot menu, plus a way to jump to the full profile page.
+//
+// Layout is responsive: a bottom sheet that slides up on phones/tablets,
+// and a centered card modal on desktop — same data, same component.
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
+import {
+  X, MoreVertical, UserPlus, UserCheck, MessageCircle, ShieldOff, Copy, Flag, Check, Phone,
+} from 'lucide-react'
+import { supabase } from '../../shared/lib/supabase'
+import { useAuth } from '../auth/useAuth'
+import { ripple } from '../../shared/lib/ripple'
+import Avatar from '../../shared/components/Avatar'
+import { getUserRankTier } from './ranks'
+import { usePlayerBadges } from '../badges/usePlayerBadges'
+import { BadgeIcon } from '../badges/badgeIcons'
+import { BADGE_RARITY_COLOR, BADGE_RARITY_RANK, badgeDisplayTitle } from '../badges/badges'
+import ReportModal from '../safety/ReportModal'
+import { useCall } from '../chat/calling/CallContext'
+
+type Presence = 'online' | 'idle' | 'offline' | 'invisible'
+const PRESENCE_COLORS: Record<Presence, string> = {
+  online: '#3ecf8e', idle: '#f5c542', offline: '#888899', invisible: '#555566',
+}
+
+interface PreviewProfile {
+  id: string
+  username: string
+  display_name: string | null
+  avatar: string
+  bio: string | null
+  xp: number
+  created_at: string
+  presence: Presence | null
+  is_pro: boolean
+  original_username: string
+}
+
+const BADGE_PREVIEW_COUNT = 6
+
+export default function ProfilePreviewModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [profile, setProfile] = useState<PreviewProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
+  const [busy, setBusy] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [usernameCopied, setUsernameCopied] = useState(false)
+  const [callStarting, setCallStarting] = useState(false)
+  const { startCall, phase } = useCall()
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768)
+  const [closing, setClosing] = useState(false)
+  const [entered, setEntered] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const isMe = user?.id === userId
+
+  // Track viewport so the exact same modal switches between a bottom
+  // sheet (mobile) and a centered card (desktop) without a page reload.
+  useEffect(() => {
+    function onResize() { setIsDesktop(window.innerWidth >= 768) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+      if (!active) return
+      setProfile((data as PreviewProfile | null) ?? null)
+      setLoading(false)
+    })
+    return () => { active = false }
+  }, [userId])
+
+  useEffect(() => {
+    if (!user || isMe) return
+    let active = true
+    Promise.all([
+      supabase.from('follows').select('follower_id').eq('follower_id', user.id).eq('following_id', userId).maybeSingle(),
+      supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', userId).maybeSingle(),
+    ]).then(([followRes, blockRes]) => {
+      if (!active) return
+      if (blockRes.data) setFollowStatus('blocked')
+      else if (followRes.data) setFollowStatus('following')
+      else setFollowStatus('none')
+    })
+    return () => { active = false }
+  }, [user, userId, isMe])
+
+  const { badges, defs } = usePlayerBadges(userId)
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    if (menuOpen) document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
+
+  function close() {
+    setClosing(true)
+    setTimeout(onClose, 200)
+  }
+
+  async function handleFollow() {
+    if (!user || busy || followStatus === 'blocked') return
+    setBusy(true)
+    if (followStatus === 'following') {
+      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', userId)
+      setFollowStatus('none')
+    } else {
+      await supabase.from('follows').insert({ follower_id: user.id, following_id: userId })
+      setFollowStatus('following')
+    }
+    setBusy(false)
+  }
+
+  async function handleBlock() {
+    if (!user || busy) return
+    setBusy(true)
+    if (followStatus === 'blocked') {
+      await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', userId)
+      setFollowStatus('none')
+    } else {
+      await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: userId })
+      setFollowStatus('blocked')
+    }
+    setBusy(false)
+    setMenuOpen(false)
+  }
+
+  function handleCopyUsername() {
+    if (!profile) return
+    navigator.clipboard.writeText(`@${profile.username}`).then(() => {
+      setUsernameCopied(true)
+      setTimeout(() => { setUsernameCopied(false); setMenuOpen(false) }, 1000)
+    }).catch(() => setMenuOpen(false))
+  }
+
+  function viewFullProfile() {
+    close()
+    navigate(isMe ? '/profile' : `/profile/${userId}`)
+  }
+
+  function goToChat() {
+    close()
+    navigate('/chat', { state: { openDmWith: userId } })
+  }
+
+  async function handleCall() {
+    if (!profile || callStarting || phase !== 'idle') return
+    setCallStarting(true)
+    try {
+      const { data: roomId, error } = await supabase.rpc('get_or_create_dm_room', { p_other_user_id: userId })
+      if (error || !roomId) { setCallStarting(false); return }
+      await startCall(roomId as string, {
+        id: profile.id, username: profile.username, display_name: profile.display_name, avatar: profile.avatar,
+      }, 'audio')
+      close()
+    } finally {
+      setCallStarting(false)
+    }
+  }
+
+  const displayName = profile?.display_name || profile?.username || '…'
+  const rank = profile ? getUserRankTier(profile.xp) : null
+  const presence: Presence = (profile?.presence as Presence) || 'offline'
+  const memberSince = profile ? new Date(profile.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+
+  const ownedBadges = [...badges]
+    .map(b => defs.find(d => d.id === b.badge_id))
+    .filter((d): d is NonNullable<typeof d> => !!d)
+    .sort((a, b) => (BADGE_RARITY_RANK[a.rarity] ?? 9) - (BADGE_RARITY_RANK[b.rarity] ?? 9))
+    .slice(0, BADGE_PREVIEW_COUNT)
+
+  const sheetBase: React.CSSProperties = isDesktop
+    ? {
+      width: '100%', maxWidth: 380, borderRadius: 22, margin: 'auto',
+      transform: entered && !closing ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
+      opacity: entered && !closing ? 1 : 0,
+      transition: 'transform 0.22s cubic-bezier(0.34,1.3,0.64,1), opacity 0.2s ease',
+    }
+    : {
+      width: '100%', maxWidth: '100%', borderRadius: '22px 22px 0 0', marginTop: 'auto',
+      transform: entered && !closing ? 'translateY(0)' : 'translateY(100%)',
+      transition: 'transform 0.26s cubic-bezier(0.34,1.15,0.64,1)',
+      maxHeight: '86vh',
+    }
+
+  return createPortal(
+    <div
+      onClick={close}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 20000,
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: isDesktop ? 'center' : 'flex-end', justifyContent: 'center',
+        opacity: entered && !closing ? 1 : 0, transition: 'opacity 0.2s ease',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          ...sheetBase,
+          background: 'var(--bg)', overflowY: 'auto', position: 'relative',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), 0 20px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        {!isDesktop && (
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)', margin: '10px auto 0' }} />
+        )}
+
+        {/* Banner */}
+        <div style={{ position: 'relative', height: 74, background: 'linear-gradient(120deg, var(--accent), var(--accent2))' }}>
+          <button
+            type="button" onClick={close}
+            style={{ position: 'absolute', top: 10, right: 46, width: 30, height: 30, borderRadius: 9, background: 'rgba(0,0,0,0.28)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <X size={15} color="#fff" />
+          </button>
+          <div ref={menuRef} style={{ position: 'absolute', top: 10, right: 10 }}>
+            <button
+              type="button" onClick={() => setMenuOpen(v => !v)}
+              style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(0,0,0,0.28)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              <MoreVertical size={15} color="#fff" />
+            </button>
+            {menuOpen && (
+              <div style={{
+                position: 'absolute', top: 36, right: 0, minWidth: 190, background: 'var(--surface2)',
+                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 6,
+                boxShadow: '0 10px 32px rgba(0,0,0,0.5)', zIndex: 1,
+              }}>
+                <MenuItem icon={<UserCheck size={14} />} label="View full profile" onClick={() => { setMenuOpen(false); viewFullProfile() }} />
+                {!isMe && (
+                  <MenuItem
+                    icon={<ShieldOff size={14} />}
+                    label={followStatus === 'blocked' ? 'Unblock user' : 'Block user'}
+                    danger
+                    onClick={handleBlock}
+                  />
+                )}
+                <MenuItem icon={usernameCopied ? <Check size={14} /> : <Copy size={14} />} label={usernameCopied ? 'Copied!' : 'Copy username'} onClick={handleCopyUsername} />
+                {!isMe && (
+                  <MenuItem icon={<Flag size={14} />} label="Report" danger onClick={() => { setMenuOpen(false); setReportOpen(true) }} />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ padding: '0 18px 20px' }}>
+          {/* Avatar overlapping the banner */}
+          <div style={{ marginTop: -34, marginBottom: 8 }}>
+            <div style={{ position: 'relative', width: 68, height: 68 }}>
+              <Avatar
+                src={profile?.avatar} name={displayName} size={68} radius={20}
+                ring="var(--bg)" disabled
+              />
+              <div style={{
+                position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: '50%',
+                background: PRESENCE_COLORS[presence], border: '3px solid var(--bg)',
+              }} />
+            </div>
+          </div>
+
+          {loading ? (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '20px 0' }}>Loading profile…</p>
+          ) : !profile ? (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '20px 0' }}>This profile couldn't be loaded.</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {displayName}
+              </p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 1 }}>@{profile.username}</p>
+
+              {rank && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, padding: '3px 9px', borderRadius: 20, background: rank.color + '18', border: `1px solid ${rank.color}44` }}>
+                  <span>{rank.emoji}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: rank.color }}>{rank.name}</span>
+                </div>
+              )}
+
+              {profile.bio && (
+                <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.5 }}>{profile.bio}</p>
+              )}
+
+              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--surface)' }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Member Since</p>
+                <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{memberSince}</p>
+              </div>
+
+              {ownedBadges.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Badges</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {ownedBadges.map(def => {
+                      const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
+                      return (
+                        <div
+                          key={def.id}
+                          title={badgeDisplayTitle(def, profile.original_username)}
+                          style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33` }}
+                        >
+                          <BadgeIcon iconKey={def.icon} size={16} color={color} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!isMe && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button
+                    type="button" onClick={(e) => { ripple(e); handleFollow() }} disabled={busy || followStatus === 'blocked'}
+                    className="ripple-wrap"
+                    style={{
+                      flex: 1, padding: '11px 8px', borderRadius: 13, fontSize: 12.5, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: 'none',
+                      cursor: followStatus === 'blocked' ? 'not-allowed' : 'pointer',
+                      background: followStatus === 'following' ? 'rgba(62,207,142,0.15)' : 'linear-gradient(135deg,var(--accent),var(--accent2))',
+                      color: followStatus === 'following' ? '#3ecf8e' : '#fff',
+                      opacity: followStatus === 'blocked' ? 0.4 : 1,
+                    }}
+                  >
+                    {followStatus === 'following' ? <UserCheck size={14} /> : <UserPlus size={14} />}
+                    {followStatus === 'following' ? 'Following' : 'Add Friend'}
+                  </button>
+                  <button
+                    type="button" onClick={(e) => { ripple(e); goToChat() }}
+                    className="ripple-wrap"
+                    style={{ padding: '11px 14px', borderRadius: 13, border: 'none', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <MessageCircle size={16} />
+                  </button>
+                  <button
+                    type="button" onClick={(e) => { ripple(e); handleCall() }} disabled={callStarting || phase !== 'idle'}
+                    className="ripple-wrap"
+                    title={phase !== 'idle' ? 'Already on a call' : `Call ${displayName}`}
+                    style={{ padding: '11px 14px', borderRadius: 13, border: 'none', background: 'var(--surface2)', color: (callStarting || phase !== 'idle') ? 'var(--text-muted)' : 'var(--text)', cursor: (callStarting || phase !== 'idle') ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (callStarting || phase !== 'idle') ? 0.5 : 1 }}
+                  >
+                    <Phone size={16} />
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button" onClick={viewFullProfile}
+                style={{ width: '100%', marginTop: 10, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
+              >
+                View full profile
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {reportOpen && user && profile && (
+        <ReportModal
+          reporterId={user.id}
+          targetType="user"
+          targetId={profile.id}
+          targetLabel={displayName}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
+    </div>,
+    document.body,
+  )
+}
+
+function MenuItem({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      type="button" onClick={onClick}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 9,
+        background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+        fontSize: 12.5, fontWeight: 600, color: danger ? '#ff6b6b' : 'var(--text)',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface3)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
