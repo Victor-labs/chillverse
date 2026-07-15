@@ -1,10 +1,10 @@
 // src/features/admin/AdminDashboard.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ShieldAlert, Users, UserPlus, Crown, ShieldBan, Gem,
-  ShoppingBag, Gamepad2, Swords, Sparkles, Flag, LifeBuoy, RefreshCw, AlertTriangle,
+  ShoppingBag, Gamepad2, Swords, Sparkles, Flag, LifeBuoy, RefreshCw, AlertTriangle, Search, ChevronRight,
 } from 'lucide-react'
 import { useModRole } from '../moderation/useModRole'
 import { ripple } from '../../shared/lib/ripple'
@@ -53,8 +53,13 @@ function StatCard({
   )
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: '22px 0 10px' }}>{title}</h2>
+function SectionHeader({ title, kicker }: { title: string; kicker?: string }) {
+  return (
+    <div style={{ margin: '22px 0 10px' }}>
+      {kicker && <p style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 3px' }}>{kicker}</p>}
+      <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: 0 }}>{title}</h2>
+    </div>
+  )
 }
 
 function RankedList({ rows, primaryKey, countKey, secondaryKey }: {
@@ -90,6 +95,17 @@ function RankedList({ rows, primaryKey, countKey, secondaryKey }: {
   )
 }
 
+type AdminSection = 'overview' | 'economy' | 'games' | 'multiplayer' | 'halo' | 'operations'
+
+const ADMIN_SECTIONS: { key: AdminSection; label: string; description: string; icon: typeof Users }[] = [
+  { key: 'overview', label: 'Atrium', description: 'Platform pulse and account growth', icon: Users },
+  { key: 'economy', label: 'Mall economy', description: 'Diamonds, purchases, and item demand', icon: ShoppingBag },
+  { key: 'games', label: 'Arcade', description: 'Sessions and most-played games', icon: Gamepad2 },
+  { key: 'multiplayer', label: 'Arena', description: 'Rooms and multiplayer traffic', icon: Swords },
+  { key: 'halo', label: 'Halo AI', description: 'Assistant usage and providers', icon: Sparkles },
+  { key: 'operations', label: 'Support desk', description: 'Reports, bans, tickets, actions', icon: LifeBuoy },
+]
+
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { isAdmin, loading: roleLoading } = useModRole()
@@ -97,6 +113,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [usersDrawerOpen, setUsersDrawerOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState<AdminSection>('overview')
+  const activeMeta = useMemo(() => ADMIN_SECTIONS.find(s => s.key === activeSection) ?? ADMIN_SECTIONS[0], [activeSection])
 
   async function load() {
     setLoading(true)
@@ -169,14 +187,44 @@ export default function AdminDashboard() {
           <div className="neu-card" style={{ padding: 16, marginTop: 16, color: 'var(--red)', fontSize: 12.5 }}>{error}</div>
         )}
 
+        {stats && (
+          <div className="neu-card" style={{ padding: 16, marginTop: 16 }}>
+            <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+              <div>
+                <p style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Admin mall map</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 0' }}>Choose a wing; each tab opens its own statistics dashboard.</p>
+              </div>
+              <button type="button" onClick={(e) => { ripple(e); setUsersDrawerOpen(true) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 12, padding: '10px 12px', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', boxShadow: '3px 3px 8px var(--neu-dark)' }}>
+                <Search size={14} /> Search user
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+              {ADMIN_SECTIONS.map(section => {
+                const Icon = section.icon
+                const active = activeSection === section.key
+                return (
+                  <button key={section.key} type="button" onClick={(e) => { ripple(e); setActiveSection(section.key) }} className={active ? 'neu-inset' : 'neu-card-sm'} style={{ border: active ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.04)', padding: 12, textAlign: 'left', cursor: 'pointer', color: 'var(--text)', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <span className="neu-icon" style={{ width: 34, height: 34, color: active ? 'var(--accent)' : 'var(--text-dim)', background: 'var(--surface2)', flexShrink: 0 }}><Icon size={16} /></span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 900 }}>{section.label}</span>
+                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.25 }}>{section.description}</span>
+                    </span>
+                    <ChevronRight size={14} style={{ color: active ? 'var(--accent)' : 'var(--text-muted)' }} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {loading && !stats ? (
           <div className="neu-card" style={{ padding: 24, marginTop: 16, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12.5 }}>
             Loading dashboard…
           </div>
         ) : stats && (
           <>
-            <SectionHeader title="Overview" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+            <SectionHeader title={activeMeta.label} kicker="Selected dashboard" />
+            {activeSection === 'overview' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
               <StatCard
                 icon={Users}
                 label="Total users"
@@ -189,8 +237,9 @@ export default function AdminDashboard() {
               <StatCard icon={Crown} label="Pro subscribers" value={stats.overview.pro_subscribers} tint="var(--purple)" />
               <StatCard icon={ShieldAlert} label="Staff members" value={stats.overview.staff_count} />
               <StatCard icon={ShieldBan} label="Banned users" value={stats.overview.banned_users} tint="var(--red)" />
-            </div>
+            </div>}
 
+            {activeSection === 'economy' && <>
             <SectionHeader title="Economy" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
               <StatCard icon={Gem} label="Diamonds in circulation" value={stats.economy.diamonds_in_circulation.toLocaleString()} tint="var(--blue)" />
@@ -208,7 +257,9 @@ export default function AdminDashboard() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 10 }}>Top Mall items (by owners)</p>
               <RankedList rows={stats.economy.top_mall_items} primaryKey="name" countKey="owners" secondaryKey="category" />
             </div>
+            </>}
 
+            {activeSection === 'games' && <>
             <SectionHeader title="Games" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
               <StatCard icon={Gamepad2} label="Total sessions" value={stats.games.total_sessions} />
@@ -218,7 +269,9 @@ export default function AdminDashboard() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 10 }}>Most played (30d)</p>
               <RankedList rows={stats.games.top_games} primaryKey="game" countKey="sessions" />
             </div>
+            </>}
 
+            {activeSection === 'multiplayer' && <>
             <SectionHeader title="Multiplayer" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
               <StatCard icon={Swords} label="Active rooms" value={stats.multiplayer.active_rooms} tint="var(--blue)" />
@@ -228,7 +281,9 @@ export default function AdminDashboard() {
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 10 }}>Rooms by game (30d)</p>
               <RankedList rows={stats.multiplayer.top_multiplayer_games} primaryKey="game_id" countKey="rooms" />
             </div>
+            </>}
 
+            {activeSection === 'halo' && <>
             <SectionHeader title="Halo AI" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
               <StatCard icon={Sparkles} label="Questions (7d)" value={stats.halo_ai.questions_7d} tint="var(--purple)" />
@@ -247,7 +302,9 @@ export default function AdminDashboard() {
                 />
               )}
             </div>
+            </>}
 
+            {activeSection === 'operations' && <>
             <SectionHeader title="Moderation & Support" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
               <StatCard icon={Flag} label="Open reports" value={stats.moderation.open_reports} tint="var(--red)" />
@@ -256,6 +313,7 @@ export default function AdminDashboard() {
               <StatCard icon={LifeBuoy} label="Open tickets" value={stats.support.open_tickets} tint="var(--gold)" />
               <StatCard icon={LifeBuoy} label="Tickets (7d)" value={stats.support.tickets_7d} />
             </div>
+            </>}
           </>
         )}
       </div>

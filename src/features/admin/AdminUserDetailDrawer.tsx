@@ -53,16 +53,16 @@ function gameName(dbKey: string): string {
 
 function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between" style={{ padding: '8px 0', borderBottom: '1px solid var(--lborder)' }}>
-      <span style={{ fontSize: 11.5, color: 'var(--ltext-muted)' }}>{label}</span>
-      <span style={{ fontSize: 12, color: 'var(--ltext)', fontWeight: 600, textAlign: 'right' }}>{value}</span>
+    <div className="flex items-center justify-between" style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
 
 function Kpi({ icon: Icon, label, value, tint }: { icon: typeof Gem; label: string; value: string; tint: string }) {
   return (
-    <div className="glass-chip" style={{ borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0 }}>
+    <div className="neu-inset" style={{ borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0 }}>
       <div style={{
         width: 24, height: 24, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: `${tint}1c`, color: tint,
@@ -70,8 +70,8 @@ function Kpi({ icon: Icon, label, value, tint }: { icon: typeof Gem; label: stri
         <Icon size={12.5} />
       </div>
       <div>
-        <p style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--ltext)', margin: 0, lineHeight: 1.1 }}>{value}</p>
-        <p style={{ fontSize: 10, color: 'var(--ltext-muted)', margin: '2px 0 0', fontWeight: 600 }}>{label}</p>
+        <p style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1.1 }}>{value}</p>
+        <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '2px 0 0', fontWeight: 600 }}>{label}</p>
       </div>
     </div>
   )
@@ -80,7 +80,7 @@ function Kpi({ icon: Icon, label, value, tint }: { icon: typeof Gem; label: stri
 function SectionLabel({ icon: Icon, children }: { icon: typeof Gem; children: ReactNode }) {
   return (
     <p style={{
-      fontSize: 11, fontWeight: 800, color: 'var(--ltext-sec)', marginBottom: 9,
+      fontSize: 11, fontWeight: 800, color: 'var(--text-dim)', marginBottom: 9,
       textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6,
     }}>
       <Icon size={12} /> {children}
@@ -95,9 +95,9 @@ function ActionButton({ children, onClick, disabled, tone = 'neutral' }: {
   tone?: 'neutral' | 'danger' | 'accent'
 }) {
   const colors = {
-    neutral: { text: 'var(--ltext-sec)', border: 'var(--lborder)', bg: 'rgba(255,255,255,0.03)' },
-    danger: { text: 'var(--lred)', border: 'rgba(255,79,79,0.35)', bg: 'rgba(255,79,79,0.08)' },
-    accent: { text: 'var(--violet-soft)', border: 'var(--lborder-bright)', bg: 'rgba(108,80,255,0.12)' },
+    neutral: { text: 'var(--text-dim)', border: 'rgba(255,255,255,0.07)', bg: 'rgba(255,255,255,0.03)' },
+    danger: { text: 'var(--red)', border: 'rgba(255,79,79,0.35)', bg: 'rgba(255,79,79,0.08)' },
+    accent: { text: 'var(--purple)', border: 'rgba(255,107,0,0.45)', bg: 'rgba(108,80,255,0.12)' },
   }[tone]
   return (
     <button
@@ -199,28 +199,28 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
       subtitle={detail ? `@${detail.username}` : undefined}
     >
       {loading ? (
-        <p style={{ fontSize: 12, color: 'var(--ltext-muted)', textAlign: 'center', padding: '32px 0' }}>Loading…</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>Loading…</p>
       ) : error ? (
-        <p style={{ fontSize: 12, color: 'var(--lred)', textAlign: 'center', padding: '32px 0' }}>{error}</p>
+        <p style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center', padding: '32px 0' }}>{error}</p>
       ) : detail ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Identity header */}
           <div className="flex items-center gap-3">
             <Avatar src={detail.avatar} name={detail.display_name || detail.username} size={58}
-              ring={detail.is_banned ? 'var(--lred)' : detail.is_pro ? 'var(--amber)' : 'var(--lborder-bright)'} />
+              ring={detail.is_banned ? 'var(--red)' : detail.is_pro ? 'var(--gold)' : 'rgba(255,107,0,0.45)'} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="flex items-center gap-1.5">
-                <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ltext)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {detail.display_name || detail.username}
                 </p>
-                {detail.staff_role && detail.staff_role !== 'user' && <ShieldCheck size={13} style={{ color: 'var(--cyan)', flexShrink: 0 }} />}
-                {detail.is_pro && <Crown size={13} style={{ color: 'var(--amber)', flexShrink: 0 }} />}
-                {detail.is_banned && <ShieldBan size={13} style={{ color: 'var(--lred)', flexShrink: 0 }} />}
+                {detail.staff_role && detail.staff_role !== 'user' && <ShieldCheck size={13} style={{ color: 'var(--blue)', flexShrink: 0 }} />}
+                {detail.is_pro && <Crown size={13} style={{ color: 'var(--gold)', flexShrink: 0 }} />}
+                {detail.is_banned && <ShieldBan size={13} style={{ color: 'var(--red)', flexShrink: 0 }} />}
               </div>
-              <p style={{ fontSize: 11.5, color: 'var(--ltext-muted)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {detail.email}
               </p>
-              <p style={{ fontSize: 10, color: 'var(--ltext-muted)', margin: '2px 0 0', fontFamily: 'monospace' }}>{detail.id}</p>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '2px 0 0', fontFamily: 'monospace' }}>{detail.id}</p>
             </div>
           </div>
 
@@ -229,8 +229,8 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
               background: 'rgba(255,79,79,0.10)', border: '1px solid rgba(255,79,79,0.3)',
             }}>
-              <AlertTriangle size={15} style={{ color: 'var(--lred)', flexShrink: 0 }} />
-              <p style={{ fontSize: 11.5, color: 'var(--lred)', margin: 0, fontWeight: 600 }}>
+              <AlertTriangle size={15} style={{ color: 'var(--red)', flexShrink: 0 }} />
+              <p style={{ fontSize: 11.5, color: 'var(--red)', margin: 0, fontWeight: 600 }}>
                 Balance exceeds the 3,000 diamond threshold — review for anomalous crediting.
               </p>
             </div>
@@ -238,31 +238,31 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
 
           {detail.is_banned && (
             <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,79,79,0.06)', border: '1px solid rgba(255,79,79,0.2)' }}>
-              <p style={{ fontSize: 11.5, color: 'var(--lred)', margin: 0, fontWeight: 700 }}>
+              <p style={{ fontSize: 11.5, color: 'var(--red)', margin: 0, fontWeight: 700 }}>
                 Banned{detail.banned_until ? ` until ${formatDateTime(detail.banned_until)}` : ' (indefinitely)'}
               </p>
-              {detail.ban_reason && <p style={{ fontSize: 11, color: 'var(--ltext-sec)', margin: '4px 0 0' }}>{detail.ban_reason}</p>}
+              {detail.ban_reason && <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '4px 0 0' }}>{detail.ban_reason}</p>}
             </div>
           )}
 
           {/* KPI grid — diamonds, XP, level, streak, games, referrals */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <Kpi icon={Gem} label="Diamonds" value={detail.wallet.gem_balance.toLocaleString()} tint={detail.wallet.balance_flagged ? 'var(--lred)' : 'var(--amber)'} />
-            <Kpi icon={Zap} label="Total XP" value={detail.xp.toLocaleString()} tint="var(--violet-soft)" />
-            <Kpi icon={TrendingUp} label="Level" value={String(detail.level)} tint="var(--cyan)" />
-            <Kpi icon={Flame} label="Streak" value={`${detail.streak}d`} tint="var(--lpink)" />
-            <Kpi icon={Gamepad2} label="Games played" value={detail.games.total_sessions.toLocaleString()} tint="var(--lgreen)" />
-            <Kpi icon={Users} label="Referrals" value={String(detail.referral_count)} tint="var(--violet-soft)" />
+            <Kpi icon={Gem} label="Diamonds" value={detail.wallet.gem_balance.toLocaleString()} tint={detail.wallet.balance_flagged ? 'var(--red)' : 'var(--gold)'} />
+            <Kpi icon={Zap} label="Total XP" value={detail.xp.toLocaleString()} tint="var(--purple)" />
+            <Kpi icon={TrendingUp} label="Level" value={String(detail.level)} tint="var(--blue)" />
+            <Kpi icon={Flame} label="Streak" value={`${detail.streak}d`} tint="var(--pink)" />
+            <Kpi icon={Gamepad2} label="Games played" value={detail.games.total_sessions.toLocaleString()} tint="var(--green)" />
+            <Kpi icon={Users} label="Referrals" value={String(detail.referral_count)} tint="var(--purple)" />
           </div>
 
           {/* Wallet breakdown */}
           <div>
             <SectionLabel icon={WalletIcon}>Wallet</SectionLabel>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-              <Kpi icon={ArrowDownToLine} label="Total purchased" value={detail.wallet.total_purchased.toLocaleString()} tint="var(--cyan)" />
-              <Kpi icon={ArrowUpFromLine} label="Total earned" value={detail.wallet.total_earned_ledger.toLocaleString()} tint="var(--lgreen)" />
-              <Kpi icon={ArrowDownToLine} label="Total spent" value={detail.wallet.total_spent_ledger.toLocaleString()} tint="var(--ltext-sec)" />
-              <Kpi icon={Gem} label="Current balance" value={detail.wallet.gem_balance.toLocaleString()} tint="var(--amber)" />
+              <Kpi icon={ArrowDownToLine} label="Total purchased" value={detail.wallet.total_purchased.toLocaleString()} tint="var(--blue)" />
+              <Kpi icon={ArrowUpFromLine} label="Total earned" value={detail.wallet.total_earned_ledger.toLocaleString()} tint="var(--green)" />
+              <Kpi icon={ArrowDownToLine} label="Total spent" value={detail.wallet.total_spent_ledger.toLocaleString()} tint="var(--text-dim)" />
+              <Kpi icon={Gem} label="Current balance" value={detail.wallet.gem_balance.toLocaleString()} tint="var(--gold)" />
             </div>
           </div>
 
@@ -270,22 +270,22 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
           <div>
             <SectionLabel icon={Gem}>Recent wallet activity</SectionLabel>
             {detail.recent_wallet_activity.length === 0 ? (
-              <p style={{ fontSize: 12, color: 'var(--ltext-muted)' }}>No wallet activity yet.</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No wallet activity yet.</p>
             ) : (
-              <div className="glass-chip" style={{ borderRadius: 12, padding: 4 }}>
+              <div className="neu-inset" style={{ borderRadius: 12, padding: 4 }}>
                 {detail.recent_wallet_activity.map((tx, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between"
-                    style={{ padding: '9px 10px', borderBottom: i < detail.recent_wallet_activity.length - 1 ? '1px solid var(--lborder)' : 'none' }}
+                    style={{ padding: '9px 10px', borderBottom: i < detail.recent_wallet_activity.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 12, color: 'var(--ltext)', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {tx.label}
                       </p>
-                      <p style={{ fontSize: 10, color: 'var(--ltext-muted)', margin: '1px 0 0' }}>{formatDateTime(tx.created_at)}</p>
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '1px 0 0' }}>{formatDateTime(tx.created_at)}</p>
                     </div>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: tx.amount >= 0 ? 'var(--lgreen)' : 'var(--ltext-sec)', flexShrink: 0, marginLeft: 10 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: tx.amount >= 0 ? 'var(--green)' : 'var(--text-dim)', flexShrink: 0, marginLeft: 10 }}>
                       {tx.amount >= 0 ? '+' : ''}{tx.amount.toLocaleString()}
                     </span>
                   </div>
@@ -298,14 +298,14 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
           <div>
             <SectionLabel icon={Gamepad2}>Games</SectionLabel>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
-              <Kpi icon={Gamepad2} label="Sessions (7d)" value={detail.games.sessions_7d.toLocaleString()} tint="var(--lgreen)" />
-              <Kpi icon={Zap} label="XP from games" value={detail.games.total_xp_from_games.toLocaleString()} tint="var(--violet-soft)" />
-              <Kpi icon={Gamepad2} label="Total sessions" value={detail.games.total_sessions.toLocaleString()} tint="var(--cyan)" />
+              <Kpi icon={Gamepad2} label="Sessions (7d)" value={detail.games.sessions_7d.toLocaleString()} tint="var(--green)" />
+              <Kpi icon={Zap} label="XP from games" value={detail.games.total_xp_from_games.toLocaleString()} tint="var(--purple)" />
+              <Kpi icon={Gamepad2} label="Total sessions" value={detail.games.total_sessions.toLocaleString()} tint="var(--blue)" />
             </div>
 
             {detail.games.top_games.length > 0 && (
-              <div className="glass-chip" style={{ borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ltext-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div className="neu-inset" style={{ borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Most played
                 </p>
                 {(() => {
@@ -315,11 +315,11 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
                       {detail.games.top_games.map(g => (
                         <div key={g.game}>
                           <div className="flex items-center justify-between" style={{ marginBottom: 3 }}>
-                            <span style={{ fontSize: 12, color: 'var(--ltext)', fontWeight: 600 }}>{gameName(g.game)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--ltext-muted)', fontWeight: 700 }}>{g.sessions}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{gameName(g.game)}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{g.sessions}</span>
                           </div>
-                          <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                            <div style={{ width: `${(g.sessions / max) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--violet), var(--cyan))', borderRadius: 3 }} />
+                          <div style={{ height: 5, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden' }}>
+                            <div style={{ width: `${(g.sessions / max) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent), var(--accent2))', borderRadius: 3 }} />
                           </div>
                         </div>
                       ))}
@@ -330,22 +330,22 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
             )}
 
             {detail.games.recent_sessions.length === 0 ? (
-              <p style={{ fontSize: 12, color: 'var(--ltext-muted)' }}>No games played yet.</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No games played yet.</p>
             ) : (
-              <div className="glass-chip" style={{ borderRadius: 12, padding: 4 }}>
+              <div className="neu-inset" style={{ borderRadius: 12, padding: 4 }}>
                 {detail.games.recent_sessions.map((s, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between"
-                    style={{ padding: '9px 10px', borderBottom: i < detail.games.recent_sessions.length - 1 ? '1px solid var(--lborder)' : 'none' }}
+                    style={{ padding: '9px 10px', borderBottom: i < detail.games.recent_sessions.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 12, color: 'var(--ltext)', fontWeight: 600, margin: 0 }}>{gameName(s.game)}</p>
-                      <p style={{ fontSize: 10, color: 'var(--ltext-muted)', margin: '1px 0 0' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, margin: 0 }}>{gameName(s.game)}</p>
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '1px 0 0' }}>
                         Score {s.score.toLocaleString()} · {formatDateTime(s.played_at)}
                       </p>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--violet-soft)', flexShrink: 0, marginLeft: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--purple)', flexShrink: 0, marginLeft: 10 }}>
                       +{s.xp_earned} XP
                     </span>
                   </div>
@@ -375,7 +375,7 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
             borderRadius: 14, padding: 14, background: 'rgba(255,79,79,0.04)', border: '1px solid rgba(255,79,79,0.18)',
           }}>
             <p style={{
-              fontSize: 11, fontWeight: 800, color: 'var(--lred)', marginBottom: 12,
+              fontSize: 11, fontWeight: 800, color: 'var(--red)', marginBottom: 12,
               textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6,
             }}>
               <ShieldAlert size={12} /> Admin actions
@@ -383,7 +383,7 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
 
             {actionError && (
               <div style={{
-                fontSize: 11.5, color: 'var(--lred)', marginBottom: 10, padding: '8px 10px', borderRadius: 8,
+                fontSize: 11.5, color: 'var(--red)', marginBottom: 10, padding: '8px 10px', borderRadius: 8,
                 background: 'rgba(255,79,79,0.1)', border: '1px solid rgba(255,79,79,0.25)',
               }}>
                 {actionError}
@@ -402,8 +402,8 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
                   onChange={e => setBanReason(e.target.value)}
                   placeholder="Ban reason (required)"
                   style={{
-                    width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--lborder)',
-                    background: 'rgba(255,255,255,0.03)', color: 'var(--ltext)', fontSize: 12, marginBottom: 8,
+                    width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.07)',
+                    background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, marginBottom: 8,
                   }}
                 />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -411,8 +411,8 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
                     value={banHours ?? ''}
                     onChange={e => setBanHours(e.target.value === '' ? null : Number(e.target.value))}
                     style={{
-                      padding: '8px 10px', borderRadius: 9, border: '1px solid var(--lborder)',
-                      background: 'rgba(255,255,255,0.03)', color: 'var(--ltext)', fontSize: 12,
+                      padding: '8px 10px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.07)',
+                      background: 'var(--surface2)', color: 'var(--text)', fontSize: 12,
                     }}
                   >
                     {BAN_DURATIONS.map(d => (
@@ -428,7 +428,7 @@ export default function AdminUserDetailDrawer({ userId, onClose, onBack }: Admin
 
             {/* Staff role */}
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,79,79,0.15)' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ltext-sec)', marginBottom: 8 }}>Staff role</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Staff role</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {ROLES.map(r => (
                   <ActionButton key={r} onClick={() => handleSetRole(r)} disabled={actionBusy || detail.staff_role === r} tone={detail.staff_role === r ? 'accent' : 'neutral'}>
