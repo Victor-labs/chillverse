@@ -10,6 +10,7 @@ import { getGameMeta } from '../games/games'
 import { tacStart, pkStart } from './multiplayerGames'
 import TacZoneMultiplayer from './play/TacZoneMultiplayer'
 import PatternKingRelay from './play/PatternKingRelay'
+import Avatar from '../../shared/components/Avatar'
 
 export default function Room() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -130,9 +131,7 @@ export default function Room() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         {players.map(p => (
           <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14 }}>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text-dim)' }}>
-              {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.display_name?.[0] ?? p.username?.[0] ?? '?')}
-            </div>
+            <Avatar src={p.avatar} name={p.display_name || p.username || '?'} userId={p.user_id} size={34} radius="50%" />
             <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
               {p.display_name || p.username || 'Player'}
               {p.user_id === user?.id && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> (you)</span>}
