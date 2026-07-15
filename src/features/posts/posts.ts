@@ -61,6 +61,23 @@ export async function fetchFeed(userId: string | null, limit = 30): Promise<Post
   return hydratePosts(posts as PostRow[], userId)
 }
 
+// ── Posts by a single author (moderator showcase profile feed) ──
+export async function fetchPostsByAuthor(authorId: string, userId: string | null, limit = 30): Promise<Post[]> {
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error || !posts) {
+    console.error('fetchPostsByAuthor error:', error)
+    return []
+  }
+
+  return hydratePosts(posts as PostRow[], userId)
+}
+
 // ── Single post (for share links) ───────────────────────────────
 export async function fetchPostById(postId: string, userId: string | null): Promise<Post | null> {
   const { data: post, error } = await supabase.from('posts').select('*').eq('id', postId).maybeSingle()
@@ -211,14 +228,14 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
   return comments.map(c => ({ ...c, author: authorsById.get(c.author_id) })) as Comment[]
 }
 
-export async function addComment(postId: string, authorId: string, body: string) {
+export async function addComment(postId: string, authorId: string, body: string, isNotice = false) {
   if (containsProfanity(body)) {
     return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
   }
 
   const { data, error } = await supabase
     .from('comments')
-    .insert({ post_id: postId, author_id: authorId, body })
+    .insert({ post_id: postId, author_id: authorId, body, is_notice: isNotice })
     .select()
     .single()
 

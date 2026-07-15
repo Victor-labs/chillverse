@@ -67,6 +67,7 @@ export interface Comment {
   author_id: string
   body: string
   created_at: string
+  is_notice: boolean
   author?: PostAuthor
 }
 
