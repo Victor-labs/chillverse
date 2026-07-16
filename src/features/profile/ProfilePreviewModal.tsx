@@ -365,8 +365,9 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.22)', margin: '10px auto 0' }} />
 
-        {/* Banner */}
-        <div style={{ position: 'relative', height: 74, background: profile?.banner_url ? 'transparent' : 'linear-gradient(120deg, var(--accent), var(--accent2))', overflow: 'hidden' }}>
+        {/* Banner — kept generously tall even with the default gradient
+            (no banner equipped), so it doesn't read as a thin strip. */}
+        <div style={{ position: 'relative', height: 130, background: profile?.banner_url ? 'transparent' : 'linear-gradient(120deg, var(--accent), var(--accent2))', overflow: 'hidden' }}>
           {profile?.banner_url && (
             <img src={profile.banner_url} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
           )}
