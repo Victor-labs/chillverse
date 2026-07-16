@@ -202,25 +202,40 @@ interface MessageLineProps {
   myId: string | null
   formatTime: (iso: string) => string
   readReceipt: ReadReceipt
-  isLastInBurst: boolean
+  /** Whether this line's underline hooks in toward the avatar (only the burst's
+   *  first/only avatar-aligned edge needs the hook — every line still gets its
+   *  own underline, sized to itself, never to a sibling's width). */
+  isGroupChat: boolean
 }
 
-/** One line of text inside a chat-line block. No bubble, no background — just the
- *  content sitting flush above the block's shared underline. Only the last line in
- *  a burst gets the underline (applied by the parent MessageBurst wrapper), so this
- *  renders text + timestamp/ticks + its own reply header + reactions only. */
+/** One message, rendered as flat text sitting on its own underline — sized to
+ *  that message's own content, never to a sibling's. Consecutive messages from
+ *  the same sender stack by simply rendering several of these one after another;
+ *  each one keeps (and is pushed down by) its own line instead of one shared
+ *  line stretching to fit whatever's widest in the stack. */
 const MessageLine = memo(function MessageLine({
-  msg, isMine, emojiForMsg, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt, isLastInBurst,
+  msg, isMine, emojiForMsg, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt, isGroupChat,
 }: MessageLineProps) {
+  const lineColor = 'rgba(255,255,255,0.28)'
   return (
     <div
       className="msg-bubble-col"
       onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); onContextMenu(msg, e.clientX, e.clientY) } }}
       onDoubleClick={() => onDoubleClick(msg)}
       style={{
-        position:'relative', cursor:'context-menu', userSelect:'none', wordBreak:'break-word',
-        paddingBottom: msg.reactions.length > 0 ? 14 : 0,
-        marginBottom: isLastInBurst ? 0 : 6,
+        position:'relative', cursor:'context-menu', userSelect:'none',
+        display:'inline-block', maxWidth:'100%',
+        marginBottom:8,
+        paddingBottom: msg.reactions.length > 0 ? 16 : 6,
+        borderBottom:`1.5px solid ${lineColor}`,
+        borderLeft: !isMine ? `1.5px solid ${lineColor}` : 'none',
+        borderRight: isMine ? `1.5px solid ${lineColor}` : 'none',
+        borderBottomLeftRadius: !isMine ? 9 : 0,
+        borderBottomRightRadius: isMine ? 9 : 0,
+        paddingLeft: !isMine ? 8 : 0,
+        paddingRight: isMine ? 8 : 0,
+        marginLeft: isGroupChat && !isMine ? -8 : 0,
+        marginRight: isGroupChat && isMine ? -8 : 0,
       }}>
 
       {/* Reply header — target user's name + their quoted text, stacked directly above
@@ -235,31 +250,33 @@ const MessageLine = memo(function MessageLine({
         </div>
       )}
 
-      {/* Message content + inline trailing timestamp */}
-      <div style={{ display:'flex', alignItems:'flex-end', gap:6, fontSize:13.5, lineHeight:1.45, color:'var(--text)', fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1 }}>
-        <span style={{ minWidth:0 }}>
-          {msg.hidden ? (
-            <HiddenContentNotice reason={msg.hidden_reason} isOwner={isMine} inline />
-          ) : msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
-            msg.audio_path ? (
-              <VoiceNotePlayer audioPath={msg.audio_path} durationSeconds={msg.audio_duration_seconds ?? 0} tint={isMine ? 'light' : 'dark'} />
-            ) : (
-              <span style={{ fontStyle:'italic', opacity:0.75 }}>Uploading voice note…</span>
-            )
-          ) : msg.type === 'call_log' ? (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <Phone size={13} />
-              {msg.content}
-              {msg.audio_duration_seconds ? ` · ${Math.floor(msg.audio_duration_seconds / 60)}:${String(msg.audio_duration_seconds % 60).padStart(2, '0')}` : ''}
-            </span>
-          ) : msg.content}
-        </span>
-        <span style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0, paddingBottom:1 }}>
-          <span style={{ fontSize:10, color:'var(--text-muted)', whiteSpace:'nowrap' }}>{formatTime(msg.created_at)}</span>
+      {/* Message content, with the timestamp/ticks flowing inline right after the
+          text — plain inline flow (no flex-shrink) so short text like "hey" can
+          never get squeezed into a one-letter-per-line collapse. Text wraps at
+          word boundaries the normal way only once it's actually too long. */}
+      <span style={{ fontSize:13.5, lineHeight:1.45, color:'var(--text)', fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1, wordBreak:'break-word' }}>
+        {msg.hidden ? (
+          <HiddenContentNotice reason={msg.hidden_reason} isOwner={isMine} inline />
+        ) : msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
+          msg.audio_path ? (
+            <VoiceNotePlayer audioPath={msg.audio_path} durationSeconds={msg.audio_duration_seconds ?? 0} tint={isMine ? 'light' : 'dark'} />
+          ) : (
+            <span style={{ fontStyle:'italic', opacity:0.75 }}>Uploading voice note…</span>
+          )
+        ) : msg.type === 'call_log' ? (
+          <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+            <Phone size={13} />
+            {msg.content}
+            {msg.audio_duration_seconds ? ` · ${Math.floor(msg.audio_duration_seconds / 60)}:${String(msg.audio_duration_seconds % 60).padStart(2, '0')}` : ''}
+          </span>
+        ) : msg.content}
+        {' '}
+        <span style={{ display:'inline-flex', alignItems:'center', gap:3, whiteSpace:'nowrap' }}>
+          <span style={{ fontSize:10, color:'var(--text-muted)' }}>{formatTime(msg.created_at)}</span>
           {isMine && !msg.deleted && readReceipt === 'read' && <CheckCheck size={12} style={{ color:'var(--accent)' }} />}
           {isMine && !msg.deleted && readReceipt === 'sent' && <Check size={12} style={{ color:'var(--text-muted)' }} />}
         </span>
-      </div>
+      </span>
 
       {/* Reaction badge — sits flush below this line */}
       {msg.reactions.length > 0 && (
@@ -331,65 +348,46 @@ interface MessageBurstProps {
   isGroupChat: boolean
 }
 
-/** A consecutive run of messages from one sender, rendered as flat text with no
- *  bubble background — replacing the old per-message bubble. The avatar (Global
- *  Chat only) appears once per burst, and every message in the burst shares a
- *  single hairline "chat line" underline that hooks in toward the avatar's side,
- *  sized to the widest line rather than stretching the full screen width. */
+/** A consecutive run of messages from one sender. The avatar (Global Chat only)
+ *  appears once per burst, aligned to the bottom line. Each message underneath
+ *  keeps rendering its own independent chat-line — replying, or just sending
+ *  another message, always starts a new line of its own width, simply pushed
+ *  further down the stack rather than widening anything above it. */
 const MessageBurst = memo(function MessageBurst({
   burst, isMine, senderLabel, avatarUrl, myProfile, emojiForMsg,
   onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceiptFor, isGroupChat,
 }: MessageBurstProps) {
   const first = burst[0]
-  const lineColor = 'rgba(255,255,255,0.28)'
 
   return (
-    <div style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-end', gap:8, marginBottom:14 }}>
+    <div style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-end', gap:8, marginBottom:6 }}>
       {isGroupChat && (
         <button
           type="button"
           onClick={() => onOpenProfile(first)}
-          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, marginBottom:6 }}
+          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, marginBottom:8 }}
           title={senderLabel}>
           <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
         </button>
       )}
 
       <div style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'78%' }}>
-        {/* Chat-line block: dynamic width (fits its widest line, never the full
-            screen), with one shared underline at the bottom that hooks toward the
-            avatar's side to visually frame it — per the wireframe. */}
-        <div style={{
-          display:'inline-flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start',
-          maxWidth:'100%', width:'fit-content',
-          borderBottom:`1.5px solid ${lineColor}`,
-          borderLeft: !isMine ? `1.5px solid ${lineColor}` : 'none',
-          borderRight: isMine ? `1.5px solid ${lineColor}` : 'none',
-          borderBottomLeftRadius: !isMine ? 9 : 0,
-          borderBottomRightRadius: isMine ? 9 : 0,
-          paddingLeft: !isMine ? 8 : 0,
-          paddingRight: isMine ? 8 : 0,
-          paddingBottom:6,
-          marginLeft: isGroupChat && !isMine ? -8 : 0,
-          marginRight: isGroupChat && isMine ? -8 : 0,
-        }}>
-          {burst.map((msg, i) => (
-            <MessageLine
-              key={msg.id}
-              msg={msg}
-              isMine={isMine}
-              emojiForMsg={emojiForMsg}
-              onContextMenu={onContextMenu}
-              onDoubleClick={onDoubleClick}
-              onToggleEmojiPicker={onToggleEmojiPicker}
-              onAddReaction={onAddReaction}
-              myId={myId}
-              formatTime={formatTime}
-              readReceipt={readReceiptFor(msg)}
-              isLastInBurst={i === burst.length - 1}
-            />
-          ))}
-        </div>
+        {burst.map(msg => (
+          <MessageLine
+            key={msg.id}
+            msg={msg}
+            isMine={isMine}
+            emojiForMsg={emojiForMsg}
+            onContextMenu={onContextMenu}
+            onDoubleClick={onDoubleClick}
+            onToggleEmojiPicker={onToggleEmojiPicker}
+            onAddReaction={onAddReaction}
+            myId={myId}
+            formatTime={formatTime}
+            readReceipt={readReceiptFor(msg)}
+            isGroupChat={isGroupChat}
+          />
+        ))}
       </div>
     </div>
   )
