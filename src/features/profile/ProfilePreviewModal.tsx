@@ -18,6 +18,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
   X, MoreVertical, UserPlus, UserCheck, MessageCircle, ShieldOff, Copy, Flag, Check, Phone,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -64,12 +65,17 @@ interface PreviewProfile {
   banner_url: string | null
 }
 
-const BADGE_PREVIEW_COUNT = 6
+// Total icon slots in the badge row, RANK INCLUDED — the rank tier now
+// renders as one of these icons instead of its own separate pill, so
+// this is "5 total", not "5 real badges plus a rank on top".
+const BADGE_PREVIEW_COUNT = 5
 
 // Lower is better — rarest achievements shown first, mirrors the same
 // pattern used for badges and on the full profile page.
 const ACH_RARITY_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 }
-const BEST_ACHIEVEMENTS_COUNT = 3
+const BEST_ACHIEVEMENTS_COUNT = 19
+
+const WISHLIST_MAX = 10
 
 interface PreviewAchievement {
   id: string
@@ -78,11 +84,19 @@ interface PreviewAchievement {
   rarity: string
 }
 
+interface PreviewWishlistItem {
+  id: string
+  item_name: string
+  item_image: string | null
+}
+
 interface LiveActivity {
   movie: boolean
   game: string | null
   exploring: boolean
 }
+
+type PreviewTab = 'main' | 'wishlist'
 
 export default function ProfilePreviewModal({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { user } = useAuth()
@@ -108,6 +122,10 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
   const [bestAchievements, setBestAchievements] = useState<PreviewAchievement[]>([])
   const [achToast, setAchToast] = useState<PreviewAchievement | null>(null)
   const [activity, setActivity] = useState<LiveActivity>({ movie: false, game: null, exploring: false })
+  const [showRankToast, setShowRankToast] = useState(false)
+  const [activeTab, setActiveTab] = useState<PreviewTab>('main')
+  const [wishlist, setWishlist] = useState<PreviewWishlistItem[]>([])
+  const [wishlistLoading, setWishlistLoading] = useState(true)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isMe = user?.id === userId
@@ -202,6 +220,21 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
           icon: r.achievements?.icon ?? 'trophy',
           rarity: r.achievements?.rarity ?? 'common',
         })))
+      })
+    return () => { active = false }
+  }, [userId])
+
+  // Wishlist — same source as the full profile's read-only wishlist
+  // view: the `wishlist` table, newest-added first, capped at 10.
+  useEffect(() => {
+    let active = true
+    setWishlistLoading(true)
+    supabase.from('wishlist').select('id, item_name, item_image').eq('user_id', userId)
+      .order('added_at', { ascending: false }).limit(WISHLIST_MAX)
+      .then(({ data }) => {
+        if (!active) return
+        setWishlist((data ?? []) as PreviewWishlistItem[])
+        setWishlistLoading(false)
       })
     return () => { active = false }
   }, [userId])
@@ -313,11 +346,28 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
       .toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
     : ''
 
-  const ownedBadges = [...badges]
+  // Badge row composition: the rank tier now takes the first slot (it
+  // renders as one of these icons, not its own separate pill), then real
+  // badges fill the rest by rarity — except the legacy-username badge,
+  // which is pinned and can never be bumped out no matter how the rest
+  // sorts. Total row length, rank included, never exceeds BADGE_PREVIEW_COUNT.
+  const allOwnedDefs = [...badges]
     .map(b => defs.find(d => d.id === b.badge_id))
     .filter((d): d is NonNullable<typeof d> => !!d)
+
+  const legacyBadge = allOwnedDefs.find(d => d.is_dynamic_username)
+  const rankedBadges = allOwnedDefs
+    .filter(d => !d.is_dynamic_username)
     .sort((a, b) => (BADGE_RARITY_RANK[a.rarity] ?? 9) - (BADGE_RARITY_RANK[b.rarity] ?? 9))
-    .slice(0, BADGE_PREVIEW_COUNT)
+
+  const rankSlot = rank ? 1 : 0
+  const legacySlot = legacyBadge ? 1 : 0
+  const remainingSlots = Math.max(0, BADGE_PREVIEW_COUNT - rankSlot - legacySlot)
+
+  const ownedBadges = [
+    ...rankedBadges.slice(0, remainingSlots),
+    ...(legacyBadge ? [legacyBadge] : []),
+  ]
 
   // ALWAYS a bottom sheet — phone and tablet alike, no separate centered
   // "desktop popover" mode. It slides up from the bottom and stays pinned
@@ -444,106 +494,42 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
               </p>
               <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 1 }}>@{profile.username}</p>
 
-              {!isModerator && rank && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, padding: '3px 9px', borderRadius: 20, background: rank.color + '18', border: `1px solid ${rank.color}44` }}>
-                  <span>{rank.emoji}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: rank.color }}>{rank.name}</span>
-                </div>
-              )}
-
-              <div className="pv-panel" style={{ marginTop: 12, background: 'var(--surface)', borderRadius: 12, padding: '2px 12px' }}>
-                {profile.bio && (
-                  <div className="pv-section">
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>About Me</p>
-                    <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5 }}>{profile.bio}</p>
-                  </div>
-                )}
-
-                <div className="pv-section">
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Member Since</p>
-                  <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{memberSince}</p>
-                </div>
-
-                {!isModerator && ownedBadges.length > 0 && (
-                  <div className="pv-section">
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Badges</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {ownedBadges.map(def => {
-                        const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
-                        return (
-                          <button
-                            key={def.id}
-                            type="button"
-                            className="pv-btn"
-                            onClick={() => setBadgeToast(def)}
-                            title={badgeDisplayTitle(def, profile.original_username)}
-                            style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
-                          >
-                            <BadgeIcon iconKey={def.icon} size={16} color={color} />
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {!isModerator && bestAchievements.length > 0 && (
-                  <div className="pv-section">
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Achievements</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {bestAchievements.map(a => {
-                        const color = ACH_RARITY_COLOR[a.rarity] ?? '#888899'
-                        return (
-                          <button
-                            key={a.id}
-                            type="button"
-                            className="pv-btn"
-                            onClick={() => setAchToast(a)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 6px', borderRadius: 20,
-                              background: color + '18', border: `1px solid ${color}44`, cursor: 'pointer',
-                            }}
-                          >
-                            <AchIcon iconKey={a.icon} size={10} color={color} />
-                            <span style={{ fontSize: 10.5, fontWeight: 700, color }}>{a.title}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {activity.movie && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>🎬 Watching movies</span>
-                </div>
-              )}
-
-              {activity.game && (() => {
-                const gameMeta = getGameById(activity.game as string)
-                const GameIcon = gameMeta?.icon
-                return (
-                  <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
-                    {GameIcon && <GameIcon size={13} style={{ color: '#4f8ef7', flexShrink: 0 }} />}
-                    <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
-                      Playing <strong style={{ color: '#4f8ef7' }}>{gameMeta?.name ?? activity.game}</strong>
-                    </span>
-                  </div>
-                )
-              })()}
-
-              {activity.exploring && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(62,207,142,0.1)', border: '1px solid rgba(62,207,142,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ecf8e', boxShadow: '0 0 8px #3ecf8e', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>⛵️ Exploring</span>
+              {/* Badge row — rank tier is now just the first icon here,
+                  not its own pill. Max 5 icons total (rank included).
+                  Legacy-username badge, if owned, is always among them. */}
+              {!isModerator && (rank || ownedBadges.length > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {rank && (
+                    <button
+                      type="button"
+                      className="pv-btn"
+                      onClick={() => setShowRankToast(true)}
+                      title={rank.name}
+                      style={{ width: 26, height: 26, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rank.color + '1c', border: `1px solid ${rank.color}44`, cursor: 'pointer', padding: 0, fontSize: 13 }}
+                    >
+                      {rank.emoji}
+                    </button>
+                  )}
+                  {ownedBadges.map(def => {
+                    const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
+                    return (
+                      <button
+                        key={def.id}
+                        type="button"
+                        className="pv-btn"
+                        onClick={() => setBadgeToast(def)}
+                        title={badgeDisplayTitle(def, profile.original_username)}
+                        style={{ width: 26, height: 26, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
+                      >
+                        <BadgeIcon iconKey={def.icon} size={13} color={color} />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
               {!isModerator && !isMe && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button
                     type="button" onClick={(e) => { ripple(e); handleFollow() }} disabled={busy || followStatus === 'blocked'}
                     className="ripple-wrap pv-btn"
@@ -577,10 +563,121 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                 </div>
               )}
 
+              {activity.movie && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>🎬 Watching movies</span>
+                </div>
+              )}
+
+              {activity.game && (() => {
+                const gameMeta = getGameById(activity.game as string)
+                const GameIcon = gameMeta?.icon
+                return (
+                  <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4f8ef7', boxShadow: '0 0 8px #4f8ef7', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                    {GameIcon && <GameIcon size={13} style={{ color: '#4f8ef7', flexShrink: 0 }} />}
+                    <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+                      Playing <strong style={{ color: '#4f8ef7' }}>{gameMeta?.name ?? activity.game}</strong>
+                    </span>
+                  </div>
+                )
+              })()}
+
+              {activity.exploring && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(62,207,142,0.1)', border: '1px solid rgba(62,207,142,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3ecf8e', boxShadow: '0 0 8px #3ecf8e', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>⛵️ Exploring</span>
+                </div>
+              )}
+
+              {/* Main / Wishlist tabs — wishlist can't be hidden, so the
+                  tab is always shown even for a profile with nothing in it. */}
+              <div style={{ display: 'flex', marginTop: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                {(['main', 'wishlist'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className="pv-btn"
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      flex: 1, padding: '9px 4px', background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize',
+                      color: activeTab === tab ? 'var(--text)' : 'var(--text-muted)',
+                      borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                      marginBottom: -1,
+                    }}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === 'main' ? (
+                <div className="pv-panel" style={{ marginTop: 12, background: 'var(--surface)', borderRadius: 12, padding: '2px 12px' }}>
+                  {profile.bio && (
+                    <div className="pv-section">
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>About Me</p>
+                      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5 }}>{profile.bio}</p>
+                    </div>
+                  )}
+
+                  <div className="pv-section">
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Member Since</p>
+                    <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{memberSince}</p>
+                  </div>
+
+                  {!isModerator && bestAchievements.length > 0 && (
+                    <div className="pv-section">
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Achievements</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {bestAchievements.map(a => {
+                          const color = ACH_RARITY_COLOR[a.rarity] ?? '#888899'
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              className="pv-btn"
+                              onClick={() => setAchToast(a)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 6px', borderRadius: 20,
+                                background: color + '18', border: `1px solid ${color}44`, cursor: 'pointer',
+                              }}
+                            >
+                              <AchIcon iconKey={a.icon} size={10} color={color} />
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color }}>{a.title}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ marginTop: 12 }}>
+                  {wishlistLoading ? (
+                    <div className="pv-skel" style={{ height: 44, width: '100%', borderRadius: 12 }} />
+                  ) : wishlist.length === 0 ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>Wishlist is empty</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {wishlist.map(item => (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--surface2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.item_image ? <img src={item.item_image} alt={item.item_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={14} style={{ color: 'var(--text-muted)' }} />}
+                          </div>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{item.item_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 type="button" onClick={viewFullProfile}
                 className="pv-btn"
-                style={{ width: '100%', marginTop: 10, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
+                style={{ width: '100%', marginTop: 12, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
               >
                 View full profile
               </button>
@@ -605,6 +702,16 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
           icon={badgeToast.icon}
           rarity={badgeToast.rarity}
           onDone={() => setBadgeToast(null)}
+        />
+      )}
+
+      {showRankToast && rank && (
+        <BadgeToast
+          title={`Player in ${rank.name}`}
+          icon="" rarity=""
+          colorOverride={rank.color}
+          customIcon={<span style={{ fontSize: 14 }}>{rank.emoji}</span>}
+          onDone={() => setShowRankToast(false)}
         />
       )}
 
