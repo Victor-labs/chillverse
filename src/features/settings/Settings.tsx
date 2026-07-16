@@ -5,7 +5,7 @@ import {
   ArrowLeft, ChevronRight, Trash2,
   Calendar, Tag, Lock, Eye,
   Circle, Moon, EyeOff, Check, Mail, Key,
-  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy, Crown,
+  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy, Crown, Bell,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { isGameSoundEnabled, setGameSoundEnabled } from '../games/soundSettings'
@@ -16,6 +16,7 @@ import { supabase } from '../../shared/lib/supabase'
 import Avatar from '../../shared/components/Avatar'
 import { signOut } from '../auth/auth'
 import PageOnboarding from '../onboarding/PageOnboarding'
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '../notifications/push'
 
 // ─── Username validation ───────────────────────────────────────────────────
 const RESERVED_WORDS = [
@@ -124,14 +125,15 @@ function Input({ label, type = 'text', value, onChange, placeholder }: {
   )
 }
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function Toggle({ on, onToggle, disabled = false }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={disabled ? undefined : onToggle}
       style={{
-        width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', flexShrink: 0,
+        width: 42, height: 24, borderRadius: 12, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
         background: on ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
+        opacity: disabled ? 0.5 : 1,
         position: 'relative', transition: 'background 0.2s',
       }}
     >
@@ -171,6 +173,11 @@ export default function Settings() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
+  const pushSupported = isPushSupported()
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushBlocked, setPushBlocked] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
   const userEmail = session?.user?.email ?? ''
   const displayName = profile?.display_name || profile?.username || 'You'
 
@@ -190,6 +197,48 @@ export default function Settings() {
     const next = !gameSound
     setGameSound(next)
     setGameSoundEnabled(next)
+  }
+
+  // Reflect the browser's actual subscription state, not just an app
+  // preference — this can change outside the app (e.g. the user blocks
+  // notifications from the browser's own site-settings UI).
+  useEffect(() => {
+    if (!pushSupported) return
+    (async () => {
+      if (Notification.permission === 'denied') {
+        setPushBlocked(true)
+        setPushEnabled(false)
+        return
+      }
+      const registration = await navigator.serviceWorker.getRegistration('/')
+      const subscription = await registration?.pushManager.getSubscription()
+      setPushEnabled(!!subscription)
+    })()
+  }, [pushSupported])
+
+  async function togglePush() {
+    if (!profile?.id || pushBusy || pushBlocked || !pushSupported) return
+    setPushBusy(true)
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush(profile.id)
+        setPushEnabled(false)
+      } else {
+        await subscribeToPush(profile.id)
+        // subscribeToPush no-ops quietly on denial, so re-check reality
+        // rather than assuming the toggle succeeded.
+        if (Notification.permission === 'denied') {
+          setPushBlocked(true)
+          setPushEnabled(false)
+        } else {
+          const registration = await navigator.serviceWorker.getRegistration('/')
+          const subscription = await registration?.pushManager.getSubscription()
+          setPushEnabled(!!subscription)
+        }
+      }
+    } finally {
+      setPushBusy(false)
+    }
   }
 
   async function handleSetPresence(id: string) {
@@ -420,6 +469,24 @@ export default function Settings() {
             {presence === p.id && <Check size={16} color="var(--accent)" />}
           </div>
         ))}
+
+        <SectionTitle>Notifications</SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, marginBottom: 9, boxShadow: '3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}>
+          <div style={{ width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,107,0,0.12)', color: 'var(--accent)' }}>
+            <Bell size={15} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>Website notifications</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
+              {!pushSupported
+                ? "Not supported in this browser"
+                : pushBlocked
+                  ? 'Blocked — enable notifications for this site in your browser settings'
+                  : 'Get notified on this device, even when Chillverse is closed'}
+            </div>
+          </div>
+          <Toggle on={pushEnabled} onToggle={togglePush} disabled={pushBusy || pushBlocked || !pushSupported} />
+        </div>
 
         <SectionTitle>Privacy</SectionTitle>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, marginBottom: 9, boxShadow: '3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}>
