@@ -115,6 +115,8 @@ const STRIKE_CATEGORY_LABELS: Record<string, string> = {
   doxxing: 'Doxxing',
   illegal_activity: 'Illegal activity solicitation',
   phishing_scam: 'Phishing or scam content',
+  profanity: 'Profanity',
+  personal_info_exposure: 'Personal info exposure (phone/email/key)',
 }
 
 function AlertsTab({ onResolved }: { onResolved: () => void }) {
