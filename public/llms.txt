@@ -14,6 +14,7 @@ Chillverse (chillverse.com.ng) combines casual multiplayer gaming with social fe
 
 ## Pages
 - [Home / Landing](https://chillverse.com.ng/): overview, features, FAQ.
+- [About](https://chillverse.com.ng/about): mission, features, rank ladder, streak system, history, and community links.
 - [Sign up](https://chillverse.com.ng/signup): free account creation.
 - [Privacy Policy](https://chillverse.com.ng/privacy)
 - [Terms of Service](https://chillverse.com.ng/terms)

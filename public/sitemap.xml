@@ -19,6 +19,11 @@
     </image:image>
   </url>
   <url>
+    <loc>https://chillverse.com.ng/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://chillverse.com.ng/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
