@@ -5,9 +5,9 @@
 // Discord's profile popover: a small preview with the essentials and a
 // 3-dot menu, plus a way to jump to the full profile page.
 //
-// Always the same "long sheet" flow, on every breakpoint: it slides up
-// from the bottom and leaves the top of the screen visible (never
-// covers the whole page). Dismiss by tapping the backdrop or the X.
+// Centered over a dimmed, blurred backdrop — fades and scales in/out
+// (~200ms), closes on backdrop click or Escape, locks page scroll while
+// open, and scrolls its own content internally if it overflows.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -96,6 +96,29 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
   useEffect(() => {
     const raf = requestAnimationFrame(() => setEntered(true))
     return () => cancelAnimationFrame(raf)
+  }, [])
+
+  // Lock the page behind the modal — Discord's popover never lets the
+  // page scroll while it's open, only the modal's own content scrolls.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow
+    const prevPaddingRight = document.body.style.paddingRight
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.body.style.paddingRight = prevPaddingRight
+    }
+  }, [])
+
+  // Escape closes it, same as Discord.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
   useEffect(() => {
@@ -192,7 +215,7 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
 
   function close() {
     setClosing(true)
-    setTimeout(onClose, 280)
+    setTimeout(onClose, 200)
   }
 
   async function handleFollow() {
@@ -269,18 +292,17 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
     .sort((a, b) => (BADGE_RARITY_RANK[a.rarity] ?? 9) - (BADGE_RARITY_RANK[b.rarity] ?? 9))
     .slice(0, BADGE_PREVIEW_COUNT)
 
-  // Always the same Discord-style "long sheet" flow — it slides up from
-  // the bottom on every breakpoint (phone, tablet, desktop) instead of
-  // switching to a centered card above ~768px. That switch was the
-  // source of the inconsistent feel: same trigger, different behavior
-  // depending on viewport width. One consistent motion everywhere now.
+  // Centered fade + scale, like Discord's popover — no bottom-sheet mode.
+  // Width scales from "nearly full width with margins" on phones up to a
+  // fixed, Discord-proportioned card on desktop, via min().
   const sheetBase: React.CSSProperties = {
-    width: '100%', maxWidth: 420, borderRadius: '22px 22px 0 0', marginTop: 'auto',
-    transform: entered && !closing ? 'translateY(0)' : 'translateY(100%)',
-    // iOS-sheet-style easing: quick to start, gentle settle — reads as
-    // more responsive than a symmetric ease and avoids any bounce/overshoot.
-    transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
-    maxHeight: '86vh',
+    width: 'min(92vw, 420px)',
+    maxHeight: 'min(85vh, 640px)',
+    borderRadius: 16,
+    transform: entered && !closing ? 'scale(1)' : 'scale(0.95)',
+    opacity: entered && !closing ? 1 : 0,
+    // Quart-out: fast start, gentle settle — reads as responsive, not abrupt.
+    transition: 'transform 0.2s cubic-bezier(0.16,1,0.3,1), opacity 0.18s ease-out',
   }
 
   return createPortal(
@@ -289,20 +311,19 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
       style={{
         position: 'fixed', inset: 0, zIndex: 20000,
         background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        opacity: entered && !closing ? 1 : 0, transition: 'opacity 0.22s ease',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        opacity: entered && !closing ? 1 : 0, transition: 'opacity 0.2s ease-out',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
           ...sheetBase,
-          background: 'var(--bg)', overflowY: 'auto', position: 'relative',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), 0 20px 60px rgba(0,0,0,0.4)',
+          background: 'var(--bg)', overflowY: 'auto', overscrollBehavior: 'contain', position: 'relative',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)',
         }}
       >
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)', margin: '10px auto 0' }} />
-
         {/* Banner */}
         <div style={{ position: 'relative', height: 74, background: profile?.banner_url ? 'transparent' : 'linear-gradient(120deg, var(--accent), var(--accent2))', overflow: 'hidden' }}>
           {profile?.banner_url && (
@@ -315,6 +336,7 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
             clipped/"sunk" into the banner. */}
         <button
           type="button" onClick={close}
+          className="pv-btn"
           style={{ position: 'absolute', top: 10, right: 46, width: 30, height: 30, borderRadius: 9, background: 'rgba(0,0,0,0.28)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
         >
           <X size={15} color="#fff" />
@@ -322,6 +344,7 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
         <div ref={menuRef} style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
           <button
             type="button" onClick={() => setMenuOpen(v => !v)}
+            className="pv-btn"
             style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(0,0,0,0.28)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
             <MoreVertical size={15} color="#fff" />
@@ -365,7 +388,11 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
           </div>
 
           {loading ? (
-            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '20px 0' }}>Loading profile…</p>
+            <div style={{ paddingTop: 2 }}>
+              <div className="pv-skel" style={{ height: 19, width: '52%', borderRadius: 6, marginBottom: 8 }} />
+              <div className="pv-skel" style={{ height: 12, width: '32%', borderRadius: 5, marginBottom: 16 }} />
+              <div className="pv-skel" style={{ height: 64, width: '100%', borderRadius: 12 }} />
+            </div>
           ) : !profile ? (
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '20px 0' }}>This profile couldn't be loaded.</p>
           ) : (
@@ -382,13 +409,67 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                 </div>
               )}
 
-              {profile.bio && (
-                <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.5 }}>{profile.bio}</p>
-              )}
+              <div className="pv-panel" style={{ marginTop: 12, background: 'var(--surface)', borderRadius: 12, padding: '2px 12px' }}>
+                {profile.bio && (
+                  <div className="pv-section">
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>About Me</p>
+                    <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5 }}>{profile.bio}</p>
+                  </div>
+                )}
 
-              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--surface)' }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Member Since</p>
-                <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{memberSince}</p>
+                <div className="pv-section">
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>Member Since</p>
+                  <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{memberSince}</p>
+                </div>
+
+                {!isModerator && ownedBadges.length > 0 && (
+                  <div className="pv-section">
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Badges</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {ownedBadges.map(def => {
+                        const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
+                        return (
+                          <button
+                            key={def.id}
+                            type="button"
+                            className="pv-btn"
+                            onClick={() => setBadgeToast(def)}
+                            title={badgeDisplayTitle(def, profile.original_username)}
+                            style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
+                          >
+                            <BadgeIcon iconKey={def.icon} size={16} color={color} />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {!isModerator && bestAchievements.length > 0 && (
+                  <div className="pv-section">
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Achievements</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {bestAchievements.map(a => {
+                        const color = ACH_RARITY_COLOR[a.rarity] ?? '#888899'
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            className="pv-btn"
+                            onClick={() => setAchToast(a)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 6px', borderRadius: 20,
+                              background: color + '18', border: `1px solid ${color}44`, cursor: 'pointer',
+                            }}
+                          >
+                            <AchIcon iconKey={a.icon} size={10} color={color} />
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color }}>{a.title}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {activity.movie && (
@@ -419,58 +500,11 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                 </div>
               )}
 
-              {!isModerator && ownedBadges.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Badges</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {ownedBadges.map(def => {
-                      const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
-                      return (
-                        <button
-                          key={def.id}
-                          type="button"
-                          onClick={() => setBadgeToast(def)}
-                          title={badgeDisplayTitle(def, profile.original_username)}
-                          style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
-                        >
-                          <BadgeIcon iconKey={def.icon} size={16} color={color} />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {!isModerator && bestAchievements.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Achievements</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {bestAchievements.map(a => {
-                      const color = ACH_RARITY_COLOR[a.rarity] ?? '#888899'
-                      return (
-                        <button
-                          key={a.id}
-                          type="button"
-                          onClick={() => setAchToast(a)}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 6px', borderRadius: 20,
-                            background: color + '18', border: `1px solid ${color}44`, cursor: 'pointer',
-                          }}
-                        >
-                          <AchIcon iconKey={a.icon} size={10} color={color} />
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color }}>{a.title}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
               {!isModerator && !isMe && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                   <button
                     type="button" onClick={(e) => { ripple(e); handleFollow() }} disabled={busy || followStatus === 'blocked'}
-                    className="ripple-wrap"
+                    className="ripple-wrap pv-btn"
                     style={{
                       flex: 1, padding: '11px 8px', borderRadius: 13, fontSize: 12.5, fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: 'none',
@@ -485,14 +519,14 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                   </button>
                   <button
                     type="button" onClick={(e) => { ripple(e); goToChat() }}
-                    className="ripple-wrap"
+                    className="ripple-wrap pv-btn"
                     style={{ padding: '11px 14px', borderRadius: 13, border: 'none', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <MessageCircle size={16} />
                   </button>
                   <button
                     type="button" onClick={(e) => { ripple(e); handleCall() }} disabled={callStarting || phase !== 'idle'}
-                    className="ripple-wrap"
+                    className="ripple-wrap pv-btn"
                     title={phase !== 'idle' ? 'Already on a call' : `Call ${displayName}`}
                     style={{ padding: '11px 14px', borderRadius: 13, border: 'none', background: 'var(--surface2)', color: (callStarting || phase !== 'idle') ? 'var(--text-muted)' : 'var(--text)', cursor: (callStarting || phase !== 'idle') ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (callStarting || phase !== 'idle') ? 0.5 : 1 }}
                   >
@@ -503,6 +537,7 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
 
               <button
                 type="button" onClick={viewFullProfile}
+                className="pv-btn"
                 style={{ width: '100%', marginTop: 10, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
               >
                 View full profile
@@ -540,7 +575,24 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
         />
       )}
 
-      <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+      <style>{`
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Sections stack naturally inside one panel, separated by a
+           hairline instead of each being its own floating card. */
+        .pv-panel .pv-section { padding: 12px 0; }
+        .pv-panel .pv-section:first-child { padding-top: 10px; }
+        .pv-panel .pv-section:last-child { padding-bottom: 10px; }
+        .pv-panel .pv-section + .pv-section { border-top: 1px solid rgba(255,255,255,0.06); }
+
+        /* Subtle hover/press feedback on every interactive element. */
+        .pv-btn { transition: transform 0.12s ease, filter 0.12s ease, opacity 0.12s ease; }
+        .pv-btn:hover:not(:disabled) { filter: brightness(1.1); }
+        .pv-btn:active:not(:disabled) { transform: scale(0.96); }
+
+        @keyframes pvShimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        .pv-skel { background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 37%, var(--surface) 63%); background-size: 400% 100%; animation: pvShimmer 1.4s ease infinite; }
+      `}</style>
     </div>,
     document.body,
   )
