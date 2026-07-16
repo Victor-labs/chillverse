@@ -64,7 +64,7 @@ export default function AppLayout() {
     const username = profile?.display_name || profile?.username || 'Player'
     const run = () => {
       checkSessionResetNotification(myId, username, getSessionLimits(profile).limit).catch(console.error)
-      checkMoviesOpenNotification(myId).catch(console.error)
+      checkMoviesOpenNotification(myId, username).catch(console.error)
     }
     run()
     const t = setInterval(run, 60_000)
