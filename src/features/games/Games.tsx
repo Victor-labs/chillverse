@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  ArrowLeft, Lock, ChevronRight, Zap, Clock,
+  ArrowLeft, Lock, ChevronRight, Zap, Clock, Trophy,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import {
@@ -386,6 +386,24 @@ export default function Games() {
               <span className="chip">🎮 <strong>{globalCount}</strong>/{GLOBAL_LIMIT} sessions today</span>
               {results.length > 0 && <span className="chip">🏆 <strong>{Math.max(...results.map(r => r.score))}</strong> top score</span>}
             </div>
+          </div>
+        </section>
+
+        {/* Leaderboards — lives inside the Games section now */}
+        <section className="su d1b">
+          <div
+            className="neu-card ripple-wrap"
+            onClick={(e) => { ripple(e); navigate('/leaderboards') }}
+            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, cursor: 'pointer' }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: 'linear-gradient(135deg,#f5c542,#ff9a3c)', boxShadow: '0 4px 14px rgba(245,197,66,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Trophy size={20} style={{ color: '#fff' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Leaderboards</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ranks & top scores for every game</p>
+            </div>
+            <ChevronRight size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           </div>
         </section>
 
