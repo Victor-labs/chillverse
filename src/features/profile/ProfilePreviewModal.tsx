@@ -42,7 +42,7 @@ import { MOD_AVATAR_URL } from '../moderation/modShowcase'
 // not reacting to zoom as a side effect, it's just deliberately set here.
 // Turn this number up or down to make the sheet taller or shorter; nothing
 // else in this file needs to change.
-const SHEET_HEIGHT_VH = 95
+const SHEET_HEIGHT_VH = 85
 
 type Presence = 'online' | 'idle' | 'offline' | 'invisible'
 const PRESENCE_COLORS: Record<Presence, string> = {
