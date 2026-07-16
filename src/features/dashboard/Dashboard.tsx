@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Gamepad2, ShoppingBag, Film, Swords, Sparkles, Rss,
-  Flame, Zap, ChevronRight, Fan, Trophy,
+  Flame, Zap, ChevronRight, Fan,
 } from 'lucide-react'
 import { useProfile } from '../profile/useProfile'
 import { getUserRankTier, getNextRankTier, getRankProgress } from '../profile/ranks'
@@ -205,7 +205,6 @@ export default function Dashboard() {
     { label: 'Play Games',  sub: onlineCount != null ? `${onlineCount} online` : '…', to: '/games',      bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2 },
     { label: 'Mall',        sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,#ff6b00,#ff9a3c)', icon: ShoppingBag },
     { label: 'Feed',        sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
-    { label: 'Leaderboards', sub: 'Stats & top scores', to: '/leaderboards', bg: 'linear-gradient(135deg,#f5c542,#ff9a3c)', icon: Trophy },
   ]
 
   return (
@@ -328,8 +327,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-4">
           {[
             { label: 'Watch',            desc: 'Trending videos & streams',    icon: Film,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/watch'           },
-            { label: 'Leaderboards',     desc: 'Personal stats & top scores', icon: Trophy,   iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/leaderboards'    },
-            { label: 'Weekly Missions',  desc: 'Complete missions, earn XP',    icon: Sparkles, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/weekly-missions' },
+            { label: 'Games',            desc: 'Play, compete & rank up',       icon: Gamepad2, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/games'           },
+            { label: 'Weekly Missions',  desc: 'Complete missions, earn XP',    icon: Sparkles, iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/weekly-missions' },
             { label: 'Artifacts',        desc: 'Collect & explore relics',      icon: Fan,      iconBg: 'rgba(239,68,68,0.12)',   iconColor: '#ef4444', to: '/artifacts'       },
           ].map((tile) => {
             const Icon = tile.icon
