@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import Seo from '../../shared/components/Seo'
 
 const SECTIONS = [
   { id: 't1', title: '1. Acceptance of Terms' },
@@ -23,6 +24,21 @@ const SECTIONS = [
 export default function Terms() {
   return (
     <div>
+      <Seo
+        title="Terms & Conditions"
+        description="The rules for using Chillverse — accounts, fair play, Diamonds and Chillverse Pro purchases, Halo AI, and your rights as a player."
+        path="/terms"
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Chillverse', item: 'https://chillverse.com.ng/' },
+              { '@type': 'ListItem', position: 2, name: 'Terms & Conditions', item: 'https://chillverse.com.ng/terms' },
+            ],
+          },
+        ]}
+      />
       <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-3.5 px-6 md:px-10 py-4 bg-chill-bg/85 backdrop-blur-xl border-b border-chill-border">
         <Link to="/" className="text-sm text-chill-textSecondary hover:text-chill-text">Chillverse</Link>
         <span className="text-chill-textMuted">/</span>

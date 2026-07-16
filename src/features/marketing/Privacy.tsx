@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import Seo from '../../shared/components/Seo'
 
 const SECTIONS = [
   { id: 's1', title: '1. Introduction and Scope' },
@@ -18,6 +19,21 @@ const SECTIONS = [
 export default function Privacy() {
   return (
     <div>
+      <Seo
+        title="Privacy Policy"
+        description="How Chillverse collects, uses, and protects your data — covering account info, gameplay data, Halo AI, cookies, and your privacy rights."
+        path="/privacy"
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Chillverse', item: 'https://chillverse.com.ng/' },
+              { '@type': 'ListItem', position: 2, name: 'Privacy Policy', item: 'https://chillverse.com.ng/privacy' },
+            ],
+          },
+        ]}
+      />
       <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-3.5 px-6 md:px-10 py-4 bg-chill-bg/85 backdrop-blur-xl border-b border-chill-border">
         <Link to="/" className="text-sm text-chill-textSecondary hover:text-chill-text">Chillverse</Link>
         <span className="text-chill-textMuted">/</span>

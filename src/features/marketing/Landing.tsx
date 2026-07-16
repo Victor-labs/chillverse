@@ -6,6 +6,21 @@ import Footer from '../../layout/Footer'
 import CubeScene from './CubeScene'
 import { useReveal } from './useReveal'
 import { useAuth } from '../auth/useAuth'
+import Seo from '../../shared/components/Seo'
+
+// NOTE: no SearchAction here. Sitelinks-searchbox schema is only valid if the
+// target URL works for a logged-out visitor — Chillverse's /search is behind
+// auth, so pointing Google there would send anonymous searchers into a login
+// wall. Add SearchAction back once there's a public search surface (e.g. a
+// public player/leaderboard search, or blog search).
+const HOME_JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Chillverse',
+    url: 'https://chillverse.com.ng',
+  },
+]
 
 const FEATURES = [
   {
@@ -73,6 +88,11 @@ export default function Landing() {
 
   return (
     <>
+      <Seo
+        title="Chillverse — Play. Connect. Dominate."
+        description="Play fast-paced games, build streaks, climb the leaderboard, and chat with your crew — all in one social gaming universe. Join Chillverse free."
+        jsonLd={HOME_JSON_LD}
+      />
       <Nav />
 
       {/* ── HERO ──
