@@ -289,7 +289,7 @@ const MessageRow = memo(function MessageRow({
             <div style={{ display:'flex', alignItems:'flex-end', gap:6 }}>
               <span style={{ flex:1, minWidth:0 }}>
                 {msg.hidden ? (
-                  <HiddenContentNotice reason={msg.hidden_reason} inline />
+                  <HiddenContentNotice reason={msg.hidden_reason} isOwner={isMine} inline />
                 ) : msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
                   msg.audio_path ? (
                     <VoiceNotePlayer audioPath={msg.audio_path} durationSeconds={msg.audio_duration_seconds ?? 0} tint={isMine ? 'light' : 'dark'} />
