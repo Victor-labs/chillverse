@@ -324,8 +324,8 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
   // anchored the whole time — it never jumps to floating in the middle.
   const sheetBase: React.CSSProperties = {
     width: isWide ? 'min(92vw, 460px)' : '100%',
-    minHeight: 'min(74vh, 640px)',
-    maxHeight: '92vh',
+    minHeight: 'min(88vh, 760px)',
+    maxHeight: '94vh',
     borderRadius: '20px 20px 0 0',
     marginTop: 'auto',
     transform: entered && !closing ? 'translateY(0)' : 'translateY(100%)',
