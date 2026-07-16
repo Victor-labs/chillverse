@@ -113,7 +113,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft
       if (res.winner === 'X') {
         // Player wins — flat XP based on current game rank, no multiplier
         const earnedXP = RANK_XP[rankState.rank]
-        sessionXpRef.current += earnedXP
+        sessionXpRef.current = Math.min(sessionXpRef.current + earnedXP, SESSION_XP_CAP)
         setTotalXP(sessionXpRef.current)
         setSessionScores(s => ({ ...s, W: s.W + 1 }))
       } else if (res.winner === 'O') {
@@ -147,13 +147,14 @@ export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft
   function endSession() {
     const dur = Math.floor((Date.now() - startRef.current) / 1000)
     const total = sessionScores.W + sessionScores.D + sessionScores.L
-    const xpRounded = Math.min(sessionXpRef.current, SESSION_XP_CAP)
+    // Already capped as it accumulated (see resolveBoard), so this matches
+    // exactly what was shown live in the HUD during play.
     const payload: GameEndPayload = {
       gameId: GAME_ID,
       gameName: 'Tac Zone',
       rank: 'beginner', // TacZone is exempt from rank system
       score: sessionScores.W * 100 + sessionScores.D * 30,
-      xpEarned: xpRounded,
+      xpEarned: sessionXpRef.current,
       durationSec: dur,
       streak: sessionScores.W,
       correct: sessionScores.W,
