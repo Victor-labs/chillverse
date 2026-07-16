@@ -57,7 +57,13 @@ const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
 )
 
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/privacy', '/terms']
+// Pre-auth entry points only — a SIGNED-IN user landing on one of these
+// (e.g. a stale /login tab) gets bounced straight into the app. /privacy
+// and /terms are deliberately NOT in this list: they're legitimate pages
+// a logged-in user can land on too — e.g. tapping the "Terms and
+// Conditions" link from a moderation notice in chat — and should just
+// render normally instead of redirecting to /dashboard.
+const AUTH_REDIRECT_PATHS = ['/', '/login', '/signup', '/forgot-password']
 
 export default function App() {
   const navigate = useNavigate()
@@ -104,7 +110,7 @@ export default function App() {
           subscribeToPush(session.user.id)
         }
 
-        if (PUBLIC_PATHS.includes(window.location.pathname)) {
+        if (AUTH_REDIRECT_PATHS.includes(window.location.pathname)) {
           navigate('/dashboard', { replace: true })
         }
       }
