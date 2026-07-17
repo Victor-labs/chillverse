@@ -11,6 +11,7 @@ export interface Achievement {
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
   reward_type: 'xp' | 'profile_pic' | 'banner' | null
   reward_url: string | null
+  reward_item_id: string | null
 }
 
 export interface PlayerAchievement {
@@ -52,14 +53,39 @@ export async function unlockAchievement(userId: string, achievementId: string): 
 
   if (error) return false // already unlocked or DB error
 
-  // Fetch achievement details for notification
+  // Fetch achievement details for notification + reward granting
   const { data: ach } = await supabase
     .from('achievements')
-    .select('title, description, icon, xp_reward')
+    .select('title, description, icon, xp_reward, reward_type, reward_item_id')
     .eq('id', achievementId)
     .single()
 
   if (ach) {
+    // ── Grant the XP reward ──
+    // award_xp is SECURITY DEFINER and only allows auth.uid() = p_user_id,
+    // so this only ever runs for the currently-logged-in player.
+    if (ach.xp_reward > 0) {
+      const { error: xpError } = await supabase.rpc('award_xp', {
+        p_user_id: userId,
+        p_xp: ach.xp_reward,
+      })
+      if (xpError) console.error('[unlockAchievement] award_xp failed:', xpError)
+    }
+
+    // ── Grant the profile_pic / banner reward into inventory ──
+    if ((ach.reward_type === 'profile_pic' || ach.reward_type === 'banner') && ach.reward_item_id) {
+      const { error: invError } = await supabase.from('user_inventory').insert({
+        user_id: userId,
+        item_id: ach.reward_item_id,
+        is_equipped: false,
+        quantity: 1,
+      })
+      // Ignore unique-violation (already owns it) — anything else is worth logging
+      if (invError && invError.code !== '23505') {
+        console.error('[unlockAchievement] inventory grant failed:', invError)
+      }
+    }
+
     await supabase.from('notifications').insert({
       user_id: userId,
       type: 'achievement',

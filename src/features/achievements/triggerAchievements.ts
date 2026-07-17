@@ -18,7 +18,7 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
     // ── 1. Profile (xp, level, streak, created_at, profile completeness) ──
     const { data: profile } = await supabase
       .from('profiles')
-      .select('xp, level, streak, created_at, username, display_name, avatar, country, dob, interests, connected_platform')
+      .select('xp, level, streak, created_at, username, display_name, avatar, country, dob, interests, connected_platform, version_level')
       .eq('id', userId)
       .single()
 
@@ -108,7 +108,7 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
 
     // ── 7. Mall / Inventory ──
     const { data: inventoryItems } = await supabase
-      .from('user_items')
+      .from('user_inventory')
       .select('item_id, quantity')
       .eq('user_id', userId)
 
@@ -149,15 +149,16 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
     }
 
     // ── 8. Diamond / Premium ──
-    const { count: diamondPurchaseCount } = await supabase
-      .from('diamond_purchases')
+    // diamond_purchases / diamond_topups don't exist as separate tables — all
+    // diamond buys land in diamond_transactions. Both diamond_purse (>=1 buy)
+    // and premium_lifestyle (>=5 buys) read off the same count.
+    const { count: diamondTxCount } = await supabase
+      .from('diamond_transactions')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    const { count: diamondTopUpCount } = await supabase
-      .from('diamond_topups')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
+    const diamondPurchaseCount = diamondTxCount ?? 0
+    const diamondTopUpCount = diamondTxCount ?? 0
 
     // ── 9. Game wins / losses ──
     const { count: totalGameWinsCount } = await supabase
@@ -180,20 +181,25 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
       .eq('result', 'win')
 
     // ── 10. App version ──
-    const chillverseVersion = Number((profile as unknown as { app_version?: number }).app_version ?? 1)
+    const chillverseVersion = Number((profile as unknown as { version_level?: number }).version_level ?? 1)
 
     // ── 11. Weekly missions ──
-    const { count: completedMissionSets } = await supabase
-      .from('weekly_mission_completions')
-      .select('*', { count: 'exact', head: true })
+    // weekly_mission_completions doesn't exist — weekly progress actually
+    // lives on user_weekly_missions, one row per week with a completed_ids array.
+    const { data: weeklyMissionRows } = await supabase
+      .from('user_weekly_missions')
+      .select('completed_ids')
       .eq('user_id', userId)
-    const completedWeeklyMission = (completedMissionSets ?? 0) >= 1
+    const completedWeeklyMission = (weeklyMissionRows ?? []).some(
+      row => Array.isArray(row.completed_ids) && row.completed_ids.length > 0
+    )
 
     // ── 12. Movies watched ──
-    const { count: moviesWatchedCount } = await supabase
+    const { count: moviesWatchedRawCount } = await supabase
       .from('movie_watches')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
+    const moviesWatchedCount = moviesWatchedRawCount ?? 0
 
     // ── 13. Gifts given ──
     const { count: giftsGivenCount } = await supabase
@@ -202,10 +208,15 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
       .eq('sender_id', userId)
 
     // ── 14. Flash sales used ──
-    const { count: flashSalesUsedCount } = await supabase
-      .from('flash_sale_purchases')
+    // Flash sale buys go through the same diamond_transactions table as
+    // regular packs — they're just tagged with pack_id 'flash1'..'flash4'
+    // by the credit-diamonds edge function. No separate table needed.
+    const { count: flashSalesUsedRawCount } = await supabase
+      .from('diamond_transactions')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .ilike('pack_id', 'flash%')
+    const flashSalesUsedCount = flashSalesUsedRawCount ?? 0
 
     // ── 15. UNO sessions (wins + fastest win) ──
     // UNO doesn't set game_sessions.result (always 'completed'), so we read
