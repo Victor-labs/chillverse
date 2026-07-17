@@ -33,7 +33,7 @@ const MOSSY_GATE: ChamberStory = {
           'You pull your hand back. The moss settles. You decide not to write "alive" in your notes yet, though the word sits close.',
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_1' },
+          { type: 'set_flag', key: 'gf_mira_journal_1' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -45,7 +45,7 @@ const MOSSY_GATE: ChamberStory = {
           "You fold the page into your satchel. Whoever M.A. was, they didn't sound like someone prone to fright.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_1' },
+          { type: 'set_flag', key: 'gf_mira_journal_1' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -57,7 +57,7 @@ const MOSSY_GATE: ChamberStory = {
           "Whoever left it walked in and, as far as the ground remembers, simply didn't walk back out this way. You choose, for now, to believe the kindest explanation.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_1' },
+          { type: 'set_flag', key: 'gf_mira_journal_1' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -100,7 +100,7 @@ const MOSSY_GATE: ChamberStory = {
           '"...doesn\'t chase. Doesn\'t need to. Everywhere I go is already inside it." The rest has bled into illegible smears of ink and rain.',
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_2' },
+          { type: 'set_flag', key: 'gf_mira_journal_2' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -169,7 +169,7 @@ const THORNWOOD_PASS: ChamberStory = {
           "Not close enough to identify yet. But it's the first thing all day that looks made rather than grown.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_3' },
+          { type: 'set_flag', key: 'gf_mira_journal_3' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -181,7 +181,7 @@ const THORNWOOD_PASS: ChamberStory = {
           "It fades the moment you pull back, and you're left unsure whether you heard it or only convinced yourself you did.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_3' },
+          { type: 'set_flag', key: 'gf_mira_journal_3' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -193,7 +193,7 @@ const THORNWOOD_PASS: ChamberStory = {
           "Whoever cut these wasn't leaving a trail to follow — they were marking a count they didn't want to lose track of, the way a prisoner marks days. Five chambers. Someone else already knew.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_3' },
+          { type: 'set_flag', key: 'gf_mira_journal_3' },
           { type: 'xp_bonus', amount: 5 },
         ],
       },
@@ -228,7 +228,7 @@ const THORNWOOD_PASS: ChamberStory = {
           "Something placed this here on purpose, with care, the way you'd set something down gently rather than drop it and walk away.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_hollow_seen' },
+          { type: 'set_flag', key: 'gf_mira_hollow_seen' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -316,7 +316,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           "The moment you finish, the drip from the canopy pauses. Not stops — pauses, the way a listener pauses when someone finally says something worth hearing. Then it resumes, and you can't shake the feeling you were just, briefly, heard back.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_4' },
+          { type: 'set_flag', key: 'gf_mira_journal_4' },
           { type: 'set_flag', key: 'verdant_hush_name_known' },
           { type: 'xp_bonus', amount: 10 },
         ],
@@ -329,7 +329,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           "Someone brought this piece from somewhere else, specifically, deliberately, and set it here like a key set into a lock built to fit it.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_4' },
+          { type: 'set_flag', key: 'gf_mira_journal_4' },
           { type: 'set_flag', key: 'verdant_hush_name_known' },
           { type: 'xp_bonus', amount: 10 },
         ],
@@ -342,7 +342,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           "Underneath it all, so faint you might be imagining it, that same four-second pulse from Thornwood, present here too, patient as ever.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_journal_4' },
+          { type: 'set_flag', key: 'gf_mira_journal_4' },
           { type: 'set_flag', key: 'verdant_hush_name_known' },
           { type: 'xp_bonus', amount: 10 },
         ],
@@ -369,7 +369,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           "This wasn't erosion. Someone destroyed this deliberately, and whoever did knew exactly where to hit it to make sure it couldn't listen anymore.",
         ],
         effects: [
-          { type: 'set_flag', key: 'altar_broken_understood' },
+          { type: 'set_flag', key: 'gf_altar_broken_understood' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -381,7 +381,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           'No voice answers. But the four-second pulse in your chest skips, just once, like something on the other end forgot itself for a beat before remembering to be patient again.',
         ],
         effects: [
-          { type: 'set_flag', key: 'felt_presence' },
+          { type: 'set_flag', key: 'gf_felt_presence' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -393,7 +393,7 @@ const SUNKEN_ALTAR: ChamberStory = {
           "Rough, shallow, nothing like the precision of the originals. It feels less like vandalism and more like finishing a sentence someone else left hanging mid-word for far too long.",
         ],
         effects: [
-          { type: 'set_flag', key: 'counting_completed' },
+          { type: 'set_flag', key: 'gf_counting_completed' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -512,7 +512,7 @@ const ROOT_LABYRINTH: ChamberStory = {
           "Whatever made her stop writing, it wasn't panic. The handwriting doesn't shake.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_fate_known' },
+          { type: 'set_flag', key: 'gf_mira_fate_known' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -524,7 +524,7 @@ const ROOT_LABYRINTH: ChamberStory = {
           "There's no blood, no tearing, no evidence of violence anywhere on the fabric — only the ordinary wear of a garment that traveled a long way before its owner decided she didn't need it where she was going.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_fate_known' },
+          { type: 'set_flag', key: 'gf_mira_fate_known' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -536,7 +536,7 @@ const ROOT_LABYRINTH: ChamberStory = {
           "The vision doesn't show you what happens next. It simply ends, gently, like a held note finally allowed to fade.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_fate_known' },
+          { type: 'set_flag', key: 'gf_mira_fate_known' },
           { type: 'set_flag', key: 'mira_vision_seen' },
           { type: 'xp_bonus', amount: 15 },
         ],
@@ -618,7 +618,7 @@ const DEEP_HOLLOW: ChamberStory = {
           "It doesn't lead you the fastest way down. It leads you the way it wants you to see it, past chambers of root-work so intricate they could be architecture or could simply be growth that forgot to stop being beautiful.",
         ],
         effects: [
-          { type: 'set_flag', key: 'deep_hollow_entered' },
+          { type: 'set_flag', key: 'gf_deep_hollow_entered' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -630,7 +630,7 @@ const DEEP_HOLLOW: ChamberStory = {
           "You're not walking through a tunnel. You're walking along something's arteries, and it's very much still circulating.",
         ],
         effects: [
-          { type: 'set_flag', key: 'deep_hollow_entered' },
+          { type: 'set_flag', key: 'gf_deep_hollow_entered' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -642,7 +642,7 @@ const DEEP_HOLLOW: ChamberStory = {
           "For a moment you'd swear the four-second pulse skips, quickens, recognizes something about the key that has nothing to do with metal or teeth.",
         ],
         effects: [
-          { type: 'set_flag', key: 'deep_hollow_entered' },
+          { type: 'set_flag', key: 'gf_deep_hollow_entered' },
           { type: 'xp_bonus', amount: 10 },
         ],
       },
@@ -668,7 +668,7 @@ const DEEP_HOLLOW: ChamberStory = {
           '"You brought the key," she says. Not a question. She already knew.',
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_found_alive' },
+          { type: 'set_flag', key: 'gf_mira_found_alive' },
           { type: 'xp_bonus', amount: 15 },
         ],
       },
@@ -680,7 +680,7 @@ const DEEP_HOLLOW: ChamberStory = {
           "Fine tendrils rest against her wrists, her temples, not invasive, more like a listener's hand resting on a shoulder. She doesn't look trapped. She looks tended.",
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_found_alive' },
+          { type: 'set_flag', key: 'gf_mira_found_alive' },
           { type: 'xp_bonus', amount: 15 },
         ],
       },
@@ -692,7 +692,7 @@ const DEEP_HOLLOW: ChamberStory = {
           '"the Verdant Hush wakes for no one, and forgets nothing, and asks only to be listened to in turn." You\'ve been reading fragments of this sentence since the gate. Here, finally, is the whole of it.',
         ],
         effects: [
-          { type: 'set_flag', key: 'mira_found_alive' },
+          { type: 'set_flag', key: 'gf_mira_found_alive' },
           { type: 'xp_bonus', amount: 15 },
         ],
       },
