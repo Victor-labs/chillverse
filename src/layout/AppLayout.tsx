@@ -103,6 +103,7 @@ export default function AppLayout() {
           collapsed={sidebarCollapsed}
           onClose={() => setSidebarOpen(false)}
           onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+          profile={profile}
         />
 
         <Topbar

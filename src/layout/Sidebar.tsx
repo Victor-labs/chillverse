@@ -9,6 +9,17 @@ import {
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
+import Avatar from '../shared/components/Avatar'
+import type { Profile } from '../shared/types'
+
+// Matches the presence values stored on profiles.presence (see Profile.tsx / Settings.tsx)
+type Presence = 'online' | 'idle' | 'offline' | 'invisible'
+const PRESENCE_COLORS: Record<Presence, string> = {
+  online: '#3ecf8e',
+  idle: '#f5c542',
+  offline: '#888899',
+  invisible: '#555566',
+}
 
 interface NavItem {
   label: string
@@ -76,9 +87,10 @@ interface SidebarProps {
   collapsed: boolean
   onClose: () => void
   onToggleCollapse: () => void
+  profile?: Profile | null
 }
 
-export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, profile }: SidebarProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { isStaff, isAdmin } = useModRole()
@@ -284,41 +296,70 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse }: 
           })}
         </nav>
 
-        {/* Premium box */}
-        {!collapsed && (
-          <div className="p-3 pb-5">
+        {/* User panel — Discord-style; tap to open full profile */}
+        <div className="px-2 pb-2 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {!collapsed ? (
+            <div
+              className="ripple-wrap"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 12, padding: '8px', background: 'rgba(255,255,255,0.03)' }}
+            >
+              <button
+                type="button"
+                onClick={(e) => { ripple(e); navigate('/profile'); onClose() }}
+                title="Open profile"
+                className="ripple-wrap"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                onMouseEnter={e => { e.currentTarget.parentElement!.style.background = 'rgba(255,255,255,0.07)' }}
+                onMouseLeave={e => { e.currentTarget.parentElement!.style.background = 'rgba(255,255,255,0.03)' }}
+              >
+                <span style={{ position: 'relative', flexShrink: 0 }}>
+                  <Avatar src={profile?.avatar} name={profile?.display_name || profile?.username || 'You'} size={34} disabled />
+                  <span style={{
+                    position: 'absolute', bottom: -2, right: -2, width: 11, height: 11, borderRadius: '50%',
+                    background: PRESENCE_COLORS[(profile?.presence as Presence) || 'online'],
+                    border: '2px solid var(--surface, #17171c)',
+                  }} />
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {profile?.display_name || profile?.username || 'You'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {profile?.bio?.trim() || (((profile?.presence as Presence) || 'online').replace(/^\w/, c => c.toUpperCase()))}
+                  </div>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { ripple(e); navigate('/settings'); onClose() }}
+                title="Settings"
+                className="ripple-wrap"
+                style={{ width: 30, height: 30, borderRadius: 8, background: 'transparent', border: 'none', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)' }}
+              >
+                <Settings size={15} />
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={(e) => { ripple(e); navigate('/pro') }}
-              className="ripple-wrap w-full text-left"
-              style={{ background: 'linear-gradient(135deg, rgba(30,10,0,0.9), rgba(40,18,0,0.9))', border: '1px solid rgba(255,107,0,0.3)', borderRadius: 'var(--radius)', padding: 16, cursor: 'pointer', transition: 'border-color 0.2s, transform 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,107,0,0.55)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,107,0,0.3)'; e.currentTarget.style.transform = 'translateY(0)' }}
+              onClick={(e) => { ripple(e); navigate('/profile'); onClose() }}
+              title="Open profile"
+              className="ripple-wrap"
+              style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '8px 0', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent)', fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
-                GO PREMIUM <Flame size={11} />
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Unlock All Features</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Get access to exclusive content and perks</div>
-              <span className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 8 }}>
-                <Zap size={11} /> Upgrade Now
+              <span style={{ position: 'relative' }}>
+                <Avatar src={profile?.avatar} name={profile?.display_name || profile?.username || 'You'} size={36} disabled />
+                <span style={{
+                  position: 'absolute', bottom: -2, right: -2, width: 11, height: 11, borderRadius: '50%',
+                  background: PRESENCE_COLORS[(profile?.presence as Presence) || 'online'],
+                  border: '2px solid var(--surface, #17171c)',
+                }} />
               </span>
             </button>
-          </div>
-        )}
-
-        {collapsed && (
-          <div className="p-3 pb-5 flex justify-center">
-            <button
-              type="button"
-              onClick={(e) => { ripple(e); navigate('/pro') }}
-              title="Go Premium"
-              style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,var(--accent),var(--accent2))', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
-            >
-              <Zap size={16} />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   )
