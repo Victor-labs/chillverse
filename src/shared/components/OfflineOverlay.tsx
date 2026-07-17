@@ -93,17 +93,17 @@ export default function OfflineOverlay() {
     >
       <div style={{ maxWidth: 320 }}>
         <div style={{
-          marginBottom: 28, fontSize: 21, fontWeight: 800,
-          color: '#ff6b00', letterSpacing: '-0.5px',
+          marginBottom: 28, fontSize: 34, fontWeight: 800,
+          letterSpacing: '-1px', display: 'flex',
+          justifyContent: 'center', gap: 2,
         }}>
-          {'Chillverse'.split('').map((letter, i) => (
+          {[
+            { letter: 'C', color: 'var(--text)' },
+            { letter: 'V', color: '#ff6b00' },
+          ].map(({ letter, color }) => (
             <span
-              key={i}
-              style={{
-                display: 'inline-block',
-                animation: 'wordmarkWave 1.4s ease-in-out infinite',
-                animationDelay: `${i * 0.08}s`,
-              }}
+              key={letter}
+              style={{ display: 'inline-block', color, animation: 'cvBounce 1s ease-in-out infinite' }}
             >
               {letter}
             </span>
@@ -154,9 +154,9 @@ export default function OfflineOverlay() {
       </div>
 
       <style>{`
-        @keyframes wordmarkWave {
+        @keyframes cvBounce {
           0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-6px); }
+          50%      { transform: translateY(-10px); }
         }
       `}</style>
     </div>
