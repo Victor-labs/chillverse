@@ -22,6 +22,7 @@ export type GameKey =
   | 'pattern_king'
   | 'uno'
   | 'colour_block'
+  | 'tile_merge'
 
 export interface SessionInput {
   game: GameKey

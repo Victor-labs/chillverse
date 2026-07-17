@@ -36,6 +36,7 @@ import CloseCall from './play/CloseCall'
 import PatternKing from './play/PatternKing'
 import Uno from './play/Uno'
 import ColourBlock from './play/ColourBlock'
+import TileMerge from './play/TileMerge'
 
 // ─── Constants ───────────────────────────────────────────────
 const MAX_PLAYS    = 7
@@ -306,6 +307,7 @@ export default function Games() {
   if (activeGame === 'pattern-king')   return <PatternKing       {...gameProps} />
   if (activeGame === 'uno')            return <Uno                {...gameProps} />
   if (activeGame === 'colour-block')   return <ColourBlock         {...gameProps} />
+  if (activeGame === 'tile-merge')     return <TileMerge           {...gameProps} />
 
   return (
     <div>
