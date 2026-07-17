@@ -44,6 +44,10 @@ interface ChamberState {
 const MAX_ENERGY = 200
 
 // ── Maps Data ─────────────────────────────────────────────────
+// xpRequired values carry a flat +5% bump over their original figures
+// (30000->31500, 90000->94500, 250000->262500) on top of the sequential
+// full-completion gate below — the two gates are independent and both
+// must pass to unlock a map.
 const MAPS: ExplorationMap[] = [
   {
     id: 1, name: 'Greenfields', tier: 'I', xpRequired: 0,
@@ -59,7 +63,7 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 30000,
+    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 31500,
     artifactLocation: 'Crystal Lake',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/45a3c9b17775c774156c9c924ed4a89e.webp.jpg',
     energyCost: MAX_ENERGY,
@@ -72,7 +76,7 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 3, name: 'Under World', tier: 'III', xpRequired: 90000,
+    id: 3, name: 'Under World', tier: 'III', xpRequired: 94500,
     artifactLocation: 'Under World',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/7c15d735d2aeb8fff833fdd949d5c4a3.jpg',
     energyCost: MAX_ENERGY,
@@ -85,7 +89,7 @@ const MAPS: ExplorationMap[] = [
     ],
   },
   {
-    id: 4, name: 'The Void', tier: 'IV', xpRequired: 250000,
+    id: 4, name: 'The Void', tier: 'IV', xpRequired: 262500,
     artifactLocation: 'The Void',
     image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/ecaf76f4607a37f03cfaac5babbc2826.jpg',
     energyCost: MAX_ENERGY,
@@ -312,8 +316,18 @@ function EnergyTooltip({ onClose }: { onClose: () => void }) {
 }
 
 // ── Map Card ──────────────────────────────────────────────────
-function MapCard({ map, playerXP, onClick }: { map: ExplorationMap; playerXP: number; onClick: (m: ExplorationMap) => void }) {
-  const locked = playerXP < map.xpRequired
+function MapCard({
+  map, playerXP, previousMap, previousMapComplete, onClick,
+}: {
+  map: ExplorationMap
+  playerXP: number
+  previousMap: ExplorationMap | null   // null for the first map — nothing to gate on
+  previousMapComplete: boolean         // ignored when previousMap is null
+  onClick: (m: ExplorationMap) => void
+}) {
+  const xpLocked = playerXP < map.xpRequired
+  const chainLocked = previousMap !== null && !previousMapComplete
+  const locked = xpLocked || chainLocked
   const xpNeeded = map.xpRequired - playerXP
 
   const tierColors: Record<string, string> = {
@@ -368,11 +382,20 @@ function MapCard({ map, playerXP, onClick }: { map: ExplorationMap; playerXP: nu
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '0 16px', textAlign: 'center',
           }}>
             <Lock size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
-              {fmtXP(xpNeeded)} XP needed
-            </span>
+            {/* Chain gate takes priority in the label — clearing it is
+                the actionable next step even if the XP gate is also unmet. */}
+            {chainLocked ? (
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontWeight: 700, lineHeight: 1.4 }}>
+                Fully explore {previousMap!.name} first
+              </span>
+            ) : (
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
+                {fmtXP(xpNeeded)} XP needed
+              </span>
+            )}
           </div>
         )}
 
@@ -1109,6 +1132,33 @@ export default function Exploration() {
   const [showNoAvatar, setShowNoAvatar] = useState(false)
   const [showEnergyTip, setShowEnergyTip] = useState(false)
 
+  // Which maps this user has fully explored (every chamber claimed) —
+  // drives the sequential map-unlock chain below, independent of the XP
+  // gate. Keyed by map id; a missing/false entry means "not complete."
+  const [mapCompletion, setMapCompletion] = useState<Record<number, boolean>>({})
+
+  async function loadMapCompletion() {
+    if (!userId) return
+    const { data, error } = await supabase
+      .from('exploration_chamber_runs')
+      .select('map_id, chamber_id')
+      .eq('user_id', userId)
+      .eq('claimed', true)
+    if (error) return
+
+    const claimedByMap: Record<number, Set<number>> = {}
+    for (const row of data ?? []) {
+      ;(claimedByMap[row.map_id] ??= new Set()).add(row.chamber_id)
+    }
+    const next: Record<number, boolean> = {}
+    for (const map of MAPS) {
+      next[map.id] = (claimedByMap[map.id]?.size ?? 0) >= map.chambers.length
+    }
+    setMapCompletion(next)
+  }
+
+  useEffect(() => { loadMapCompletion() }, [userId])
+
   // Check equipped avatar
   useEffect(() => {
     if (!userId) return
@@ -1190,7 +1240,7 @@ export default function Exploration() {
             energy={energy}
             refreshEnergy={refreshEnergy}
             spendEnergy={spendEnergy}
-            onBack={() => setActiveMap(null)}
+            onBack={() => { setActiveMap(null); loadMapCompletion() }}
             userId={userId}
           />
         ) : (
@@ -1226,11 +1276,13 @@ export default function Exploration() {
               Select a Map
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {MAPS.map(map => (
+              {MAPS.map((map, i) => (
                 <MapCard
                   key={map.id}
                   map={map}
                   playerXP={playerXP}
+                  previousMap={i === 0 ? null : MAPS[i - 1]}
+                  previousMapComplete={i === 0 ? true : !!mapCompletion[MAPS[i - 1].id]}
                   onClick={m => {
                     if (!hasAvatar) { setShowNoAvatar(true); return }
                     setActiveMap(m)
