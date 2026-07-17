@@ -1,5 +1,6 @@
 // src/pages/Dashboard.tsx
 import { useState, useEffect, useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -109,6 +110,21 @@ function getStreakMessage(streak: number): { emoji: string; message: string; col
   return { emoji: '🌌', message: `${streak} days. You ARE Chillverse.`, color: '#f5c542' }
 }
 
+// ─── Skeleton block ─────────────────────────────────────────
+function SkeletonBlock({ style }: { style?: CSSProperties }) {
+  return (
+    <div
+      style={{
+        borderRadius: 14,
+        background: 'var(--surface2)',
+        boxShadow: '6px 6px 14px var(--neu-dark), -4px -4px 10px var(--neu-light)',
+        animation: 'pulse 1.6s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  )
+}
+
 export default function Dashboard() {
   const { profile, loading, error } = useProfile()
   const sessionLimit = getSessionLimits(profile).limit
@@ -180,8 +196,63 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="neu-card p-10 flex items-center justify-center max-w-[800px] mx-auto mt-8">
-        <span className="block w-9 h-9 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--surface3)', borderTopColor: 'var(--accent)' }} />
+      <div className="flex flex-col max-w-[800px] mx-auto">
+        {/* ── Welcome card skeleton ── */}
+        <section className="su d1">
+          <div className="neu-card" style={{ padding: '22px 20px' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SkeletonBlock style={{ width: 130, height: 11, marginBottom: 9 }} />
+                <SkeletonBlock style={{ width: 190, height: 22, marginBottom: 12 }} />
+                <SkeletonBlock style={{ width: 150, height: 24, borderRadius: 10 }} />
+              </div>
+              <SkeletonBlock style={{ width: 54, height: 54, borderRadius: 16, flexShrink: 0 }} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── XP bar skeleton ── */}
+        <section className="su d2" style={{ marginTop: 12 }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+            <SkeletonBlock style={{ width: 90, height: 11 }} />
+            <SkeletonBlock style={{ width: 70, height: 11 }} />
+          </div>
+          <SkeletonBlock style={{ width: '100%', height: 8, borderRadius: 4 }} />
+        </section>
+
+        {/* ── Quick actions skeleton ── */}
+        <section className="su d3">
+          <SkeletonBlock style={{ width: 100, height: 11, marginBottom: 10 }} />
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonBlock key={i} style={{ height: 116 }} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Multiplayer skeleton ── */}
+        <section className="su d4">
+          <SkeletonBlock style={{ width: 100, height: 11, marginBottom: 10 }} />
+          <SkeletonBlock style={{ height: 88 }} />
+        </section>
+
+        {/* ── Explore grid skeleton ── */}
+        <section className="su d5">
+          <SkeletonBlock style={{ width: 150, height: 11, marginBottom: 10 }} />
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonBlock key={i} style={{ height: 108 }} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Halo AI skeleton ── */}
+        <section className="su" style={{ animationDelay: '0.35s', paddingBottom: 8 }}>
+          <SkeletonBlock style={{ width: 70, height: 11, marginBottom: 10 }} />
+          <SkeletonBlock style={{ height: 150 }} />
+        </section>
+
+        <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }`}</style>
       </div>
     )
   }
