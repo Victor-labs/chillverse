@@ -166,7 +166,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto overflow-x-hidden">
+        <nav className="flex flex-col gap-1 px-2 overflow-y-auto overflow-x-hidden" style={{ flex: '0 1 auto', minHeight: 0 }}>
           {items.map((item) => {
             const groupActive = isGroupActive(item, pathname)
             const Icon = item.icon
@@ -360,6 +360,10 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
             </button>
           )}
         </div>
+
+        {/* Any leftover height goes here, below the account row, instead of
+            pushing the account row itself far down away from the nav items. */}
+        <div style={{ flex: 1, minHeight: 0 }} />
       </aside>
     </>
   )
