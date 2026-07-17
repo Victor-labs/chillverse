@@ -7,6 +7,7 @@ import CubeScene from './CubeScene'
 import { useReveal } from './useReveal'
 import { useAuth } from '../auth/useAuth'
 import Seo from '../../shared/components/Seo'
+import { FAQ_ITEMS } from '../../shared/content/faq'
 
 // NOTE: no SearchAction here. Sitelinks-searchbox schema is only valid if the
 // target URL works for a logged-out visitor — Chillverse's /search is behind
@@ -338,36 +339,7 @@ export default function Landing() {
         </div>
 
         <div className="reveal flex flex-col gap-3.5">
-          {[
-            {
-              q: 'What is Chillverse?',
-              a: 'Chillverse is a Nigerian mobile-first social gaming platform where you play fast-paced games, build XP and daily streaks, climb live leaderboards, chat with friends, and customise your profile with unlockable avatar skins from the in-app Mall.',
-            },
-            {
-              q: 'Is Chillverse free to use?',
-              a: 'Yes — Chillverse is completely free to join and play. Core features like games, streaks, leaderboards, chat, and profiles cost nothing. The Mall lets you optionally spend in-app diamonds on cosmetic avatar skins.',
-            },
-            {
-              q: 'What games can I play on Chillverse?',
-              a: 'Chillverse has a growing library of quick-fire mini games, including Whot (the classic Nigerian card game) and Colour Block, with more titles being added regularly. Games support solo play and live multiplayer sessions.',
-            },
-            {
-              q: 'How does XP and the streak system work?',
-              a: "Every game you play earns XP, which levels up your account and moves you up the global leaderboard. Logging in and playing daily builds your streak — miss a day and your streak resets, so consistency matters.",
-            },
-            {
-              q: 'Can I chat with friends on Chillverse?',
-              a: 'Yes. Chillverse has real-time chat and crew features so you can message friends, trash talk during matches, and stay connected with your community directly in the app.',
-            },
-            {
-              q: 'Does Chillverse have content for kids?',
-              a: 'Yes — Chillverse includes a dedicated kids video section with curated, family-friendly content, separate from the main gaming and social features.',
-            },
-            {
-              q: 'How do I get started on Chillverse?',
-              a: 'Sign up for free at chillverse.com.ng, set up your profile, and jump straight into a game. You start earning XP and building your streak from your very first session.',
-            },
-          ].map((item, i) => (
+          {FAQ_ITEMS.slice(0, 7).map((item, i) => (
             <details
               key={i}
               className="group glass-panel rounded-2xl px-6 py-5 open:pb-5 transition-all"
@@ -379,6 +351,11 @@ export default function Landing() {
               <p className="mt-3 text-[15px] leading-relaxed text-chill-textSecondary">{item.a}</p>
             </details>
           ))}
+        </div>
+        <div className="reveal text-center mt-8">
+          <Link to="/faq" className="text-sm font-semibold text-chill-violetSoft hover:underline">
+            See all FAQs →
+          </Link>
         </div>
       </section>
 
