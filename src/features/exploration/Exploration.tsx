@@ -5,7 +5,7 @@ import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useProfile } from '../profile/useProfile'
 import StoryCheckpointOverlay from './story/StoryCheckpointOverlay'
-import { STORY_CONTENT } from './story/content/map1'
+import { STORY_CONTENT } from './story/content'
 import type { CheckpointStage, StoryChoiceOption } from './story/types'
 
 // ── Types ─────────────────────────────────────────────────────
