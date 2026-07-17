@@ -68,7 +68,17 @@ export async function checkAndAwardAutoBadges(userId: string): Promise<void> {
 // ── Staff-only: manually grant/revoke a manual-type badge (Tester, and
 //    any future Admin/Founder/Verified-style badge). ─────────────────────
 export async function grantManualBadge(targetUserId: string, badgeId: string) {
-  return supabase.rpc('grant_manual_badge', { p_target_user_id: targetUserId, p_badge_id: badgeId })
+  const result = await supabase.rpc('grant_manual_badge', { p_target_user_id: targetUserId, p_badge_id: badgeId })
+
+  // Leaderboard Legend / Runner-Up Elite are the only two badges that also
+  // post a Highlight — checkLeaderboardBadgeHighlight no-ops for every
+  // other badge id, so this is safe to call unconditionally.
+  if (!result.error) {
+    const { checkLeaderboardBadgeHighlight } = await import('../highlights/highlightTriggers')
+    checkLeaderboardBadgeHighlight(targetUserId, badgeId).catch(console.error)
+  }
+
+  return result
 }
 export async function revokeManualBadge(targetUserId: string, badgeId: string) {
   return supabase.rpc('revoke_manual_badge', { p_target_user_id: targetUserId, p_badge_id: badgeId })

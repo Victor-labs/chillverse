@@ -28,7 +28,9 @@ export const BADGE_ICON_MAP: Record<string, LucideIcon> = {
   'gem': Gem,
   // Leaderboard / artifacts badges
   'hand-metal': HandMetal,
+  'hand-fist': HandMetal, // lucide has no distinct fist icon; reuses hand-metal
   'anchor': Anchor,
+  'sailboat': Anchor, // ditto — no sailboat icon in this lucide version
   'medal': Medal,
 }
 
