@@ -274,7 +274,7 @@ function AdPlayer({ onDone }: { onDone: () => void }) {
 }
 
 // ── Player screen ─────────────────────────────────────────────────────────────
-function PlayerScreen({ category, sources, onBack, secsLeft }: { category: Category; sources: MovieSource[]; onBack: () => void; secsLeft: number }) {
+function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { category: Category; sources: MovieSource[]; onBack: () => void; secsLeft: number; userId: string | null }) {
   const [idx, setIdx] = useState(0)
   const [showAd, setShowAd] = useState(true) // show ad before first video + between videos
   const shuffled = useRef(shuffle(sources)).current
@@ -284,11 +284,20 @@ function PlayerScreen({ category, sources, onBack, secsLeft }: { category: Categ
   const iframeId = useRef(`yt-player-${Math.random().toString(36).slice(2)}`).current
   const playerRef = useRef<{ destroy: () => void } | null>(null)
 
-  // When video ends → show ad before next one
+  // When video ends → log the watch (for cinema_sim achievement) + show ad before next one
   const advance = useCallback(() => {
+    if (userId && current) {
+      supabase.from('movie_watches').insert({
+        user_id: userId,
+        movie_id: current.id,
+        title: current.title,
+      }).then(({ error }) => {
+        if (error) console.error('[Watch] movie_watches insert failed:', error)
+      })
+    }
     setShowAd(true)
     setIdx(i => i + 1)
-  }, [])
+  }, [userId, current])
 
   const handleAdDone = useCallback(() => setShowAd(false), [])
 
@@ -537,6 +546,7 @@ export default function Watch() {
           sources={sourcesLoaded ? sourcesByCategory[category] : []}
           onBack={() => setScreen('category')}
           secsLeft={getSecondsUntilClose()}
+          userId={myId}
         />
       </>
     )
