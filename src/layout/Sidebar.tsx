@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Trophy, Home, Flame, Gamepad2, ShoppingBag, Gift,
+  Trophy, Home, Flame, Gamepad2, ShoppingBag,
   Settings, Zap, X, ChevronLeft, ChevronRight,
   Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
@@ -53,7 +53,6 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Wallet',    to: '/wallet',     icon: Wallet      },
     ],
   },
-  { label: 'Gift',         to: '/gift',         icon: Gift,        badge: null },
   { label: 'Ranks',        to: '/ranks',        icon: Trophy,      badge: null },
   { label: 'Achievements', to: '/achievements', icon: Zap,         badge: null },
   {
