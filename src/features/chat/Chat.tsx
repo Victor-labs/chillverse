@@ -350,7 +350,6 @@ interface MessageBurstProps {
   isMine: boolean
   senderLabel: string
   avatarUrl: string | null
-  myProfile: { username: string; display_name: string | null; avatar: string | null } | null
   onOpenProfile: (msg: Message) => void
   onContextMenu: (msg: Message, x: number, y: number) => void
   onDoubleClick: (msg: Message) => void
@@ -360,30 +359,33 @@ interface MessageBurstProps {
   starredIds: Set<string>
   /** Avatars only make sense where more than two people share the thread (Global
    *  Chat) — a DM never shows one, since which side of the screen a message sits
-   *  on already identifies the sender. */
+   *  on already identifies the sender. Even in Global Chat this only ever renders
+   *  for other people's messages (see the `!isMine` check below); your own
+   *  avatar is never shown, for the same reason a DM never shows one for you. */
   isGroupChat: boolean
 }
 
-/** A consecutive run of messages from one sender. The avatar (Global Chat only)
- *  appears once per burst, aligned to the bottom line. Each message underneath
- *  keeps rendering its own independent chat-line — replying, or just sending
- *  another message, always starts a new line of its own width, simply pushed
- *  further down the stack rather than widening anything above it. */
+/** A consecutive run of messages from one sender. The avatar (Global Chat only,
+ *  and only for other senders — never your own) appears once per burst, aligned
+ *  to the bottom line. Each message underneath keeps rendering its own
+ *  independent chat-line — replying, or just sending another message, always
+ *  starts a new line of its own width, simply pushed further down the stack
+ *  rather than widening anything above it. */
 const MessageBurst = memo(function MessageBurst({
-  burst, isMine, senderLabel, avatarUrl, myProfile,
+  burst, isMine, senderLabel, avatarUrl,
   onOpenProfile, onContextMenu, onDoubleClick, formatTime, readReceiptFor, starredIds, isGroupChat,
 }: MessageBurstProps) {
   const first = burst[0]
 
   return (
     <div style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-end', gap:8, marginBottom:6 }}>
-      {isGroupChat && (
+      {isGroupChat && !isMine && (
         <button
           type="button"
           onClick={() => onOpenProfile(first)}
           style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0, marginBottom:8 }}
           title={senderLabel}>
-          <Avatar name={isMine ? (myProfile?.display_name || myProfile?.username || 'Me') : senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
+          <Avatar name={senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
         </button>
       )}
 
@@ -2269,7 +2271,6 @@ export default function Chat() {
                             isMine={isMine}
                             senderLabel={senderLabel}
                             avatarUrl={avatarFor(first, isMine)}
-                            myProfile={myProfile}
                             onOpenProfile={openSenderProfile}
                             onContextMenu={(m, x, y) => { setCtxMsg(m); setCtxPos({ x, y }) }}
                             onDoubleClick={m => setReplyTo(m)}
