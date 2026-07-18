@@ -11,6 +11,7 @@ export interface UserModerationRow {
   ban_reason: string | null
   banned_by: string | null
   banned_at: string | null
+  is_verified: boolean
 }
 
 export interface ContentReport {
@@ -52,17 +53,17 @@ function friendlyError(error: { message: string } | null): string | null {
 }
 
 /** My own staff role + ban status, used to gate the UI. Falls back to 'user' / not banned if no row exists yet. */
-export async function getMyModerationStatus(userId: string): Promise<{ role: StaffRole; isBanned: boolean; bannedUntil: string | null; banReason: string | null }> {
+export async function getMyModerationStatus(userId: string): Promise<{ role: StaffRole; isBanned: boolean; bannedUntil: string | null; banReason: string | null; isVerified: boolean }> {
   const { data } = await supabase
     .from('user_moderation')
-    .select('role, is_banned, banned_until, ban_reason')
+    .select('role, is_banned, banned_until, ban_reason, is_verified')
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (!data) return { role: 'user', isBanned: false, bannedUntil: null, banReason: null }
+  if (!data) return { role: 'user', isBanned: false, bannedUntil: null, banReason: null, isVerified: false }
 
   const currentlyBanned = data.is_banned && (!data.banned_until || new Date(data.banned_until) > new Date())
-  return { role: data.role as StaffRole, isBanned: currentlyBanned, bannedUntil: data.banned_until, banReason: data.ban_reason }
+  return { role: data.role as StaffRole, isBanned: currentlyBanned, bannedUntil: data.banned_until, banReason: data.ban_reason, isVerified: data.is_verified ?? false }
 }
 
 export async function fetchOpenReports(): Promise<{ data: ContentReport[]; error: string | null }> {
@@ -111,9 +112,15 @@ export async function searchUserByUsername(username: string): Promise<{ data: (U
       ban_reason: mod?.ban_reason ?? null,
       banned_by: mod?.banned_by ?? null,
       banned_at: mod?.banned_at ?? null,
+      is_verified: mod?.is_verified ?? false,
     },
     error: null,
   }
+}
+
+export async function setVerified(targetId: string, verified: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('mod_set_verified', { p_target_id: targetId, p_verified: verified })
+  return { error: friendlyError(error) }
 }
 
 export async function banUser(targetId: string, reason: string, durationHours: number | null): Promise<{ error: string | null }> {

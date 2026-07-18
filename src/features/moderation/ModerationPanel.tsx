@@ -1,11 +1,11 @@
 // src/features/moderation/ModerationPanel.tsx
 import { useEffect, useState } from 'react'
-import { ShieldAlert, Flag, Users as UsersIcon, ScrollText, Search, Ban, ShieldCheck, Trash2, Bell, Eye } from 'lucide-react'
+import { ShieldAlert, Flag, Users as UsersIcon, ScrollText, Search, Ban, ShieldCheck, Trash2, Bell, Eye, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useModRole } from './useModRole'
 import {
   fetchOpenReports, getReportContext, reviewReport, searchUserByUsername,
-  banUser, unbanUser, setUserRole, deleteMessage, deletePost, deleteComment,
+  banUser, unbanUser, setUserRole, setVerified, deleteMessage, deletePost, deleteComment,
   fetchModerationLog, fetchStrikes, fetchUnresolvedAlerts, resolveAlert, unhideContent,
   type ContentReport, type ModerationLogEntry, type StaffRole, type Strike, type StaffAlert,
 } from './moderation'
@@ -23,7 +23,7 @@ const REASON_COLORS: Record<ContentReport['status'], string> = {
 }
 
 export default function ModerationPanel() {
-  const { role, isStaff, isAdmin, loading } = useModRole()
+  const { role, isStaff, isAdmin, isModOrAdmin, loading } = useModRole()
   const [tab, setTab] = useState<Tab>('alerts')
   const [alertCount, setAlertCount] = useState(0)
 
@@ -100,7 +100,7 @@ export default function ModerationPanel() {
 
       {tab === 'alerts' && <AlertsTab onResolved={() => setAlertCount(c => Math.max(0, c - 1))} />}
       {tab === 'reports' && <ReportsTab />}
-      {tab === 'users' && <UsersTab isAdmin={isAdmin} />}
+      {tab === 'users' && <UsersTab isAdmin={isAdmin} isModOrAdmin={isModOrAdmin} />}
       {tab === 'log' && <LogTab />}
     </div>
   )
@@ -353,7 +353,7 @@ function ReportsTab() {
 
 // ── Users ───────────────────────────────────────────────────────────────
 
-function UsersTab({ isAdmin }: { isAdmin: boolean }) {
+function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: boolean }) {
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<Awaited<ReturnType<typeof searchUserByUsername>>['data']>(null)
   const [error, setError] = useState<string | null>(null)
@@ -422,6 +422,15 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
     refresh()
   }
 
+  async function handleSetVerified(verified: boolean) {
+    if (!result) return
+    setBusy(true)
+    const { error } = await setVerified(result.user_id, verified)
+    setBusy(false)
+    if (error) { setError(error); return }
+    refresh()
+  }
+
   async function handleGrantBadge(badgeId: string) {
     if (!result) return
     setBusy(true)
@@ -469,6 +478,7 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <RoleBadge role={result.role} />
+              {result.is_verified && <StatusPill label="verified" color="#5b9cff" />}
               {result.is_banned && <StatusPill label="banned" color="var(--red)" />}
             </div>
           </div>
@@ -523,6 +533,23 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                     Make {r}
                   </SmallButton>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {isModOrAdmin && (
+            <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--surface2)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8 }}>Verified badge</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {result.is_verified ? (
+                  <SmallButton disabled={busy} onClick={() => handleSetVerified(false)}>
+                    <BadgeCheck size={12} /> Revoke verified
+                  </SmallButton>
+                ) : (
+                  <SmallButton disabled={busy} onClick={() => handleSetVerified(true)}>
+                    <BadgeCheck size={12} /> Grant verified
+                  </SmallButton>
+                )}
               </div>
             </div>
           )}
