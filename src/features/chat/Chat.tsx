@@ -2507,14 +2507,18 @@ export default function Chat() {
                     {!isRecordingVoiceNote && (
                       <div style={{ flex:1, background:'var(--surface)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:14, padding:'9px 12px', display:'flex', alignItems:'flex-end' }}>
                         <textarea rows={1} value={text} onChange={handleTextChange} onKeyDown={handleKey}
-                          placeholder={isSlowModeCooling ? `Wait ${slowModeCooldownRemaining}s…` : 'Type a message…'} maxLength={MAX_MESSAGE_LENGTH}
-                          disabled={isSlowModeCooling}
+                          placeholder={isSlowModeCooling ? `Slow mode: wait ${slowModeCooldownRemaining}s…` : 'Type a message…'} maxLength={MAX_MESSAGE_LENGTH}
                           style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--text)', fontSize:13.5, resize:'none', maxHeight:80, overflowY:'auto', lineHeight:1.4, fontFamily:'inherit' }} />
                       </div>
                     )}
-                    {text.trim() ? (
-                      <button type="button" onClick={sendMsg} disabled={!text.trim() || sending || isSlowModeCooling}
-                        style={{ width:40, height:40, borderRadius:11, flexShrink:0, border:'none', background:'linear-gradient(135deg,var(--accent),var(--accent2))', boxShadow:'0 4px 14px rgba(255,107,0,0.35)', color:'#fff', cursor: !text.trim() || sending || isSlowModeCooling ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', opacity: !text.trim() || sending || isSlowModeCooling ? 0.6 : 1 }}>
+                    {isSlowModeCooling ? (
+                      <button type="button" disabled title={`Slow mode: wait ${slowModeCooldownRemaining}s`}
+                        style={{ width:40, height:40, borderRadius:11, flexShrink:0, border:'none', background:'var(--surface2)', color:'var(--text-dim)', cursor:'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11.5, fontWeight:700, opacity:0.75 }}>
+                        {slowModeCooldownRemaining}s
+                      </button>
+                    ) : text.trim() ? (
+                      <button type="button" onClick={sendMsg} disabled={!text.trim() || sending}
+                        style={{ width:40, height:40, borderRadius:11, flexShrink:0, border:'none', background:'linear-gradient(135deg,var(--accent),var(--accent2))', boxShadow:'0 4px 14px rgba(255,107,0,0.35)', color:'#fff', cursor: !text.trim() || sending ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', opacity: !text.trim() || sending ? 0.6 : 1 }}>
                         <Send size={16} />
                       </button>
                     ) : myIsPro ? (
