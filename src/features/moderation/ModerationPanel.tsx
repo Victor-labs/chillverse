@@ -66,7 +66,7 @@ export default function ModerationPanel() {
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="admin-tab-scroll" style={{ marginBottom: 20 }}>
         {tabs.map(t => {
           const Icon = t.icon
           const active = tab === t.key
@@ -75,15 +75,16 @@ export default function ModerationPanel() {
               key={t.key}
               type="button"
               onClick={(e) => { ripple(e); setTab(t.key) }}
-              className="ripple-wrap"
               style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', fontSize: 13, fontWeight: 700,
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: active ? 'var(--text)' : 'var(--text-dim)',
-                borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                padding: '9px 14px', borderRadius: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                background: active ? 'var(--surface2)' : 'transparent',
+                border: active ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.04)',
+                color: active ? 'var(--accent)' : 'var(--text-dim)',
+                fontSize: 12.5, fontWeight: 800,
               }}
             >
-              <Icon size={14} /> {t.label}
+              <Icon size={13} /> {t.label}
               {t.key === 'alerts' && alertCount > 0 && (
                 <span style={{
                   fontSize: 10, fontWeight: 800, color: '#fff', background: 'var(--red)',
@@ -355,6 +356,7 @@ function ReportsTab() {
 
 function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: boolean }) {
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [result, setResult] = useState<Awaited<ReturnType<typeof searchUserByUsername>>['data']>(null)
   const [error, setError] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
@@ -373,17 +375,33 @@ function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: b
     getPlayerBadges(result.user_id).then(rows => setOwnedBadgeIds(new Set(rows.map(r => r.badge_id))))
   }, [result])
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
+  // Live search: debounce keystrokes, then look up automatically — no
+  // explicit submit needed. searchUserByUsername still requires an exact
+  // match server-side, so this fires the same lookup, just on a timer
+  // instead of a button press.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 350)
+    return () => clearTimeout(t)
+  }, [query])
+
+  useEffect(() => {
+    let active = true
+    if (!debouncedQuery.trim()) {
+      setResult(null)
+      setError(null)
+      setSearching(false)
+      return
+    }
     setSearching(true)
     setError(null)
-    setResult(null)
-    const { data, error } = await searchUserByUsername(query)
-    setResult(data)
-    setError(error)
-    setSearching(false)
-  }
+    searchUserByUsername(debouncedQuery).then(({ data, error }) => {
+      if (!active) return
+      setResult(data)
+      setError(error)
+      setSearching(false)
+    })
+    return () => { active = false }
+  }, [debouncedQuery])
 
   async function refresh() {
     if (!result) return
@@ -451,21 +469,23 @@ function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: b
 
   return (
     <div>
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search by exact username…"
-            style={{
-              width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
-              background: 'var(--surface2)', color: 'var(--text)', fontSize: 13,
-            }}
-          />
-        </div>
-        <SmallButton type="submit">{searching ? 'Searching…' : 'Search'}</SmallButton>
-      </form>
+      <div style={{ position: 'relative', marginBottom: 18 }}>
+        <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search by exact username…"
+          style={{
+            width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--surface2)', color: 'var(--text)', fontSize: 13,
+          }}
+        />
+        {searching && (
+          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)' }}>
+            Searching…
+          </span>
+        )}
+      </div>
 
       {error && <div style={errorBox}>{error}</div>}
 
