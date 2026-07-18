@@ -65,7 +65,6 @@ interface Message {
   /** Display name of whoever sent the message being replied to — shown stacked
    *  above the reply, since names are otherwise hidden outside of reply context. */
   replyPreviewName?: string
-  reactions: { emoji: string; user_id: string }[]
   senderName?: string
   senderUsername?: string
   /** 'text' (default) | 'voice_note' | 'call_log' | 'rank_tag' | 'poll' — see migrations 0009, 0038, 0039. */
@@ -211,11 +210,8 @@ function SkeletonRoomList() {
 interface MessageLineProps {
   msg: GroupedMessage
   isMine: boolean
-  emojiForMsg: string | null
   onContextMenu: (msg: Message, x: number, y: number) => void
   onDoubleClick: (msg: Message) => void
-  onToggleEmojiPicker: (msgId: string) => void
-  onAddReaction: (msgId: string, emoji: string) => void
   myId: string | null
   formatTime: (iso: string) => string
   readReceipt: ReadReceipt
@@ -233,7 +229,7 @@ interface MessageLineProps {
  *  each one keeps (and is pushed down by) its own line instead of one shared
  *  line stretching to fit whatever's widest in the stack. */
 const MessageLine = memo(function MessageLine({
-  msg, isMine, emojiForMsg, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceipt, isStarred, isGroupChat,
+  msg, isMine, onContextMenu, onDoubleClick, myId, formatTime, readReceipt, isStarred, isGroupChat,
 }: MessageLineProps) {
   const lineColor = 'rgba(255,255,255,0.28)'
   return (
@@ -251,7 +247,7 @@ const MessageLine = memo(function MessageLine({
         // that happens to wrap onto more than one line.
         display:'inline-block', width:'fit-content', maxWidth:'100%',
         marginBottom:8,
-        paddingBottom: msg.reactions.length > 0 ? 16 : 6,
+        paddingBottom: 6,
         borderBottom:`1.5px solid ${lineColor}`,
         borderBottomLeftRadius: !isMine ? 9 : 0,
         borderBottomRightRadius: isMine ? 9 : 0,
@@ -315,52 +311,6 @@ const MessageLine = memo(function MessageLine({
           {isMine && !msg.deleted && readReceipt === 'sent' && <Check size={12} style={{ color:'var(--text-muted)' }} />}
         </span>
       </span>
-
-      {/* Reaction badge — sits flush below this line */}
-      {msg.reactions.length > 0 && (
-        <div style={{
-          position:'absolute', bottom:0, zIndex:2,
-          display:'flex', gap:4, flexWrap:'nowrap',
-          ...(isMine ? { right:0 } : { left:0 }),
-        }}>
-          {Object.entries(
-            msg.reactions.reduce<Record<string, { count: number; mine: boolean }>>((acc, r) => {
-              if (!acc[r.emoji]) acc[r.emoji] = { count:0, mine:false }
-              acc[r.emoji].count++
-              if (r.user_id === myId) acc[r.emoji].mine = true
-              return acc
-            }, {})
-          ).map(([emoji, { count, mine }]) => (
-            <button key={emoji} type="button" onClick={() => onAddReaction(msg.id, emoji)}
-              style={{ display:'flex', alignItems:'center', gap:3, padding:'2px 6px', borderRadius:20, fontSize:12, cursor:'pointer', background: mine ? 'rgba(255,107,0,0.15)' : 'var(--surface2)', border:'2px solid var(--bg)', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }}>
-              {emoji} {count > 1 && <span style={{ fontSize:11, color:'var(--text-dim)' }}>{count}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Hover-revealed reaction trigger */}
-      {!msg.deleted && (
-        <button
-          type="button"
-          onClick={() => onToggleEmojiPicker(msg.id)}
-          className="msg-react-trigger"
-          style={{
-            position:'absolute', top:0, transform:'none',
-            ...(isMine ? { right:'100%', marginRight:6 } : { left:'100%', marginLeft:6 }),
-            background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:2, opacity:0, transition:'opacity 0.15s',
-          }}>
-          <Smile size={12} />
-        </button>
-      )}
-
-      {emojiForMsg === msg.id && (
-        <div style={{ display:'flex', gap:4, flexWrap:'wrap', padding:8, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', marginTop:4, maxWidth:220, zIndex:3, position:'relative' }}>
-          {EMOJIS.map(em => (
-            <button key={em} type="button" onClick={() => onAddReaction(msg.id, em)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, padding:2 }}>{em}</button>
-          ))}
-        </div>
-      )}
     </div>
   )
 })
@@ -402,13 +352,9 @@ interface MessageBurstProps {
   senderLabel: string
   avatarUrl: string | null
   myProfile: { username: string; display_name: string | null; avatar: string | null } | null
-  emojiForMsg: string | null
   onOpenProfile: (msg: Message) => void
   onContextMenu: (msg: Message, x: number, y: number) => void
   onDoubleClick: (msg: Message) => void
-  onToggleEmojiPicker: (msgId: string) => void
-  onAddReaction: (msgId: string, emoji: string) => void
-  myId: string | null
   formatTime: (iso: string) => string
   readReceiptFor: (msg: Message) => ReadReceipt
   /** Message ids the viewer has starred — used to show the badge (DMs only). */
@@ -425,8 +371,8 @@ interface MessageBurstProps {
  *  another message, always starts a new line of its own width, simply pushed
  *  further down the stack rather than widening anything above it. */
 const MessageBurst = memo(function MessageBurst({
-  burst, isMine, senderLabel, avatarUrl, myProfile, emojiForMsg,
-  onOpenProfile, onContextMenu, onDoubleClick, onToggleEmojiPicker, onAddReaction, myId, formatTime, readReceiptFor, starredIds, isGroupChat,
+  burst, isMine, senderLabel, avatarUrl, myProfile,
+  onOpenProfile, onContextMenu, onDoubleClick, formatTime, readReceiptFor, starredIds, isGroupChat,
 }: MessageBurstProps) {
   const first = burst[0]
 
@@ -455,12 +401,8 @@ const MessageBurst = memo(function MessageBurst({
             key={msg.id}
             msg={msg}
             isMine={isMine}
-            emojiForMsg={emojiForMsg}
             onContextMenu={onContextMenu}
             onDoubleClick={onDoubleClick}
-            onToggleEmojiPicker={onToggleEmojiPicker}
-            onAddReaction={onAddReaction}
-            myId={myId}
             formatTime={formatTime}
             readReceipt={readReceiptFor(msg)}
             isStarred={starredIds.has(msg.id)}
@@ -681,7 +623,6 @@ export default function Chat() {
   const [composerDrawerOpen, setComposerDrawerOpen] = useState(false)
   const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
-  const [emojiForMsg, setEmojiForMsg] = useState<string | null>(null)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   // Ghost Read (DMs only) — per-visit toggle, resets each time a room is opened
   // (see openRoom below). While active, markRoomAsRead is a no-op so the other
@@ -1107,26 +1048,14 @@ export default function Chat() {
       setOtherLastReadAt(theirMembership?.last_read_at ?? null)
     }
 
-    // Batch-fetch reactions + reply previews for the whole page in 2 round-trips total,
+    // Batch-fetch reply previews for the whole page in 1 round-trip total,
     // instead of N sequential awaits inside a per-message loop.
-    const msgIds = page.map(m => m.id)
     const replyIds = [...new Set(page.map(m => m.reply_to_id).filter(Boolean))] as string[]
 
-    const [{ data: allReactions }, { data: allReplySources }] = await Promise.all([
-      msgIds.length
-        ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
-        : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
-      replyIds.length
-        ? supabase.from('messages').select('id, sender_id, content, deleted').in('id', replyIds)
-        : Promise.resolve({ data: [] as { id: string; sender_id: string | null; content: string; deleted: boolean }[] }),
-    ])
+    const { data: allReplySources } = replyIds.length
+      ? await supabase.from('messages').select('id, sender_id, content, deleted').in('id', replyIds)
+      : { data: [] as { id: string; sender_id: string | null; content: string; deleted: boolean }[] }
 
-    const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
-    for (const r of allReactions ?? []) {
-      const list = reactionsByMsg.get(r.message_id) ?? []
-      list.push({ emoji: r.emoji, user_id: r.user_id })
-      reactionsByMsg.set(r.message_id, list)
-    }
     const replyContentById = new Map<string, string>()
     const replySenderById = new Map<string, string | null>()
     for (const r of allReplySources ?? []) {
@@ -1147,7 +1076,6 @@ export default function Chat() {
         ...m,
         deleted: m.deleted ?? false,
         hidden: m.hidden ?? false,
-        reactions: reactionsByMsg.get(m.id) ?? [],
         senderName,
         senderUsername,
         replyPreview: m.reply_to_id ? replyContentById.get(m.reply_to_id) : undefined,
@@ -1192,7 +1120,7 @@ export default function Chat() {
     }
 
     // ── Real-time subscription — appends only the new row, never re-fetches the list.
-    //    Also syncs message edits/deletes, live reactions, pin changes, and the other
+    //    Also syncs message edits/deletes, pin changes, and the other
     //    DM member's read position, all on one channel scoped to this room. ──
     if (subRef.current) supabase.removeChannel(subRef.current)
     subRef.current = supabase
@@ -1228,7 +1156,7 @@ export default function Chat() {
         setMessages(ms => {
           // Deduplicate — if msg already added (optimistic send), skip
           if (ms.find(m => m.id === raw.id)) return ms
-          return [...ms, { ...raw, reactions: [], senderName, senderUsername }]
+          return [...ms, { ...raw, senderName, senderUsername }]
         })
       })
       .on('postgres_changes', {
@@ -1246,30 +1174,6 @@ export default function Chat() {
         setMessages(ms => ms.map(m => m.id === raw.id
           ? { ...m, deleted: raw.deleted, hidden: raw.hidden, hidden_reason: raw.hidden_reason, content: raw.deleted ? 'Message deleted' : raw.content, audio_path: raw.audio_path }
           : m))
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'message_reactions',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        const raw = payload.new as { message_id: string; emoji: string; user_id: string }
-        setMessages(ms => ms.map(m => {
-          if (m.id !== raw.message_id) return m
-          const withoutSameUser = m.reactions.filter(r => r.user_id !== raw.user_id)
-          return { ...m, reactions: [...withoutSameUser, { emoji: raw.emoji, user_id: raw.user_id }] }
-        }))
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'message_reactions',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        const raw = payload.old as { message_id: string; user_id: string }
-        setMessages(ms => ms.map(m => m.id !== raw.message_id
-          ? m
-          : { ...m, reactions: m.reactions.filter(r => r.user_id !== raw.user_id) }))
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -1398,24 +1302,12 @@ export default function Chat() {
     setHasMoreOlder(data.length === MESSAGE_PAGE_SIZE)
 
     const allMembers = roomMembersRef.current
-    const msgIds = olderPage.map(m => m.id)
     const replyIds = [...new Set(olderPage.map(m => m.reply_to_id).filter(Boolean))] as string[]
 
-    const [{ data: olderReactions }, { data: olderReplySources }] = await Promise.all([
-      msgIds.length
-        ? supabase.from('message_reactions').select('message_id, emoji, user_id').in('message_id', msgIds)
-        : Promise.resolve({ data: [] as { message_id: string; emoji: string; user_id: string }[] }),
-      replyIds.length
-        ? supabase.from('messages').select('id, sender_id, content, deleted').in('id', replyIds)
-        : Promise.resolve({ data: [] as { id: string; sender_id: string | null; content: string; deleted: boolean }[] }),
-    ])
+    const { data: olderReplySources } = replyIds.length
+      ? await supabase.from('messages').select('id, sender_id, content, deleted').in('id', replyIds)
+      : { data: [] as { id: string; sender_id: string | null; content: string; deleted: boolean }[] }
 
-    const reactionsByMsg = new Map<string, { emoji: string; user_id: string }[]>()
-    for (const r of olderReactions ?? []) {
-      const list = reactionsByMsg.get(r.message_id) ?? []
-      list.push({ emoji: r.emoji, user_id: r.user_id })
-      reactionsByMsg.set(r.message_id, list)
-    }
     const replyContentById = new Map<string, string>()
     const replySenderById = new Map<string, string | null>()
     for (const r of olderReplySources ?? []) {
@@ -1436,7 +1328,6 @@ export default function Chat() {
         ...m,
         deleted: m.deleted ?? false,
         hidden: m.hidden ?? false,
-        reactions: reactionsByMsg.get(m.id) ?? [],
         senderName,
         senderUsername,
         replyPreview: m.reply_to_id ? replyContentById.get(m.reply_to_id) : undefined,
@@ -1645,7 +1536,7 @@ export default function Chat() {
         scrollModeRef.current = 'bottom'
         setMessages(ms => {
           if (ms.find(m => m.id === inserted.id)) return ms
-          return [...ms, { ...inserted, deleted: false, reactions: [], senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
+          return [...ms, { ...inserted, deleted: false, senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
         })
         setText(''); setReplyTo(null); setPendingRankTag(null)
         if (activeRoom.type === 'global' && activeRoom.slowMode && !isStaff) {
@@ -1716,7 +1607,7 @@ export default function Chat() {
     scrollModeRef.current = 'bottom'
     setMessages(ms => {
       if (ms.find(m => m.id === inserted.id)) return ms
-      return [...ms, { ...inserted, deleted: false, reactions: [], senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
+      return [...ms, { ...inserted, deleted: false, senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
     })
     setReplyTo(null)
     setSending(false)
@@ -1734,33 +1625,6 @@ export default function Chat() {
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
-  }
-
-  async function addReaction(msgId: string, emoji: string) {
-    if (!myId) return
-
-    const target = messages.find(m => m.id === msgId)
-    const existing = target?.reactions.find(r => r.user_id === myId)
-
-    // Tapping the same emoji again removes it (toggle-off); tapping a different
-    // emoji replaces it — a user can only have ONE reaction per message at a time.
-    if (existing && existing.emoji === emoji) {
-      await supabase.from('message_reactions').delete().eq('message_id', msgId).eq('user_id', myId)
-      setMessages(ms => ms.map(m => m.id !== msgId ? m : { ...m, reactions: m.reactions.filter(r => r.user_id !== myId) }))
-      setEmojiForMsg(null)
-      return
-    }
-
-    // Replace: clear any prior reaction from this user on this message, then add the new one.
-    await supabase.from('message_reactions').delete().eq('message_id', msgId).eq('user_id', myId)
-    await supabase.from('message_reactions').insert({ message_id: msgId, user_id: myId, emoji })
-
-    setMessages(ms => ms.map(m => {
-      if (m.id !== msgId) return m
-      const withoutMine = m.reactions.filter(r => r.user_id !== myId)
-      return { ...m, reactions: [...withoutMine, { emoji, user_id: myId ?? '' }] }
-    }))
-    setEmojiForMsg(null)
   }
 
   async function deleteMsg(id: string) {
@@ -2395,13 +2259,9 @@ export default function Chat() {
                             senderLabel={senderLabel}
                             avatarUrl={avatarFor(first, isMine)}
                             myProfile={myProfile}
-                            emojiForMsg={emojiForMsg}
                             onOpenProfile={openSenderProfile}
                             onContextMenu={(m, x, y) => { setCtxMsg(m); setCtxPos({ x, y }) }}
                             onDoubleClick={m => setReplyTo(m)}
-                            onToggleEmojiPicker={id => setEmojiForMsg(emojiForMsg === id ? null : id)}
-                            onAddReaction={addReaction}
-                            myId={myId}
                             formatTime={formatTime}
                             readReceiptFor={readReceiptFor}
                             starredIds={myStarredIds}
@@ -2582,13 +2442,12 @@ export default function Chat() {
                 </div>
               )}
 
-              {/* Context menu — React / Reply / Block / Delete */}
+              {/* Context menu — Reply / Star / Pin / Block / Delete */}
               {ctxMsg && (
                 <>
                   <div style={{ position:'fixed', inset:0, zIndex:90 }} onClick={() => setCtxMsg(null)} />
                   <div style={{ position:'fixed', left: Math.min(ctxPos.x, window.innerWidth - 175), top: Math.min(ctxPos.y, window.innerHeight - 180), zIndex:100, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, overflow:'hidden', boxShadow:'0 12px 40px rgba(0,0,0,0.5)', minWidth:165 }}>
                     {[
-                      { icon: <Smile size={14} />, label:'React', action: () => { setEmojiForMsg(ctxMsg.id); setCtxMsg(null) } },
                       { icon: <Reply size={14} />, label:'Reply', action: () => { setReplyTo(ctxMsg); setCtxMsg(null) } },
                       ...(activeRoom?.type === 'dm' ? [{
                         icon: <Star size={14} fill={myStarredIds.has(ctxMsg.id) ? 'currentColor' : 'none'} />,
@@ -2837,10 +2696,6 @@ export default function Chat() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes skeletonPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
-        .msg-react-trigger { opacity: 0; }
-        @media (hover: hover) {
-          .msg-bubble-col:hover .msg-react-trigger { opacity: 1; }
-        }
       `}</style>
     </div>
   )
