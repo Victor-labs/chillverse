@@ -51,6 +51,24 @@ function PresenceDot({ status }: { status: Presence }) {
 
 const GENDER_LABELS: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other' }
 
+// ── Profile card effect cooldown ────────────────────────────────────────
+// The effect plays once per viewer per profile, then won't replay for this
+// viewer until the cooldown passes — matches Discord's "doesn't replay on
+// every single view" behavior. Keyed by the profile being viewed, stored
+// per-browser (localStorage), so repeat visits within the window are quiet.
+const PROFILE_EFFECT_COOLDOWN_MS = 30 * 60 * 1000 // 30 minutes
+function shouldPlayProfileEffect(profileId: string): boolean {
+  try {
+    const key = `cv_profile_effect_cd_${profileId}`
+    const last = Number(localStorage.getItem(key) || 0)
+    if (Date.now() - last < PROFILE_EFFECT_COOLDOWN_MS) return false
+    localStorage.setItem(key, String(Date.now()))
+    return true
+  } catch {
+    return true // storage unavailable — fail open, just play it
+  }
+}
+
 // ── Info tag pills — mirrors Profile.tsx, but reads the owner's saved
 //    choices (read-only here, no editing on the viewer-facing page). ──
 function InfoTagPills({
@@ -118,6 +136,7 @@ interface PlayerData {
   favorite_game: string | null
   grid_cards: string[]
   show_follow_counts: boolean
+  equipped_profile_effect_url: string | null
 }
 interface AlbumPic { id: string; label: string; imageUrl: string; equippedAsBanner?: boolean }
 
@@ -207,6 +226,7 @@ function PlayerProfileInner() {
 
   const [player, setPlayer] = useState<PlayerData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showLiveEffect, setShowLiveEffect] = useState(false)
   const [followers, setFollowers] = useState<number>(0)
   const [following, setFollowing] = useState<number>(0)
   const [followStatus, setFollowStatus] = useState<'none' | 'following' | 'blocked'>('none')
@@ -251,11 +271,14 @@ function PlayerProfileInner() {
   useEffect(() => {
     if (!userId) return
     setLoading(true)
-    supabase.from('profiles').select('id, username, original_username, display_name, avatar, country, interests, xp, level, streak, bio, gender, play_time, info_tags, favorite_game, grid_cards, show_follow_counts')
+    supabase.from('profiles').select('id, username, original_username, display_name, avatar, country, interests, xp, level, streak, bio, gender, play_time, info_tags, favorite_game, grid_cards, show_follow_counts, equipped_profile_effect_url')
       .eq('id', userId).single()
       .then(({ data }) => {
         setPlayer(data as PlayerData)
         setLoading(false)
+        if ((data as PlayerData | null)?.equipped_profile_effect_url && shouldPlayProfileEffect(userId)) {
+          setShowLiveEffect(true)
+        }
       })
   }, [userId])
 
@@ -492,6 +515,16 @@ function PlayerProfileInner() {
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ImageIcon size={26} style={{ color: 'rgba(255,255,255,0.18)' }} />
           </div>
+        )}
+        {showLiveEffect && player.equipped_profile_effect_url && (
+          // Purely decorative — pointer-events: none means it never blocks
+          // taps on the back button, banner, or anything underneath it.
+          <video
+            src={player.equipped_profile_effect_url}
+            autoPlay muted playsInline
+            onEnded={() => setShowLiveEffect(false)}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: 'screen', pointerEvents: 'none', zIndex: 1 }}
+          />
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.6) 100%)' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
