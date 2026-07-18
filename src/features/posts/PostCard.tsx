@@ -14,6 +14,7 @@ import PostBody from './PostBody'
 import { getTagColor } from './tagColor'
 import ReportModal from '../safety/ReportModal'
 import type { Post, PostTag } from './types'
+import { getRankGroupInfo, type RankGroupId } from '../profile/ranks'
 import HiddenContentNotice from '../moderation/HiddenContentNotice'
 import Avatar from '../../shared/components/Avatar'
 import { useProfilePreviewOptional } from '../../context/ProfilePreview'
@@ -40,6 +41,9 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isAuthor = !!user && post.author_type === 'user' && post.author_id === user.id
+  const rankTagInfo = post.post_kind === 'rank_tag' && post.rank_tag_group
+    ? getRankGroupInfo(post.rank_tag_group as RankGroupId)
+    : null
 
   useEffect(() => {
     if (!menuOpen) return
@@ -127,7 +131,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   }
 
   return (
-    <div className="neu-card" style={{ padding: 16, marginBottom: 12 }}>
+    <div className="neu-card" style={{ padding: 16, marginBottom: 12, ...(rankTagInfo ? { background: `${rankTagInfo.color}0d`, border: `1px solid ${rankTagInfo.color}55` } : {}) }}>
       <div className="flex items-center gap-3">
         <Avatar
           src={author?.avatar}
@@ -153,6 +157,11 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
               {isSystemOrAdmin && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'rgba(255,107,0,0.12)', padding: '1px 6px', borderRadius: 6 }}>
                   {post.author_type === 'system' ? 'SYSTEM' : 'ADMIN'}
+                </span>
+              )}
+              {rankTagInfo && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: rankTagInfo.color, background: `${rankTagInfo.color}22`, padding: '1px 6px', borderRadius: 6 }}>
+                  @{rankTagInfo.label} Tag
                 </span>
               )}
             </button>

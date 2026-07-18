@@ -7,6 +7,8 @@ import { supabase } from '../../shared/lib/supabase'
 import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/profanityFilter'
 import { hydratePosts, type PostRow } from './posts'
 import type { Post, PostKind } from './types'
+import type { RankGroupId } from '../profile/ranks'
+import { notifyRankTag } from '../achievements/achievements'
 
 const FEED_IMAGES_BUCKET = 'feed-images'
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
@@ -51,6 +53,8 @@ export async function createAnnouncement(input: {
   mediaUrl: string | null
   pinned: boolean
   commentable: boolean
+  /** Required (and only meaningful) when postKind === 'rank_tag'. */
+  rankTagGroup?: RankGroupId | null
 }): Promise<{ data: Post | null; error: { message: string } | null }> {
   if (containsProfanity(input.body)) {
     return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
@@ -68,6 +72,7 @@ export async function createAnnouncement(input: {
       media_url: input.mediaUrl,
       media_type: input.mediaUrl ? 'image' : null,
       pinned: input.pinned,
+      rank_tag_group: input.postKind === 'rank_tag' ? input.rankTagGroup ?? null : null,
     })
     .select()
     .single()
@@ -78,6 +83,11 @@ export async function createAnnouncement(input: {
       return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
     }
     return { data: null, error: { message: error.message } }
+  }
+
+  // Rank tag: fan out to every user currently in that rank group.
+  if (input.postKind === 'rank_tag' && input.rankTagGroup) {
+    notifyRankTag(input.authorId, input.rankTagGroup, { postId: data.id }).catch(console.error)
   }
 
   return { data: data as Post, error: null }

@@ -11,6 +11,7 @@ import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
 import { createAnnouncement, uploadFeedImage } from './staffPosts'
 import type { PostKind } from './types'
+import { RANK_GROUPS, type RankGroupId } from '../profile/ranks'
 
 interface StaffComposerProps {
   open: boolean
@@ -22,12 +23,14 @@ const KIND_OPTIONS: { value: PostKind; label: string }[] = [
   { value: 'announcement', label: 'Announcement' },
   { value: 'feature_update', label: 'Feature Update' },
   { value: 'general', label: 'General' },
+  { value: 'rank_tag', label: 'Rank Tag' },
 ]
 
 export default function StaffComposer({ open, onClose, onPosted }: StaffComposerProps) {
   const { user } = useAuth()
 
   const [postKind, setPostKind] = useState<PostKind>('announcement')
+  const [rankTagGroup, setRankTagGroup] = useState<RankGroupId | null>(null)
   const [body, setBody] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
@@ -43,6 +46,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
   useEffect(() => {
     if (!open) return
     setPostKind('announcement')
+    setRankTagGroup(null)
     setBody('')
     setImageFile(null)
     setImagePreviewUrl(prev => {
@@ -80,6 +84,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
 
   async function handleSubmit() {
     if (!user || !body.trim() || submitting) return
+    if (postKind === 'rank_tag' && !rankTagGroup) { setSubmitError('Pick a rank group to tag.'); return }
     setSubmitting(true)
     setSubmitError('')
 
@@ -96,6 +101,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
         mediaUrl,
         pinned,
         commentable,
+        rankTagGroup,
       })
 
       if (error) {
@@ -156,6 +162,29 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
             </button>
           ))}
         </div>
+
+        {postKind === 'rank_tag' && (
+          <div className="flex flex-wrap gap-2" style={{ marginBottom: 12 }}>
+            {RANK_GROUPS.map(g => (
+              <button
+                key={g.id}
+                type="button"
+                className="ripple-wrap"
+                onClick={(e) => { ripple(e); setRankTagGroup(g.id) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                  border: rankTagGroup === g.id ? `1px solid ${g.color}` : '1px solid rgba(255,255,255,0.08)',
+                  background: rankTagGroup === g.id ? `${g.color}22` : 'var(--surface2)',
+                  color: rankTagGroup === g.id ? g.color : 'var(--text-dim)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                {g.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <textarea
           value={body}
@@ -228,8 +257,8 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
           type="button"
           className="btn-primary ripple-wrap"
           onClick={(e) => { ripple(e); handleSubmit() }}
-          disabled={!body.trim() || submitting}
-          style={{ width: '100%', padding: '11px 0', marginTop: 14, opacity: !body.trim() || submitting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          disabled={!body.trim() || submitting || (postKind === 'rank_tag' && !rankTagGroup)}
+          style={{ width: '100%', padding: '11px 0', marginTop: 14, opacity: !body.trim() || submitting || (postKind === 'rank_tag' && !rankTagGroup) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
         >
           <Sparkles size={14} /> {submitting ? 'Posting…' : 'Post to Announcements'}
         </button>

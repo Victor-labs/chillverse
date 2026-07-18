@@ -2,7 +2,7 @@
 
 export type PostAuthorType = 'user' | 'admin' | 'system'
 
-export type PostKind = 'announcement' | 'feature_update' | 'general'
+export type PostKind = 'announcement' | 'feature_update' | 'general' | 'rank_tag'
 
 export type TagType =
   | 'achievement'
@@ -44,6 +44,11 @@ export interface Post {
   created_at: string
   hidden: boolean
   hidden_reason: string | null
+  /** Real DB column (set by StaffComposer) — not previously on this type. */
+  post_kind?: PostKind
+  /** Set only when post_kind === 'rank_tag' — one of the 8 rank groups (see
+   *  RANK_GROUP_IDS in src/features/profile/ranks.ts). */
+  rank_tag_group?: string | null
   // attached image, if any (set by StaffComposer's uploadFeedImage — see staffPosts.ts)
   media_url?: string | null
   media_type?: 'image' | null
