@@ -158,18 +158,14 @@ export default function ProfileEffectPreview({
                     autoPlay loop muted playsInline
                     style={{
                       position: 'absolute', top: 0, left: 0, width: '100%',
-                      // Capped instead of 100% of the box — the box itself
-                      // is 85vh, which balloons on a tall PC monitor far
-                      // beyond what it is on phone. Letting the video
-                      // stretch to that full height was forcing `cover` to
-                      // crop deep into a fully bright/opaque part of the
-                      // clip. Capping the video's own height keeps the
-                      // crop consistent with what already looks right on
-                      // phone, regardless of screen size. The dim layer
-                      // below still spans the box's full real height, so
-                      // the card is always fully covered even where the
-                      // (shorter) video doesn't reach.
-                      height: 'min(100%, 640px)',
+                      // Capped only on the wide/desktop breakpoint — that's
+                      // the one where a tall PC viewport was stretching the
+                      // video and forcing `cover` to crop deep into a
+                      // fully bright/opaque part of the clip. Phone never
+                      // had that problem, so it stays fully uncapped and
+                      // fills the whole sheet height, matching how it
+                      // looked before this cap was introduced.
+                      height: isWide ? 'min(100%, 640px)' : '100%',
                       objectFit: 'cover',
                       // Opacity (not blend mode) is what's actually letting
                       // the card show through here — the source clip's
