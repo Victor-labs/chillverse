@@ -212,7 +212,6 @@ interface MessageLineProps {
   isMine: boolean
   onContextMenu: (msg: Message, x: number, y: number) => void
   onDoubleClick: (msg: Message) => void
-  myId: string | null
   formatTime: (iso: string) => string
   readReceipt: ReadReceipt
   /** Whether the viewer has starred this message — DMs only, shows a small badge. */
@@ -229,7 +228,7 @@ interface MessageLineProps {
  *  each one keeps (and is pushed down by) its own line instead of one shared
  *  line stretching to fit whatever's widest in the stack. */
 const MessageLine = memo(function MessageLine({
-  msg, isMine, onContextMenu, onDoubleClick, myId, formatTime, readReceipt, isStarred, isGroupChat,
+  msg, isMine, onContextMenu, onDoubleClick, formatTime, readReceipt, isStarred, isGroupChat,
 }: MessageLineProps) {
   const lineColor = 'rgba(255,255,255,0.28)'
   return (
@@ -1174,6 +1173,18 @@ export default function Chat() {
         setMessages(ms => ms.map(m => m.id === raw.id
           ? { ...m, deleted: raw.deleted, hidden: raw.hidden, hidden_reason: raw.hidden_reason, content: raw.deleted ? 'Message deleted' : raw.content, audio_path: raw.audio_path }
           : m))
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'messages',
+        filter: `room_id=eq.${room.id}`
+      }, (payload) => {
+        // Hard deletes only happen from the Global Chat 100-message trim
+        // (migration 0048) — a soft "delete" elsewhere in the app is an
+        // UPDATE (deleted=true), handled above. Just drop the row locally.
+        const raw = payload.old as { id: string }
+        setMessages(ms => ms.filter(m => m.id !== raw.id))
       })
       .on('postgres_changes', {
         event: 'UPDATE',
