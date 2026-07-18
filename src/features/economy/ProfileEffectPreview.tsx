@@ -104,8 +104,20 @@ export default function ProfileEffectPreview({
                     autoPlay loop muted playsInline
                     style={{
                       position: 'absolute', inset: 0, width: '100%', height: '100%',
-                      objectFit: 'cover', mixBlendMode: 'screen',
-                      filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.22)) brightness(1.05)',
+                      objectFit: 'cover',
+                      // ── DIAGNOSTIC MODE ──────────────────────────────
+                      // Temporarily dropped the blend mode + cranked
+                      // opacity down so the profile card underneath is
+                      // clearly visible through the video. If you can now
+                      // see the card behind a faint video, the card was
+                      // rendering correctly all along and this was purely
+                      // the opaque-background/blend-mode problem. Once
+                      // confirmed, delete this block and restore the
+                      // original two lines below (kept here, commented,
+                      // so nothing is lost):
+                      //   mixBlendMode: 'screen',
+                      //   filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.22)) brightness(1.05)',
+                      opacity: 0.35,
                     }}
                   />
                 </div>
