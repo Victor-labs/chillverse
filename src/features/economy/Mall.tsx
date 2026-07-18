@@ -441,9 +441,22 @@ function ItemModal({
   const buyLabelBase = BUY_LABEL[item.category] ?? 'Buy'
 
   return (
+    <>
+    {/* Backdrop + sheet. When the effect preview opens, this whole thing
+        slides down out of the way and stops accepting input — rather than
+        staying mounted underneath the preview and fighting it for stacking
+        order, it's just gone. It swings back up once the preview closes,
+        since it was never unmounted, just parked below the viewport. */}
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        transform: showEffectPreview ? 'translateY(100%)' : 'translateY(0)',
+        opacity: showEffectPreview ? 0 : 1,
+        pointerEvents: showEffectPreview ? 'none' : 'auto',
+        transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1), opacity 0.28s ease',
+      }}
     >
       <div style={{
         background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '0 20px 24px', width: '100%', maxWidth: 460,
@@ -714,15 +727,16 @@ function ItemModal({
           </>
         )}
       </div>
-
-      {showEffectPreview && isCardEffect && userId && (
-        <ProfileEffectPreview
-          userId={userId}
-          videoUrl={item.animated_url}
-          onClose={() => setShowEffectPreview(false)}
-        />
-      )}
     </div>
+
+    {showEffectPreview && isCardEffect && userId && (
+      <ProfileEffectPreview
+        userId={userId}
+        videoUrl={item.animated_url}
+        onClose={() => setShowEffectPreview(false)}
+      />
+    )}
+    </>
   )
 }
 
