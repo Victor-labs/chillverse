@@ -26,7 +26,6 @@ const Settings           = lazy(() => import('../features/settings/Settings'))
 const Ranks              = lazy(() => import('../features/profile/Ranks'))
 const Watch              = lazy(() => import('../features/watch/Watch'))
 const Mall               = lazy(() => import('../features/economy/Mall'))
-const GiftPage           = lazy(() => import('../features/economy/Gift'))
 const BuyDiamonds        = lazy(() => import('../features/economy/BuyDiamonds'))
 const Achievements       = lazy(() => import('../features/achievements/Achievements'))
 const Artifacts          = lazy(() => import('../features/economy/Artifacts'))
@@ -157,7 +156,6 @@ export default function App() {
           <Route path="/leaderboards"     element={<Suspense fallback={<Fallback />}><Leaderboards /></Suspense>} />
           <Route path="/exploration"      element={<Suspense fallback={<Fallback />}><Exploration /></Suspense>} />
           <Route path="/mall"             element={<Suspense fallback={<Fallback />}><Mall /></Suspense>} />
-          <Route path="/gift"             element={<Suspense fallback={<Fallback />}><GiftPage /></Suspense>} />
           <Route path="/buy-diamonds"     element={<Suspense fallback={<Fallback />}><BuyDiamonds /></Suspense>} />
           <Route path="/profile"          element={<Suspense fallback={<Fallback />}><ProfileRedirect /></Suspense>} />
           <Route path="/profile/:userId"  element={<Suspense fallback={<Fallback />}><ProfileRedirect /></Suspense>} />
