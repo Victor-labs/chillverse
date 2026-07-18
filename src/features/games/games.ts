@@ -31,14 +31,20 @@ export interface GameMeta {
   sessionCost?: number
   requiresPro?: boolean
   icon: LucideIcon
+  // Banner image for the Discord-style game detail sheet. Not every game
+  // has one — when it's missing, the detail sheet falls back to using the
+  // game's icon as the banner instead of leaving it blank.
+  bannerUrl?: string
 }
+
+const SB_GAMES_BUCKET = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Games'
 
 // Standard games — default session cost (1)
 const STANDARD_GAMES: GameMeta[] = [
-  { id: 'arrow-dash',     dbKey: 'arrow_dash',     name: 'Arrow Dash',            tagline: 'Tap the arrow direction. Fast.',                  accent: '#4f8ef7', icon: Move         },
+  { id: 'arrow-dash',     dbKey: 'arrow_dash',     name: 'Arrow Dash',            tagline: 'Tap the arrow direction. Fast.',                  accent: '#4f8ef7', icon: Move,       bannerUrl: `${SB_GAMES_BUCKET}/Arrow_dash.png` },
   { id: 'pattern-memory', dbKey: 'pattern_memory', name: 'Pattern Memory',        tagline: 'Watch the sequence, then repeat it.',             accent: '#9b6dff', icon: Brain        },
-  { id: 'rapid-sort',     dbKey: 'rapid_sort',     name: 'Anime Trivia',          tagline: 'Test your anime knowledge. Time shrinks as your streak grows.', accent: '#9b6dff', icon: Drama       },
-  { id: 'tac-zone',       dbKey: 'tac_zone',       name: 'Tac Zone',              tagline: 'Three in a row. No mercy.',                      accent: '#3ecf8e', icon: Grid3X3, unlimitedPlays: true },
+  { id: 'rapid-sort',     dbKey: 'rapid_sort',     name: 'Anime Trivia',          tagline: 'Test your anime knowledge. Time shrinks as your streak grows.', accent: '#9b6dff', icon: Drama, bannerUrl: `${SB_GAMES_BUCKET}/Anime_trivia.png` },
+  { id: 'tac-zone',       dbKey: 'tac_zone',       name: 'Tac Zone',              tagline: 'Three in a row. No mercy.',                      accent: '#3ecf8e', icon: Grid3X3, unlimitedPlays: true, bannerUrl: `${SB_GAMES_BUCKET}/Taczone.png` },
   { id: 'two-truths',     dbKey: 'two_truths',     name: 'Two Truths, One False', tagline: 'Spot the lie among three claims.',                accent: '#9b6dff', icon: Eye          },
   { id: 'speed-math',     dbKey: 'speed_math',     name: 'Speed Math',            tagline: 'Solve as many equations as you can.',             accent: '#3ecf8e', icon: Calculator   },
   { id: 'liars-grid',     dbKey: 'liars_grid',     name: "Liar's Grid",           tagline: 'Find the one wrong equation. One is lying.',      accent: '#ff4f4f', icon: LayoutGrid   },
@@ -46,13 +52,13 @@ const STANDARD_GAMES: GameMeta[] = [
 
 // Higher session games — cost more sessions
 const PREMIUM_GAMES: GameMeta[] = [
-  { id: 'trivia-clash',   dbKey: 'trivia_clash',   name: 'Trivia Clash',          tagline: 'Drop knowledge. Wreck the scoreboard.',           accent: '#ff9a3c', icon: BookOpen, sessionCost: 6 },
-  { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash,     sessionCost: 3 },
-  { id: 'close-call',     dbKey: 'close_call',     name: 'Close Call',            tagline: 'Type the closest answer you can. Fast.',          accent: '#ff4d8b', icon: Target,   sessionCost: 4 },
-  { id: 'pattern-king',   dbKey: 'pattern_king',   name: 'Pattern King',          tagline: 'Memorize the grid. Clear every pattern before time runs out.', accent: '#00e5ff', icon: Sparkles, sessionCost: 3 },
+  { id: 'trivia-clash',   dbKey: 'trivia_clash',   name: 'Trivia Clash',          tagline: 'Drop knowledge. Wreck the scoreboard.',           accent: '#ff9a3c', icon: BookOpen, sessionCost: 6, bannerUrl: `${SB_GAMES_BUCKET}/Trivia_clash.png` },
+  { id: 'hangman',        dbKey: 'hangman',        name: 'Hangman',               tagline: 'Guess the word. One letter at a time.',           accent: '#ff6b00', icon: Hash,     sessionCost: 3, bannerUrl: `${SB_GAMES_BUCKET}/Hangman.png` },
+  { id: 'close-call',     dbKey: 'close_call',     name: 'Close Call',            tagline: 'Type the closest answer you can. Fast.',          accent: '#ff4d8b', icon: Target,   sessionCost: 4, bannerUrl: `${SB_GAMES_BUCKET}/Close_call.png` },
+  { id: 'pattern-king',   dbKey: 'pattern_king',   name: 'Pattern King',          tagline: 'Memorize the grid. Clear every pattern before time runs out.', accent: '#00e5ff', icon: Sparkles, sessionCost: 3, bannerUrl: `${SB_GAMES_BUCKET}/Patternking.png` },
   { id: 'uno',            dbKey: 'uno',            name: 'Chillverse_Uno',        tagline: 'Classic UNO against Halo — a smart AI that remembers your weaknesses.', accent: '#9b6dff', icon: Spade, sessionCost: 4, requiresPro: true },
   { id: 'colour-block',   dbKey: 'colour_block',   name: 'Colour Block',          tagline: "Memorize the safe tile, survive the shuffle, don't get caught out.", accent: '#ff5fa2', icon: Blocks, sessionCost: 3, requiresPro: true },
-  { id: 'tile-merge',     dbKey: 'tile_merge',     name: 'Chill Merge',           tagline: 'Place tiles, chain the merges, chase the high score.',           accent: '#38bdf8', icon: Layers, sessionCost: 2 },
+  { id: 'tile-merge',     dbKey: 'tile_merge',     name: 'Chill Merge',           tagline: 'Place tiles, chain the merges, chase the high score.',           accent: '#38bdf8', icon: Layers, sessionCost: 2, bannerUrl: `${SB_GAMES_BUCKET}/Chill_merge.png` },
 ]
 
 export const GAMES: GameMeta[] = [...STANDARD_GAMES, ...PREMIUM_GAMES]

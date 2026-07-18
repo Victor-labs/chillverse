@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  ArrowLeft, Lock, ChevronRight, Zap, Clock, Trophy,
+  ArrowLeft, Lock, ChevronRight, Zap, Clock, Trophy, Star,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import {
@@ -21,6 +21,8 @@ import type { GameRank } from './play/types'
 import { getRankConfig, RankProgressBar } from './play/GameShell'
 import type { GameEndPayload } from './play/types'
 import PageOnboarding from '../onboarding/PageOnboarding'
+import GameDetailModal from './GameDetailModal'
+import { savePinnedGames, withFavoritesFirst } from './favorites'
 
 // ── Game imports ─────────────────────────────────────────────
 import ArrowDash from './play/ArrowDash'
@@ -49,7 +51,7 @@ const PRO_GAMES       = GAMES.filter(g => !!g.requiresPro)
 
 // ─── Lobby Card ───────────────────────────────────────────────
 function LobbyCard({
-  game, rank, streak, playsToday, globalCount, globalLimit, dataLoaded, onPlay,
+  game, rank, streak, playsToday, globalCount, globalLimit, dataLoaded, isFavorite, onOpen,
 }: {
   game: GameMeta
   rank: GameRank
@@ -58,7 +60,8 @@ function LobbyCard({
   globalCount: number
   globalLimit: number
   dataLoaded: boolean
-  onPlay: () => void
+  isFavorite: boolean
+  onOpen: () => void
 }) {
   const Icon = game.icon
   const rankCfg = getRankConfig(rank)
@@ -68,17 +71,24 @@ function LobbyCard({
   const globalLimitReached = dataLoaded && (globalCount >= globalLimit)
   const locked = maxed || notEnoughSessions
 
+  // Card always opens the detail sheet now — even when locked, so players
+  // can see WHY it's locked instead of the card just doing nothing.
   return (
     <div
       className="neu-card ripple-wrap"
-      onClick={(e) => { if (!locked) { ripple(e); onPlay() } }}
-      style={{ padding: 18, cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.6 : 1, position: 'relative', overflow: 'hidden' }}
+      onClick={(e) => { ripple(e); onOpen() }}
+      style={{ padding: 18, cursor: 'pointer', opacity: locked ? 0.6 : 1, position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${game.accent}18`, filter: 'blur(20px)', pointerEvents: 'none' }} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 13, background: `${game.accent}18`, border: `1px solid ${game.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 16px ${game.accent}20` }}>
+        <div style={{ position: 'relative', width: 44, height: 44, borderRadius: 13, background: `${game.accent}18`, border: `1px solid ${game.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 16px ${game.accent}20` }}>
           <Icon size={20} style={{ color: game.accent }} />
+          {isFavorite && (
+            <div style={{ position: 'absolute', bottom: -5, right: -5, width: 18, height: 18, borderRadius: '50%', background: 'var(--surface)', border: '1px solid rgba(245,197,66,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Star size={9} style={{ color: '#f5c542' }} fill="#f5c542" />
+            </div>
+          )}
         </div>
         {locked ? (
           <Lock size={14} style={{ color: 'var(--text-muted)', marginTop: 4 }} />
@@ -115,6 +125,27 @@ export default function Games() {
   const { limit: GLOBAL_LIMIT, cooldownHours: SESSION_COOLDOWN_HRS } = getSessionLimits(profile)
 
   const [activeGame, setActiveGame]   = useState<GameId | null>(null)
+  const [selectedGame, setSelectedGame] = useState<GameId | null>(null)
+  const [favorites, setFavorites] = useState<Set<GameId>>(new Set())
+
+  // Pinned games live on the profile row (private, per-user), not
+  // localStorage — so they follow the player across devices. `profile`
+  // is already fetched by useProfile() for isPro/pro_tier above, so this
+  // just mirrors its pinned_games column into local Set state whenever
+  // it (re)loads, rather than firing a second network request.
+  useEffect(() => {
+    setFavorites(new Set((profile?.pinned_games ?? []) as GameId[]))
+  }, [profile?.pinned_games])
+
+  const toggleFavorite = useCallback((id: GameId) => {
+    if (!userId) return
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      savePinnedGames(userId, next).catch(console.error)
+      return next
+    })
+  }, [userId])
 
   const [showProModal, setShowProModal] = useState(false)
   const [playsToday,  setPlaysToday]  = useState<Partial<Record<GameId, number>>>({})
@@ -413,7 +444,7 @@ export default function Games() {
         <section className="su d2">
           <p className="section-label">Games</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {STANDARD_GAMES.map(game => (
+            {withFavoritesFirst(STANDARD_GAMES, favorites).map(game => (
               <LobbyCard
                 key={game.id}
                 game={game}
@@ -423,7 +454,8 @@ export default function Games() {
                 globalCount={globalCount}
                 globalLimit={GLOBAL_LIMIT}
                 dataLoaded={dataLoaded}
-                onPlay={() => setActiveGame(game.id)}
+                isFavorite={favorites.has(game.id)}
+                onOpen={() => setSelectedGame(game.id)}
               />
             ))}
           </div>
@@ -436,7 +468,7 @@ export default function Games() {
             These games cost more sessions but offer a deeper experience.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {PREMIUM_GAMES.map(game => (
+            {withFavoritesFirst(PREMIUM_GAMES, favorites).map(game => (
               <LobbyCard
                 key={game.id}
                 game={game}
@@ -446,7 +478,8 @@ export default function Games() {
                 globalCount={globalCount}
                 globalLimit={GLOBAL_LIMIT}
                 dataLoaded={dataLoaded}
-                onPlay={() => setActiveGame(game.id)}
+                isFavorite={favorites.has(game.id)}
+                onOpen={() => setSelectedGame(game.id)}
               />
             ))}
           </div>
@@ -463,7 +496,7 @@ export default function Games() {
               display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4,
               scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
             }}>
-              {PRO_GAMES.map(game => (
+              {withFavoritesFirst(PRO_GAMES, favorites).map(game => (
                 <div key={game.id} style={{ minWidth: 160, maxWidth: 160, scrollSnapAlign: 'start', flexShrink: 0 }}>
                   <LobbyCard
                     game={game}
@@ -473,7 +506,8 @@ export default function Games() {
                     globalCount={globalCount}
                     globalLimit={GLOBAL_LIMIT}
                     dataLoaded={dataLoaded}
-                    onPlay={() => setActiveGame(game.id)}
+                    isFavorite={favorites.has(game.id)}
+                    onOpen={() => setSelectedGame(game.id)}
                   />
                 </div>
               ))}
@@ -518,6 +552,34 @@ export default function Games() {
         onClose={() => setShowProModal(false)}
         onGoPro={() => { setShowProModal(false); navigate('/pro') }}
       />
+
+      {selectedGame && (() => {
+        const meta = GAMES.find(g => g.id === selectedGame)
+        if (!meta) return null
+        const cost = meta.sessionCost ?? 1
+        const maxed = dataLoaded && !meta.unlimitedPlays && (playsToday[selectedGame] ?? 0) >= MAX_PLAYS
+        const notEnoughSessions = dataLoaded && (globalCount + cost > GLOBAL_LIMIT)
+        const locked = maxed || notEnoughSessions
+        const lockedReason = maxed
+          ? 'Daily limit reached'
+          : notEnoughSessions
+            ? 'Not enough sessions left'
+            : null
+
+        return (
+          <GameDetailModal
+            game={meta}
+            rank={(ranks[selectedGame] ?? 'beginner') as GameRank}
+            streak={streaks[selectedGame] ?? 0}
+            isFavorite={favorites.has(selectedGame)}
+            onToggleFavorite={() => toggleFavorite(selectedGame)}
+            locked={locked}
+            lockedReason={lockedReason}
+            onPlay={() => { const id = selectedGame; setSelectedGame(null); setActiveGame(id) }}
+            onClose={() => setSelectedGame(null)}
+          />
+        )
+      })()}
     </div>
   )
 }
