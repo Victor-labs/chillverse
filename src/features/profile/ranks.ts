@@ -306,3 +306,33 @@ export function fmtXP(n: number): string {
   if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}k`
   return String(n)
 }
+
+// ── Rank groups — used by Rank Tags (Chat + Posts) ───────────────────────
+// The 8 broad groups a Staff/Moderator/Admin can @tag (e.g. "@Gold" notifies
+// everyone from Gold I to Gold III). Derived from RANK_TIERS so the group
+// list, labels, and colors can never drift out of sync with the tier table.
+export const RANK_GROUP_IDS = ['rookie', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend', 'og'] as const
+export type RankGroupId = (typeof RANK_GROUP_IDS)[number]
+
+export interface RankGroupInfo {
+  id: RankGroupId
+  label: string
+  color: string
+}
+
+export const RANK_GROUPS: RankGroupInfo[] = RANK_GROUP_IDS.map(id => {
+  const tier = RANK_TIERS.find(t => t.group === id)!
+  return { id, label: tier.name.replace(/ (I{1,3})$/, ''), color: tier.color }
+})
+
+const RANK_GROUP_BY_ID = new Map(RANK_GROUPS.map(g => [g.id, g]))
+
+/** Display label + color for a rank group id (e.g. 'gold' → "Gold", '#f5c542'). */
+export function getRankGroupInfo(group: RankGroupId): RankGroupInfo {
+  return RANK_GROUP_BY_ID.get(group) ?? RANK_GROUPS[0]
+}
+
+/** Which rank group a given XP total currently falls into. */
+export function getUserRankGroup(xp: number): RankGroupId {
+  return getUserRankTier(xp).group
+}
