@@ -655,13 +655,14 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
 
               {/* Handle row — @username on the left; gender pill (sitting
                   where Discord shows a role/pronoun tag) and the badge
-                  grid box on the right, badges included. */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>@{profile.username}</p>
+                  strip on the right, all on one straight line, never
+                  wrapping into a grid. */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+                <p style={{ fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>@{profile.username}</p>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflowX: 'auto' }}>
                   {!isModerator && profile.info_tags?.includes('gender') && profile.gender && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
                       <UserRound size={12} style={{ color: 'var(--text-muted)' }} />
                       <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: 0.3 }}>
                         {GENDER_LABELS[profile.gender] ?? profile.gender.toUpperCase()}
@@ -669,19 +670,18 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                     </div>
                   )}
 
-                  {/* Badge grid box — rank tier is the first icon, then
-                      real badges by rarity, all inside one little bordered
-                      grid box (wraps into rows), mirroring Discord's badge
-                      panel on a user's profile card. */}
+                  {/* Badge strip — rank tier is the first icon, then real
+                      badges by rarity, one straight horizontal line inside
+                      a single bordered box (never a wrapping grid). */}
                   {!isModerator && (rank || ownedBadges.length > 0) && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, borderRadius: 9, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)', maxWidth: 100, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, padding: 4, borderRadius: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
                       {rank && (
                         <button
                           type="button"
                           className="pv-btn"
                           onClick={() => setShowRankToast(true)}
                           title={rank.name}
-                          style={{ width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rank.color + '1c', border: `1px solid ${rank.color}44`, cursor: 'pointer', padding: 0, fontSize: 11 }}
+                          style={{ width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rank.color + '1c', border: `1px solid ${rank.color}44`, cursor: 'pointer', padding: 0, fontSize: 10, flexShrink: 0 }}
                         >
                           {rank.emoji}
                         </button>
@@ -695,9 +695,9 @@ export default function ProfilePreviewModal({ userId, onClose }: { userId: strin
                             className="pv-btn"
                             onClick={() => setBadgeToast(def)}
                             title={badgeDisplayTitle(def, profile.original_username)}
-                            style={{ width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0 }}
+                            style={{ width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: color + '1c', border: `1px solid ${color}33`, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                           >
-                            <BadgeIcon iconKey={def.icon} size={11} color={color} />
+                            <BadgeIcon iconKey={def.icon} size={10} color={color} />
                           </button>
                         )
                       })}
