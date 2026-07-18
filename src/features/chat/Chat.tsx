@@ -1604,48 +1604,63 @@ export default function Chat() {
 
     setSending(true)
 
-    // Stop broadcasting "typing" the instant the message goes out.
-    if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
-    presenceChannelRef.current?.track({ typing: false })
+    try {
+      // Stop broadcasting "typing" the instant the message goes out.
+      if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
+      presenceChannelRef.current?.track({ typing: false })
 
-    const rankTag = pendingRankTag && isStaff && activeRoom.type === 'global' ? pendingRankTag : null
+      const rankTag = pendingRankTag && isStaff && activeRoom.type === 'global' ? pendingRankTag : null
 
-    const payload: MessageInsertPayload = { room_id: activeRoom.id, sender_id: myId, content: trimmed }
-    if (replyTo) payload.reply_to_id = replyTo.id
-    if (rankTag) { payload.type = 'rank_tag'; payload.rank_tag_group = rankTag }
-    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id, rank_tag_group, poll_id').single()
-    if (!error && inserted) {
-      // Weekly mission: messages_sent
-      if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
-      // Notify the other person in a DM (skip global chat to avoid spamming everyone)
-      if (myId && activeRoom.type === 'dm') {
-        activeRoom.members
-          .filter(mb => mb.user_id !== myId)
-          .forEach(mb => notifyMessage(myId, mb.user_id, inserted.content).catch(console.error))
+      const payload: MessageInsertPayload = { room_id: activeRoom.id, sender_id: myId, content: trimmed }
+      if (replyTo) payload.reply_to_id = replyTo.id
+      if (rankTag) { payload.type = 'rank_tag'; payload.rank_tag_group = rankTag }
+      const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id, sender_id, content, created_at, deleted, hidden, hidden_reason, reply_to_id, type, audio_path, audio_duration_seconds, call_id, rank_tag_group, poll_id').single()
+      if (!error && inserted) {
+        // Weekly mission: messages_sent
+        if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
+        // Notify the other person in a DM (skip global chat to avoid spamming everyone)
+        if (myId && activeRoom.type === 'dm') {
+          activeRoom.members
+            .filter(mb => mb.user_id !== myId)
+            .forEach(mb => notifyMessage(myId, mb.user_id, inserted.content).catch(console.error))
+        }
+        // Rank tag: fan out to every user currently in that rank group
+        if (myId && rankTag) {
+          notifyRankTag(myId, rankTag, { messageId: inserted.id }).catch(console.error)
+        }
+        // Optimistically add own message immediately without waiting for realtime
+        const myMember = activeRoom.members.find(mb => mb.user_id === myId)
+        const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'
+        const senderUsername = myMember?.profile.username
+        scrollModeRef.current = 'bottom'
+        setMessages(ms => {
+          if (ms.find(m => m.id === inserted.id)) return ms
+          return [...ms, { ...inserted, deleted: false, reactions: [], senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
+        })
+        setText(''); setReplyTo(null); setPendingRankTag(null)
+        if (activeRoom.type === 'global' && activeRoom.slowMode && !isStaff) {
+          setSlowModeCooldownUntil(Date.now() + activeRoom.slowModeSeconds * 1000)
+        }
+      } else if (!error) {
+        setText(''); setReplyTo(null); setPendingRankTag(null)
+      } else if (error.message?.includes('CV_PROFANITY')) {
+        setComposerError(PROFANITY_BLOCKED_MESSAGE)
+      } else {
+        // Previously: unhandled errors (RLS denial, network hiccup mid-request, etc.)
+        // failed silently — the composer just sat there with no feedback. Surface
+        // something so it's clear the send didn't go through.
+        console.error('Failed to send message:', error.message)
+        setComposerError('Message failed to send. Please try again.')
       }
-      // Rank tag: fan out to every user currently in that rank group
-      if (myId && rankTag) {
-        notifyRankTag(myId, rankTag, { messageId: inserted.id }).catch(console.error)
-      }
-      // Optimistically add own message immediately without waiting for realtime
-      const myMember = activeRoom.members.find(mb => mb.user_id === myId)
-      const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'
-      const senderUsername = myMember?.profile.username
-      scrollModeRef.current = 'bottom'
-      setMessages(ms => {
-        if (ms.find(m => m.id === inserted.id)) return ms
-        return [...ms, { ...inserted, deleted: false, reactions: [], senderName, senderUsername, replyPreview: replyTo?.content, replyPreviewName: replyTo?.senderName }]
-      })
-      setText(''); setReplyTo(null); setPendingRankTag(null)
-      if (activeRoom.type === 'global' && activeRoom.slowMode && !isStaff) {
-        setSlowModeCooldownUntil(Date.now() + activeRoom.slowModeSeconds * 1000)
-      }
-    } else if (!error) {
-      setText(''); setReplyTo(null); setPendingRankTag(null)
-    } else if (error.message?.includes('CV_PROFANITY')) {
-      setComposerError(PROFANITY_BLOCKED_MESSAGE)
+    } catch (err) {
+      // Guards against the send button getting permanently stuck disabled: if the
+      // request itself throws (offline, CORS, etc.) rather than resolving with an
+      // { error } object, the old code skipped setSending(false) entirely below.
+      console.error('Unexpected error sending message:', err)
+      setComposerError('Message failed to send. Please try again.')
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
 
   /** Voice-note counterpart to sendMsg(). Two-step by necessity: the storage
