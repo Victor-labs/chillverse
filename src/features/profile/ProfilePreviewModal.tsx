@@ -553,12 +553,11 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
       }}
     >
       <div
-        onClick={isPreview ? undefined : e => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
         style={{
           ...sheetBase,
           background: 'var(--bg)', overflowY: isPreview ? 'hidden' : 'auto', overscrollBehavior: 'contain', position: 'relative',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
-          ...(isPreview ? { pointerEvents: 'none' as const } : {}),
         }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.22)', margin: '10px auto 0' }} />
@@ -610,6 +609,13 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
             </div>
           )}
         </div>
+
+        {isPreview && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'absolute', inset: 0, top: 130, zIndex: 1, cursor: 'default' }}
+          />
+        )}
 
         <div style={{ padding: '0 18px 20px' }}>
           {/* Avatar overlapping the banner */}
