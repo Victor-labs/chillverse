@@ -6,7 +6,7 @@ import {
   Smile, Send, X, Trash2, Reply, Flag, Lock,
   MessageCircle, UserPlus, ShieldOff, UserCheck,
   ExternalLink, Check, CheckCheck, Pin, PinOff, Phone,
-  Megaphone, BarChart3, Timer, Zap, Eye, EyeOff, Star,
+  Megaphone, BarChart3, Timer, Zap, Eye, EyeOff, Star, Paperclip,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
@@ -670,6 +670,9 @@ export default function Chat() {
   const [playerSearching, setPlayerSearching] = useState(false)
 
   const [emojiOpen, setEmojiOpen] = useState(false)
+  // Composer action drawer — collapses emoji/rank-tag/poll icons behind a single
+  // paperclip button, same retractable pattern as the conversation header drawer.
+  const [composerDrawerOpen, setComposerDrawerOpen] = useState(false)
   const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
   const [emojiForMsg, setEmojiForMsg] = useState<string | null>(null)
@@ -1048,6 +1051,7 @@ export default function Chat() {
     setOtherLastReadAt(null)
     setDmBlockState('none')
     setHeaderDrawerOpen(false)
+    setComposerDrawerOpen(false)
     setMsgSearchOpen(false)
     setMsgSearchQuery('')
     isNearBottomRef.current = true
@@ -1957,7 +1961,7 @@ export default function Chat() {
 
       {/* ── Contact list + player search ── */}
       {showList && (
-        <div className="w-full sm:w-[320px] flex-shrink-0 flex flex-col overflow-hidden" style={{ background:'rgba(26,26,31,0.7)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', boxShadow:'6px 0 24px var(--neu-dark), inset -1px 0 0 rgba(255,255,255,0.03)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="w-full sm:w-[320px] flex-shrink-0 flex flex-col overflow-hidden" style={{ borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
 
           {/* Header */}
           <div className="p-0 sm:p-3 md:p-4 pb-2">
@@ -2463,12 +2467,35 @@ export default function Chat() {
                     <div style={{ padding:'6px 16px', fontSize:11.5, color:'#ff6b6b', background:'rgba(255,107,107,0.08)' }}>{composerError}</div>
                   )}
                   <div style={{ display:'flex', alignItems:'flex-end', gap:8, padding:'10px 12px', background:'rgba(17,17,19,0.92)', backdropFilter:'blur(14px)', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                    {!isRecordingVoiceNote && <IBtn onClick={() => setEmojiOpen(v => !v)}><Smile size={15} /></IBtn>}
-                    {!isRecordingVoiceNote && isStaff && activeRoom.type === 'global' && (
-                      <IBtn onClick={() => setRankTagPickerOpen(v => !v)} title="Tag a rank group"><Megaphone size={15} /></IBtn>
-                    )}
-                    {!isRecordingVoiceNote && canCreatePoll && activeRoom.type === 'global' && (
-                      <IBtn onClick={() => setPollModalOpen(true)} title="Create a poll"><BarChart3 size={15} /></IBtn>
+                    {!isRecordingVoiceNote && (
+                      <div style={{ position:'relative', flexShrink:0 }}>
+                        <IBtn onClick={() => setComposerDrawerOpen(o => !o)} style={{ background: composerDrawerOpen ? 'var(--surface2)' : 'var(--surface)' }}>
+                          {composerDrawerOpen ? <X size={15} /> : <Paperclip size={15} />}
+                        </IBtn>
+                        <div style={{
+                          position:'absolute', left:0, bottom:'calc(100% + 8px)',
+                          display:'flex', flexDirection:'column', alignItems:'center', gap:6, overflow:'hidden',
+                          maxHeight: composerDrawerOpen ? 160 : 0,
+                          opacity: composerDrawerOpen ? 1 : 0,
+                          transform: composerDrawerOpen ? 'translateY(0)' : 'translateY(8px)',
+                          pointerEvents: composerDrawerOpen ? 'auto' : 'none',
+                          background: 'var(--surface2)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius:14,
+                          padding: composerDrawerOpen ? '6px' : '0 6px',
+                          boxShadow:'0 12px 40px rgba(0,0,0,0.5)',
+                          transition:'max-height 0.28s ease, opacity 0.2s ease, transform 0.28s ease, padding 0.28s ease',
+                          zIndex:50,
+                        }}>
+                          <IBtn onClick={() => setEmojiOpen(v => !v)} style={{ width:32, height:32 }}><Smile size={14} /></IBtn>
+                          {isStaff && activeRoom.type === 'global' && (
+                            <IBtn onClick={() => setRankTagPickerOpen(v => !v)} title="Tag a rank group" style={{ width:32, height:32 }}><Megaphone size={14} /></IBtn>
+                          )}
+                          {canCreatePoll && activeRoom.type === 'global' && (
+                            <IBtn onClick={() => setPollModalOpen(true)} title="Create a poll" style={{ width:32, height:32 }}><BarChart3 size={14} /></IBtn>
+                          )}
+                        </div>
+                      </div>
                     )}
                     {!isRecordingVoiceNote && (
                       <div style={{ flex:1, background:'var(--surface)', boxShadow:'inset 2px 2px 6px var(--neu-dark)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:14, padding:'9px 12px', display:'flex', alignItems:'flex-end' }}>
