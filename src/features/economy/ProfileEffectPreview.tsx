@@ -105,19 +105,15 @@ export default function ProfileEffectPreview({
                     style={{
                       position: 'absolute', inset: 0, width: '100%', height: '100%',
                       objectFit: 'cover',
-                      // ── DIAGNOSTIC MODE ──────────────────────────────
-                      // Temporarily dropped the blend mode + cranked
-                      // opacity down so the profile card underneath is
-                      // clearly visible through the video. If you can now
-                      // see the card behind a faint video, the card was
-                      // rendering correctly all along and this was purely
-                      // the opaque-background/blend-mode problem. Once
-                      // confirmed, delete this block and restore the
-                      // original two lines below (kept here, commented,
-                      // so nothing is lost):
-                      //   mixBlendMode: 'screen',
-                      //   filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.22)) brightness(1.05)',
-                      opacity: 0.35,
+                      // Opacity (not blend mode) is what's actually letting
+                      // the card show through here — the source clip's
+                      // "black" isn't pure enough for mixBlendMode:'screen'
+                      // to zero it out cleanly, so we lean on opacity
+                      // instead and use `filter` purely for bloom/glow on
+                      // top of that, with no blend-mode transparency trick
+                      // involved at all.
+                      opacity: 0.55,
+                      filter: 'brightness(1.3) saturate(1.35) drop-shadow(0 0 26px rgba(255,150,60,0.6)) drop-shadow(0 0 46px rgba(255,90,30,0.35))',
                     }}
                   />
                 </div>
