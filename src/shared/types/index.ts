@@ -10,6 +10,8 @@ export interface Profile {
   xp: number
   level: number
   streak: number
+  longest_streak: number
+  last_streak_date: string | null
   created_at: string
   connected_platform: string | null
   // ── Edit Profile fields ──
