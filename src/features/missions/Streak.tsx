@@ -1,4 +1,4 @@
-import { ArrowLeft, Zap, Lock, Check, Flame } from "lucide-react";
+import { ArrowLeft, Zap, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useProfile } from "../profile/useProfile";
 import { useAuth } from "../auth/useAuth";
@@ -6,6 +6,7 @@ import { supabase } from "../../shared/lib/supabase";
 import { updateStreak } from "../auth/auth";
 import { updateMissionProgress } from "./weeklyMissions";
 import emberFlame from "../../assets/streak-ember.png";
+import furnaceMarker from "../../assets/streak-furnace.png";
 
 /* ═══════════════════════════════════════════════════
    MILESTONES
@@ -34,45 +35,110 @@ function getMood(streak: number): string {
   return "blazing";
 }
 
-const MOOD_META: Record<string, { label: string; sub: string; color: string; glow: string }> = {
-  dead:    { label: "Flame's out",      sub: "Start today to relight it.",           color: "#555566", glow: "rgba(85,85,102,0.25)"   },
-  spark:   { label: "Spark ignited",    sub: "Day 1 counts. Keep showing up.",       color: "#ff9a3c", glow: "rgba(255,154,60,0.35)"  },
-  rising:  { label: "Rising up",        sub: "You're building momentum. Don't stop.",color: "#ff7a1a", glow: "rgba(255,122,26,0.38)"  },
-  neutral: { label: "Steady",           sub: "You're building something real.",      color: "#ff6b00", glow: "rgba(255,107,0,0.4)"    },
-  good:    { label: "On fire",          sub: "This streak has real heat now.",       color: "#ff4500", glow: "rgba(255,69,0,0.45)"    },
-  blazing: { label: "Legendary",        sub: "Untouchable. Keep the halo lit.",      color: "#f5c542", glow: "rgba(245,197,66,0.45)"  },
+const MOOD_META: Record<string, { label: string; sub: string; color: string }> = {
+  dead:    { label: "Flame's out",   sub: "Start today to relight it.",            color: "var(--text-muted)" },
+  spark:   { label: "Spark ignited", sub: "Day 1 counts. Keep showing up.",         color: "var(--accent2)" },
+  rising:  { label: "Rising up",     sub: "You're building momentum. Don't stop.",  color: "var(--accent)" },
+  neutral: { label: "Steady",        sub: "You're building something real.",       color: "var(--accent)" },
+  good:    { label: "On fire",       sub: "This streak has real heat now.",        color: "#ff4500" },
+  blazing: { label: "Legendary",     sub: "Untouchable. Keep the halo lit.",        color: "var(--gold)" },
 };
 
 /* ═══════════════════════════════════════════════════
-   MASCOT — ember flame that dims or glows with the streak
+   WEEKLY DOTS — derived from streak length + last check-in date
+   (no per-day history is stored, so a day is inferred "lit" if it
+   falls within the unbroken run ending on last_streak_date)
 ═══════════════════════════════════════════════════ */
+const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+
+function parseDateOnly(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function startOfWeekMonday(d: Date): Date {
+  const day = d.getDay(); // 0 = Sun .. 6 = Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function diffDays(a: Date, b: Date): number {
+  const MS = 24 * 60 * 60 * 1000;
+  return Math.round((a.getTime() - b.getTime()) / MS);
+}
+
+interface WeekDot { key: number; label: string; lit: boolean; isToday: boolean }
+
+function getWeekDots(streak: number, lastStreakDate: string | null | undefined): WeekDot[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lastDate = parseDateOnly(lastStreakDate);
+  const monday = startOfWeekMonday(today);
+
+  return WEEKDAY_LABELS.map((label, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const isToday = diffDays(date, today) === 0;
+    const isFuture = date.getTime() > today.getTime();
+    let lit = false;
+    if (!isFuture && lastDate && streak > 0) {
+      const daysBeforeLast = diffDays(lastDate, date);
+      lit = daysBeforeLast >= 0 && daysBeforeLast < streak;
+    }
+    return { key: i, label, lit, isToday };
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   MASCOT — ember flame, always at full vividness
+═══════════════════════════════════════════════════ */
+const EMBER_PARTICLES = [
+  { left: "38%", delay: "0.1s", drift: "12px",  size: 4 },
+  { left: "58%", delay: "1.1s", drift: "-14px", size: 3 },
+  { left: "46%", delay: "2.0s", drift: "6px",   size: 4 },
+  { left: "64%", delay: "0.7s", drift: "-8px",  size: 3 },
+  { left: "41%", delay: "1.7s", drift: "16px",  size: 2 },
+];
+
 function Mascot({ mood, streak }: { mood: string; streak: number }) {
   const meta = MOOD_META[mood];
 
-  // Glow ramps up gradually with the streak count itself (not just the mood
-  // bucket), so the flame reads as genuinely dull on day 1 and only really
-  // brightens as the streak climbs — capped at day 100 for full brightness.
-  const glowT = Math.max(0, Math.min(1, streak / 100));
-  const isDead = mood === "dead";
-  const glowBlur = 10 + glowT * 34;
-  const glowSpread = 0.18 + glowT * 0.5;
-  const brightness = 0.62 + glowT * 0.55;
-  const saturate = isDead ? 0.15 : 0.55 + glowT * 0.6;
-  const scale = 0.85 + glowT * 0.4;
-  const flameAnim = isDead ? undefined : "flameFlicker 3.2s ease-in-out infinite";
-
   return (
-    <div style={{ position:"relative", width:200, height:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <div style={{ position:"relative", width:200, height:190, display:"flex", alignItems:"flex-end", justifyContent:"center", margin:"0 auto" }}>
+      {/* ambient pulsing glow behind the flame */}
+      <div style={{ position:"absolute", bottom:16, width:150, height:150, borderRadius:"50%", background:"radial-gradient(circle, rgba(255,107,0,0.45) 0%, transparent 70%)", filter:"blur(4px)", animation:"emberPulse 2.1s ease-in-out infinite" }} />
+
+      {/* rising embers */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
+        {EMBER_PARTICLES.map((p, i) => (
+          <span
+            key={i}
+            style={{
+              position:"absolute", bottom:36, left:p.left, width:p.size, height:p.size, borderRadius:"50%",
+              background:"var(--gold)", boxShadow:"0 0 6px 1px var(--accent)", opacity:0,
+              animation:"emberRise 3.2s ease-in infinite", animationDelay:p.delay,
+              ['--drift' as unknown as string]: p.drift,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+
       {mood === "blazing" && (
         <>
-          <div style={{ position:"absolute", top:6, width:54, height:54, borderRadius:"50%", border:"3px solid #f5c542", boxShadow:"0 0 16px #f5c542,0 0 30px rgba(245,197,66,0.5)", animation:"haloFloat 2.6s ease-in-out infinite" }} />
-          <div style={{ position:"absolute", top:78, left:18, width:34, height:46, background:"linear-gradient(135deg,rgba(255,255,255,0.9),rgba(245,197,66,0.5))", borderRadius:"50% 50% 50% 10%", transformOrigin:"right center", animation:"wingFlapL 1.4s ease-in-out infinite" }} />
-          <div style={{ position:"absolute", top:78, right:18, width:34, height:46, background:"linear-gradient(135deg,rgba(255,255,255,0.9),rgba(245,197,66,0.5))", borderRadius:"50% 50% 10% 50%", transformOrigin:"left center", animation:"wingFlapR 1.4s ease-in-out infinite" }} />
+          <div style={{ position:"absolute", top:6, left:"50%", transform:"translateX(-50%)", width:54, height:54, borderRadius:"50%", border:"3px solid var(--gold)", boxShadow:"0 0 16px var(--gold),0 0 30px rgba(245,197,66,0.5)", animation:"haloFloat 2.6s ease-in-out infinite" }} />
+          <div style={{ position:"absolute", top:78, left:"calc(50% - 52px)", width:34, height:46, background:"linear-gradient(135deg,rgba(255,255,255,0.9),rgba(245,197,66,0.5))", borderRadius:"50% 50% 50% 10%", transformOrigin:"right center", animation:"wingFlapL 1.4s ease-in-out infinite" }} />
+          <div style={{ position:"absolute", top:78, left:"calc(50% + 18px)", width:34, height:46, background:"linear-gradient(135deg,rgba(255,255,255,0.9),rgba(245,197,66,0.5))", borderRadius:"50% 50% 10% 50%", transformOrigin:"left center", animation:"wingFlapR 1.4s ease-in-out infinite" }} />
           {[...Array(5)].map((_, i) => (
-            <div key={i} style={{ position:"absolute", width:5, height:5, borderRadius:"50%", background:"#f5c542", boxShadow:"0 0 6px #f5c542", left:`${30+i*18}%`, bottom:"20%", animation:"sparkleDrift 2.8s ease-in-out infinite", animationDelay:`${i*0.45}s` }} />
+            <div key={i} style={{ position:"absolute", width:5, height:5, borderRadius:"50%", background:"var(--gold)", boxShadow:"0 0 6px var(--gold)", left:`${30+i*18}%`, bottom:"30%", animation:"sparkleDrift 2.8s ease-in-out infinite", animationDelay:`${i*0.45}s` }} />
           ))}
         </>
       )}
+
       <img
         src={emberFlame}
         alt={`${meta.label} — ${streak} day streak`}
@@ -82,12 +148,37 @@ function Mascot({ mood, streak }: { mood: string; streak: number }) {
           width: 128,
           height: 128,
           objectFit: "contain",
-          transform: `scale(${scale})`,
-          animation: flameAnim,
-          filter: `drop-shadow(0 0 ${glowBlur}px rgba(232,73,26,${glowSpread})) brightness(${brightness}) saturate(${saturate})`,
-          transition: "filter 0.6s ease, transform 0.6s ease",
+          filter: "drop-shadow(0 12px 20px rgba(255,107,0,0.55)) brightness(1.08) saturate(1.2)",
+          animation: "emberFlicker 2.6s ease-in-out infinite",
         }}
       />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   WEEK ROW — M T W T F S S, lit per inferred check-in
+═══════════════════════════════════════════════════ */
+function WeekRow({ streak, lastStreakDate }: { streak: number; lastStreakDate: string | null | undefined }) {
+  const dots = getWeekDots(streak, lastStreakDate);
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", paddingTop:14, marginTop:6, borderTop:"1px solid rgba(255,255,255,0.06)", position:"relative", zIndex:2 }}>
+      {dots.map(d => (
+        <div key={d.key} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:7 }}>
+          <span style={{ fontSize:10, fontWeight:600, letterSpacing:".05em", color:"var(--text-muted)" }}>{d.label}</span>
+          <span
+            style={{
+              width:18, height:18, borderRadius:"50%",
+              border: d.lit ? "none" : "1.5px solid var(--surface3)",
+              background: d.lit ? "radial-gradient(circle at 35% 30%, var(--gold), var(--accent) 70%)" : "var(--surface2)",
+              boxShadow: d.lit ? "0 0 9px 1px rgba(255,107,0,0.55)" : "inset 2px 2px 5px var(--neu-dark)",
+              outline: d.isToday ? "2px solid var(--gold)" : "none",
+              outlineOffset: 2,
+              animation: d.isToday ? "todayPulse 1.8s ease-in-out infinite" : undefined,
+            }}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -103,6 +194,8 @@ export default function Streak({ onBack }: StreakProps) {
   const { profile, loading } = useProfile();
   const { user } = useAuth();
   const [liveStreak, setLiveStreak] = useState<number | null>(null);
+  const [liveLongest, setLiveLongest] = useState<number | null>(null);
+  const [liveLastDate, setLiveLastDate] = useState<string | null | undefined>(undefined);
 
   // On mount: run streak update then refetch the live value
   useEffect(() => {
@@ -111,12 +204,14 @@ export default function Streak({ onBack }: StreakProps) {
       await updateStreak(user.id);
       const { data } = await supabase
         .from("profiles")
-        .select("streak")
+        .select("streak, longest_streak, last_streak_date")
         .eq("id", user.id)
         .single();
       if (data) {
         const currentStreak = data.streak ?? 0;
         setLiveStreak(currentStreak);
+        setLiveLongest(data.longest_streak ?? 0);
+        setLiveLastDate(data.last_streak_date ?? null);
         // Weekly mission: streak_days — set progress to the actual streak count
         // We use the absolute value so the mission resolves correctly at 3/5/7
         if (currentStreak > 0) {
@@ -137,8 +232,10 @@ export default function Streak({ onBack }: StreakProps) {
         table: "profiles",
         filter: `id=eq.${user.id}`,
       }, (payload) => {
-        const updated = payload.new as { streak: number };
+        const updated = payload.new as { streak: number; longest_streak: number; last_streak_date: string | null };
         if (typeof updated.streak === "number") setLiveStreak(updated.streak);
+        if (typeof updated.longest_streak === "number") setLiveLongest(updated.longest_streak);
+        if (updated.last_streak_date !== undefined) setLiveLastDate(updated.last_streak_date);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -146,7 +243,7 @@ export default function Streak({ onBack }: StreakProps) {
 
   if (loading) {
     return (
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"var(--bg)" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}>
         <span style={{ width:36, height:36, borderRadius:"50%", border:"2px solid var(--surface3)", borderTopColor:"var(--accent)", display:"block", animation:"spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -154,25 +251,45 @@ export default function Streak({ onBack }: StreakProps) {
   }
 
   const streak = liveStreak ?? profile?.streak ?? 0;
+  const longestStreak = Math.max(liveLongest ?? profile?.longest_streak ?? 0, streak);
+  const lastStreakDate = liveLastDate !== undefined ? liveLastDate : profile?.last_streak_date;
   const mood = getMood(streak);
   const meta = MOOD_META[mood];
-  const nextMilestone = MILESTONES.find(m => m.days > streak);
+
+  // ── Furnace track: 9 milestones mapped onto evenly-spaced flags,
+  // with the marker position interpolated within whichever milestone
+  // "leg" the current streak falls into.
+  const breakpoints = [0, ...MILESTONES.map(m => m.days)];
+  const legCount = breakpoints.length - 1;
+  let leg = 0;
+  while (leg < legCount && streak >= breakpoints[leg + 1]) leg++;
+  leg = Math.min(leg, legCount - 1);
+  const legStart = breakpoints[leg];
+  const legEnd = breakpoints[leg + 1];
+  const legFrac = legEnd > legStart ? Math.min(1, Math.max(0, (streak - legStart) / (legEnd - legStart))) : 1;
+  const trackPct = ((leg + legFrac) / legCount) * 100;
+
+  const nextMilestone = MILESTONES.find(m => streak < m.days);
+  const daysToNext = nextMilestone ? nextMilestone.days - streak : 0;
+  const reachedCount = MILESTONES.filter(m => streak >= m.days).length;
 
   return (
     <>
       <style>{`
         @keyframes spin         { to { transform: rotate(360deg); } }
-        @keyframes flameBounce  { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-6px) scale(1.03)} }
-        @keyframes flameFlicker { 0%,100%{transform:translateY(0) scaleY(1)} 45%{transform:translateY(1px) scaleY(0.97)} 55%{transform:translateY(-1px) scaleY(1.01)} }
-        @keyframes flameDroop   { 0%,100%{transform:rotate(0deg) translateY(0)} 50%{transform:rotate(4deg) translateY(2px)} }
-        @keyframes haloFloat    { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-4px) rotate(3deg)} }
+        @keyframes emberPulse   { 0%,100%{opacity:.55; transform:scale(0.92);} 50%{opacity:1; transform:scale(1.1);} }
+        @keyframes emberFlicker { 0%,100%{transform:scale(1) rotate(0deg) skewX(0deg);} 20%{transform:scale(1.02,0.985) rotate(-1deg) skewX(-1deg);} 45%{transform:scale(0.98,1.03) rotate(1.2deg) skewX(1deg);} 65%{transform:scale(1.03,0.97) rotate(-0.6deg) skewX(-0.5deg);} 85%{transform:scale(0.99,1.01) rotate(0.8deg) skewX(0.6deg);} }
+        @keyframes emberRise    { 0%{opacity:0; transform:translate(0,0) scale(1);} 12%{opacity:1;} 80%{opacity:.5;} 100%{opacity:0; transform:translate(var(--drift,10px), -120px) scale(.3);} }
+        @keyframes haloFloat    { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-3deg)} 50%{transform:translateX(-50%) translateY(-4px) rotate(3deg)} }
         @keyframes wingFlapL    { 0%,100%{transform:rotate(-8deg) scaleX(1)} 50%{transform:rotate(14deg) scaleX(0.92)} }
         @keyframes wingFlapR    { 0%,100%{transform:rotate(8deg) scaleX(1)} 50%{transform:rotate(-14deg) scaleX(0.92)} }
         @keyframes sparkleDrift { 0%{opacity:0;transform:translateY(0) scale(0.5)} 30%{opacity:1} 100%{opacity:0;transform:translateY(-40px) scale(1)} }
-        @keyframes feedIn       { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes todayPulse   { 0%,100%{ box-shadow:0 0 0 3px rgba(245,197,66,0.18); } 50%{ box-shadow:0 0 0 6px rgba(245,197,66,0.04); } }
+        @keyframes trackSheen   { 0%{transform:translateX(-100%);} 100%{transform:translateX(340%);} }
+        @keyframes markerBob    { 0%,100%{transform:translateY(0) rotate(0deg);} 50%{transform:translateY(-4px) rotate(3deg);} }
       `}</style>
 
-      <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
+      <div style={{ minHeight:"100vh" }}>
 
         {/* Topbar */}
         <div style={{ position:"sticky", top:0, height:58, display:"flex", alignItems:"center", gap:14, padding:"0 20px", background:"rgba(17,17,19,0.90)", backdropFilter:"blur(16px)", borderBottom:"1px solid rgba(255,255,255,0.05)", zIndex:50 }}>
@@ -184,71 +301,91 @@ export default function Streak({ onBack }: StreakProps) {
           <span style={{ fontSize:16, fontWeight:700, color:"var(--text)" }}>Streak</span>
         </div>
 
-        {/* Mascot stage */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"36px 20px 28px" }}>
-          <Mascot mood={mood} streak={streak} />
-          <div style={{ fontSize:46, fontWeight:800, letterSpacing:-1, background:`linear-gradient(135deg,${meta.color},#fff)`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginTop:6 }}>
-            {streak}
-          </div>
-          <div style={{ fontSize:13, color:"var(--text-dim)", fontWeight:600, marginTop:-4 }}>
-            day{streak === 1 ? "" : "s"} streak
-          </div>
-          <div style={{ fontSize:15, fontWeight:700, color:meta.color, marginTop:10 }}>{meta.label}</div>
-          <div style={{ fontSize:12, color:"var(--text-dim)", marginTop:3, textAlign:"center", maxWidth:240, lineHeight:1.5 }}>{meta.sub}</div>
-        </div>
+        <div style={{ padding:"20px 20px 32px", display:"flex", flexDirection:"column", gap:18 }}>
 
-        {/* Milestones */}
-        <div style={{ padding:"0 20px 32px" }}>
-          <div style={{ fontSize:11, fontWeight:700, color:"var(--text-muted)", letterSpacing:"1.2px", textTransform:"uppercase", marginBottom:14 }}>
-            Milestones
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {MILESTONES.map((m, idx) => {
-              const done = streak >= m.days;
-              const isCurrentTarget = !done && m === nextMilestone;
-              const prevDays = MILESTONES[idx - 1]?.days || 0;
-              const progressPct = isCurrentTarget
-                ? Math.min(100, Math.max(0, ((streak - prevDays) / (m.days - prevDays)) * 100))
-                : done ? 100 : 0;
+          {/* ── Ember hero card ── */}
+          <div style={{ position:"relative", borderRadius:24, background:"var(--surface)", boxShadow:"8px 8px 20px var(--neu-dark),-6px -6px 16px var(--neu-light)", border:"1px solid rgba(255,255,255,0.04)", padding:"26px 22px 22px", overflow:"hidden" }}>
+            {/* breathing ambient glow */}
+            <div style={{ position:"absolute", top:"-34%", left:"50%", width:280, height:280, transform:"translateX(-50%)", background:"radial-gradient(circle, rgba(255,107,0,0.4) 0%, transparent 68%)", filter:"blur(8px)", animation:"emberPulse 3.4s ease-in-out infinite", pointerEvents:"none" }} />
 
-              return (
-                <div
-                  key={m.days}
-                  style={{
-                    display:"flex", alignItems:"center", gap:13,
-                    background:"var(--surface)", borderRadius:16, padding:"13px 15px",
-                    border: done
-                      ? "1px solid rgba(62,207,142,0.3)"
-                      : isCurrentTarget
-                      ? "1px solid rgba(255,107,0,0.35)"
-                      : "1px solid rgba(255,255,255,0.05)",
-                    boxShadow: isCurrentTarget
-                      ? "0 0 0 1px rgba(255,107,0,0.25),3px 3px 9px var(--neu-dark)"
-                      : "3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)",
-                    position:"relative", overflow:"hidden",
-                    animation:"feedIn 0.4s ease-out both",
-                    animationDelay:`${idx * 0.04}s`,
-                  }}
-                >
-                  <div style={{ width:38, height:38, borderRadius:12, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: done ? "rgba(62,207,142,0.15)" : "var(--surface2)", color: done ? "#3ecf8e" : "var(--text-muted)", boxShadow:"2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)" }}>
-                    {done ? <Check size={17} /> : <Flame size={17} />}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13.5, fontWeight:700, color:"var(--text)" }}>{m.days}-day streak</div>
-                    <div style={{ fontSize:11, color:"var(--text-dim)", marginTop:1, display:"flex", alignItems:"center", gap:4 }}>
-                      <Zap size={11} color="#f5c542" /> +{m.xp.toLocaleString()} XP
-                    </div>
-                  </div>
-                  {!done && !isCurrentTarget && <Lock size={14} color="var(--text-muted)" />}
-                  <div style={{ position:"absolute", bottom:0, left:0, height:2, background:"var(--surface3)", width:"100%" }}>
-                    <div style={{ height:"100%", background:"linear-gradient(90deg,var(--accent),#f5c542)", width:`${progressPct}%`, transition:"width 1s cubic-bezier(0.4,0,0.2,1)" }} />
-                  </div>
+            <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"var(--text-muted)", letterSpacing:"1.2px", textTransform:"uppercase" }}>Current Streak</span>
+              <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:10.5, fontWeight:700, color:meta.color, background:"var(--surface2)", border:`1px solid ${meta.color}`, padding:"5px 10px 5px 8px", borderRadius:999, boxShadow:"2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)" }}>
+                <Flame size={11} color={meta.color} /> {meta.label.toUpperCase()}
+              </span>
+            </div>
+
+            <div style={{ position:"relative", zIndex:2 }}>
+              <Mascot mood={mood} streak={streak} />
+            </div>
+
+            <div style={{ position:"relative", zIndex:2, textAlign:"center", marginTop:2 }}>
+              <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:8 }}>
+                <span style={{ fontSize:48, fontWeight:800, letterSpacing:-1, color:"var(--text)" }}>{streak}</span>
+                <span style={{ fontSize:14, fontWeight:600, color:"var(--text-dim)" }}>day{streak === 1 ? "" : "s"}</span>
+              </div>
+              <div style={{ fontSize:12.5, color:"var(--text-dim)", marginTop:6 }}>
+                Longest run: <strong style={{ color:"var(--gold)", fontWeight:700 }}>{longestStreak} day{longestStreak === 1 ? "" : "s"}</strong>
+              </div>
+              <div style={{ fontSize:12, color:"var(--text-dim)", marginTop:10, maxWidth:260, marginLeft:"auto", marginRight:"auto", lineHeight:1.5 }}>{meta.sub}</div>
+            </div>
+
+            <WeekRow streak={streak} lastStreakDate={lastStreakDate} />
+          </div>
+
+          {/* ── Furnace milestone track ── */}
+          <div style={{ position:"relative", borderRadius:24, background:"var(--surface)", boxShadow:"8px 8px 20px var(--neu-dark),-6px -6px 16px var(--neu-light)", border:"1px solid rgba(255,255,255,0.04)", padding:"24px 22px 20px" }}>
+            <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:20 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"var(--text-muted)", letterSpacing:"1.2px", textTransform:"uppercase" }}>Milestones</span>
+              <span style={{ fontSize:11.5, color:"var(--text-dim)" }}>{reachedCount}/{MILESTONES.length} reached</span>
+            </div>
+
+            <div style={{ position:"relative", height:60, margin:"6px 8px 4px" }}>
+              {/* track */}
+              <div style={{ position:"absolute", top:"50%", left:0, right:0, height:6, transform:"translateY(-50%)", background:"var(--surface2)", borderRadius:6, overflow:"hidden", boxShadow:"inset 2px 2px 6px var(--neu-dark)" }}>
+                <div style={{ position:"relative", left:0, top:0, bottom:0, height:"100%", width:`${trackPct}%`, borderRadius:6, background:"linear-gradient(90deg, var(--accent), var(--accent2) 55%, var(--gold))", boxShadow:"0 0 12px 1px rgba(255,107,0,0.55)", transition:"width 1s cubic-bezier(0.4,0,0.2,1)", overflow:"hidden" }}>
+                  <div style={{ position:"absolute", inset:0, width:"40%", background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)", animation:"trackSheen 2.6s ease-in-out infinite" }} />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
 
+              {/* flags */}
+              {MILESTONES.map((m, i) => {
+                const flagPct = ((i + 1) / legCount) * 100;
+                const reached = streak >= m.days;
+                const showLabel = reached || m === nextMilestone;
+                return (
+                  <div key={m.days} style={{ position:"absolute", top:"50%", left:`${flagPct}%`, transform:"translate(-50%,-50%)" }}>
+                    <div style={{ width:11, height:11, borderRadius:"50%", background: reached ? "var(--gold)" : "var(--bg)", border:`2px solid ${reached ? "var(--gold)" : "var(--text-muted)"}`, boxShadow: reached ? "0 0 6px 1px rgba(245,197,66,0.6)" : "none" }} />
+                    {showLabel && (
+                      <span style={{ position:"absolute", top:16, left:"50%", transform:"translateX(-50%)", fontSize:9.5, fontWeight:600, color: reached ? "var(--gold)" : "var(--text-dim)", whiteSpace:"nowrap" }}>{m.days}d</span>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* marker */}
+              <div style={{ position:"absolute", top:"50%", left:`${trackPct}%`, transform:"translate(-50%,-50%)" }}>
+                <div style={{ position:"absolute", top:"50%", left:"50%", width:44, height:44, transform:"translate(-50%,-50%)", background:"radial-gradient(circle, rgba(255,107,0,0.55) 0%, transparent 70%)", filter:"blur(3px)", animation:"emberPulse 2s ease-in-out infinite" }} />
+                <img src={furnaceMarker} alt="Current position" style={{ position:"relative", width:32, height:32, zIndex:2, filter:"drop-shadow(0 6px 8px rgba(255,107,0,0.5))", animation:"markerBob 2.4s ease-in-out infinite" }} />
+              </div>
+            </div>
+
+            <div style={{ marginTop:20, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.06)", fontSize:12.5, color:"var(--text-dim)", display:"flex", alignItems:"center", gap:6 }}>
+              {nextMilestone ? (
+                <>
+                  <Zap size={12} color="var(--gold)" />
+                  <span><strong style={{ color:"var(--text)" }}>{daysToNext} day{daysToNext === 1 ? "" : "s"}</strong> to next milestone — +{nextMilestone.xp.toLocaleString()} XP</span>
+                </>
+              ) : (
+                <>
+                  <Flame size={12} color="var(--gold)" />
+                  <span>All milestones reached — <strong style={{ color:"var(--gold)" }}>legendary streak.</strong></span>
+                </>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
     </>
   );
