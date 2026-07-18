@@ -2168,7 +2168,11 @@ export default function Chat() {
                 {/* Retractable action drawer + back arrow, grouped on the right */}
                 <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
                   <div style={{
-                    display:'flex', alignItems:'center', gap:6, overflow:'hidden',
+                    display:'flex', alignItems:'center', gap:6,
+                    /* overflow must stay visible while the Slow Mode picker is open, otherwise
+                       the dropdown (positioned absolute, top:110%) gets clipped by this
+                       container's own bounding box and never appears — looks "non-functional". */
+                    overflow: slowModePickerOpen ? 'visible' : 'hidden',
                     maxWidth: headerDrawerOpen ? 220 : 0,
                     opacity: headerDrawerOpen ? 1 : 0,
                     background: headerDrawerOpen ? 'var(--surface2)' : 'transparent',
@@ -2197,6 +2201,8 @@ export default function Chat() {
                           <Timer size={14} />
                         </IBtn>
                         {slowModePickerOpen && (
+                          <>
+                          <div style={{ position:'fixed', inset:0, zIndex:49 }} onClick={() => setSlowModePickerOpen(false)} />
                           <div style={{ position:'absolute', top:'110%', right:0, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:8, display:'flex', flexDirection:'column', gap:3, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', minWidth:150, zIndex:50 }}>
                             <div style={{ fontSize:10.5, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:0.3, padding:'2px 6px 4px' }}>Slow mode</div>
                             <button type="button" onClick={() => { toggleSlowMode(false, activeRoom.slowModeSeconds as 10|20|30); setSlowModePickerOpen(false) }}
@@ -2210,6 +2216,7 @@ export default function Chat() {
                               </button>
                             ))}
                           </div>
+                          </>
                         )}
                       </div>
                     )}
