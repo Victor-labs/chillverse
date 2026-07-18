@@ -119,7 +119,7 @@ export default function AppLayout() {
         {referralAd && <PromoOverlay notification={referralAd} onDismiss={dismissReferralAd} />}
 
         <main
-          className="pt-[68px] pb-12 relative z-10 transition-all duration-300"
+          className={`relative z-10 transition-all duration-300 ${pathname === '/chat' ? 'pt-[60px] pb-0' : 'pt-[68px] pb-12'}`}
           style={{ paddingLeft: 'clamp(1rem, 4vw, 2rem)', paddingRight: 'clamp(1rem, 4vw, 2rem)' }}
         >
           <style>{`
