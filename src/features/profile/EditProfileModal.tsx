@@ -333,7 +333,7 @@ function WishlistEditor({ profileId }: { profileId: string }) {
 // ── Discard confirmation ───────────────────────────────────────
 function DiscardConfirm({ onDiscard, onKeepEditing }: { onDiscard: () => void; onKeepEditing: () => void }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 20002, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', inset: 0, zIndex: 20002, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface2)', borderRadius: 22, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 80px rgba(0,0,0,0.7)', padding: '24px 22px', textAlign: 'center' }}>
         <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Unsaved changes</p>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 20 }}>
@@ -477,7 +477,9 @@ export default function EditProfileModal({
   // collapse animations etc. can otherwise break position:fixed here).
   return createPortal(
     <>
-      <div style={{
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
         position: 'fixed', inset: 0, zIndex: 20001, background: 'var(--bg)',
         transform: visible ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 0.32s cubic-bezier(0.34,1.0,0.64,1)',
