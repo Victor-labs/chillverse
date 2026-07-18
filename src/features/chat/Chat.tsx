@@ -214,21 +214,45 @@ interface MessageLineProps {
   readReceipt: ReadReceipt
   /** Whether the viewer has starred this message — DMs only, shows a small badge. */
   isStarred: boolean
-  /** Whether this line's underline hooks in toward the avatar (only the burst's
-   *  first/only avatar-aligned edge needs the hook — every line still gets its
-   *  own underline, sized to itself, never to a sibling's width). */
+  /** Whether this is a Global Chat thread (as opposed to a DM) — used to decide
+   *  whether a received bubble's leading corner should defer to the name row
+   *  shown above the first message of a group. */
   isGroupChat: boolean
 }
 
-/** One message, rendered as flat text sitting on its own underline — sized to
- *  that message's own content, never to a sibling's. Consecutive messages from
- *  the same sender stack by simply rendering several of these one after another;
- *  each one keeps (and is pushed down by) its own line instead of one shared
- *  line stretching to fit whatever's widest in the stack. */
+/** Small diagonal corner-bracket accent, absolutely positioned over one corner
+ *  of a bubble. Two of these (an opposite diagonal pair) frame each message:
+ *  top-left + bottom-right for received bubbles, top-right + bottom-left for
+ *  sent ones — matching the app's accent color instead of a flat border. */
+function BracketCorner({ position, color = 'var(--accent)' }: {
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  color?: string
+}) {
+  const size = 14
+  const thickness = 2
+  const base: React.CSSProperties = { position:'absolute', width:size, height:size, pointerEvents:'none' }
+  const placement: Record<string, React.CSSProperties> = {
+    'top-left':     { top:-1, left:-1, borderTop:`${thickness}px solid ${color}`, borderLeft:`${thickness}px solid ${color}`, borderTopLeftRadius:4 },
+    'top-right':    { top:-1, right:-1, borderTop:`${thickness}px solid ${color}`, borderRight:`${thickness}px solid ${color}`, borderTopRightRadius:4 },
+    'bottom-left':  { bottom:-1, left:-1, borderBottom:`${thickness}px solid ${color}`, borderLeft:`${thickness}px solid ${color}`, borderBottomLeftRadius:4 },
+    'bottom-right': { bottom:-1, right:-1, borderBottom:`${thickness}px solid ${color}`, borderRight:`${thickness}px solid ${color}`, borderBottomRightRadius:4 },
+  }
+  return <span style={{ ...base, ...placement[position] }} />
+}
+
+/** One message, rendered as a neomorphic "soft" bubble framed by a diagonal
+ *  pair of accent corner-brackets — sized to that message's own content,
+ *  never to a sibling's. Consecutive messages from the same sender stack by
+ *  simply rendering several of these one after another; each one keeps (and
+ *  is pushed down by) its own bubble instead of one shared shape stretching
+ *  to fit whatever's widest in the stack. On a received bubble that opens a
+ *  Global Chat group, the leading (top-left) corner is skipped — the name
+ *  row rendered above the burst already marks that edge, so the bracket
+ *  would otherwise double up right next to it. */
 const MessageLine = memo(function MessageLine({
   msg, isMine, onContextMenu, onDoubleClick, formatTime, readReceipt, isStarred, isGroupChat,
 }: MessageLineProps) {
-  const lineColor = 'rgba(255,255,255,0.28)'
+  const showLeadingCorner = !(isGroupChat && !isMine && msg.isGroupFirst)
   return (
     <div
       className="msg-bubble-col"
@@ -238,34 +262,22 @@ const MessageLine = memo(function MessageLine({
         position:'relative', cursor:'context-menu', userSelect:'none',
         // `width: fit-content` (rather than plain `inline-block`, which falls
         // back to filling all available space once the text needs to wrap)
-        // is what keeps this box — and therefore its border — sized to
-        // whatever the longest actual rendered line is, instead of
-        // stretching out to the full bubble column width for any message
-        // that happens to wrap onto more than one line.
+        // is what keeps this bubble sized to whatever the longest actual
+        // rendered line is, instead of stretching out to the full bubble
+        // column width for any message that happens to wrap onto more than
+        // one line.
         display:'inline-block', width:'fit-content', maxWidth:'100%',
         marginBottom:8,
-        paddingBottom: 6,
-        borderBottom:`1.5px solid ${lineColor}`,
-        borderBottomLeftRadius: !isMine ? 9 : 0,
-        borderBottomRightRadius: isMine ? 9 : 0,
-        paddingLeft: !isMine ? 8 : 0,
-        paddingRight: isMine ? 8 : 0,
-        marginLeft: isGroupChat && !isMine ? -8 : 0,
-        marginRight: isGroupChat && isMine ? -8 : 0,
+        padding:'8px 12px',
+        borderRadius:10,
+        background:'var(--surface)',
+        boxShadow:'4px 4px 10px var(--neu-dark), -3px -3px 7px var(--neu-light)',
       }}>
 
-      {/* Short accent "hook" that joins the underline into the corner — fixed
-          height so it stays a small hook next to the last line regardless of
-          how many lines the message wraps onto, instead of a full-height
-          border that used to run all the way up to the first line. */}
-      <div style={{
-        position:'absolute', bottom:0, height:20, width:0,
-        pointerEvents:'none',
-        left: !isMine ? 0 : undefined,
-        right: isMine ? 0 : undefined,
-        borderLeft: !isMine ? `1.5px solid ${lineColor}` : undefined,
-        borderRight: isMine ? `1.5px solid ${lineColor}` : undefined,
-      }} />
+      {!isMine && showLeadingCorner && <BracketCorner position="top-left" />}
+      {!isMine && <BracketCorner position="bottom-right" />}
+      {isMine && <BracketCorner position="top-right" />}
+      {isMine && <BracketCorner position="bottom-left" />}
 
       {/* Reply header — target user's name + their quoted text, stacked directly above
           this line. This is the ONLY place a name appears on a received message; own
@@ -313,8 +325,9 @@ const MessageLine = memo(function MessageLine({
 })
 
 /** Distinct full-width "official" card for a Staff/Moderator/Admin rank tag —
- *  deliberately not styled like MessageLine's underline chat bubbles, so it
- *  reads as an announcement rather than a regular message. Global Chat only. */
+ *  deliberately not styled like MessageLine's bracket-cornered chat bubbles,
+ *  so it reads as an announcement rather than a regular message. Global Chat
+ *  only. */
 const RankTagAnnouncement = memo(function RankTagAnnouncement({
   msg, senderLabel, formatTime, myId,
 }: {
