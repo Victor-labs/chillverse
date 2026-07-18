@@ -3,19 +3,52 @@
 // End poll control for the creator or Staff/Moderator/Admin. Global Chat
 // only — see migration 0033 for why polls can't exist in DMs.
 import { useCallback, useEffect, useState } from 'react'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, ShieldCheck } from 'lucide-react'
 import { fetchPoll, votePoll, endPoll, type PollData } from './polls'
+
+// Same role → color convention as AdminUserSearch's RolePill, kept local
+// here since polls are the only place in Chat.tsx that need it.
+const ROLE_COLOR: Record<'staff' | 'moderator' | 'admin', string> = {
+  admin: 'var(--red)', moderator: 'var(--blue)', staff: 'var(--purple)',
+}
+
+function CreatorRolePill({ role }: { role: 'staff' | 'moderator' | 'admin' }) {
+  const color = ROLE_COLOR[role]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800,
+      textTransform: 'uppercase', letterSpacing: '0.04em', color, background: `${color}1c`,
+      border: `1px solid ${color}40`, borderRadius: 6, padding: '1px 5px', flexShrink: 0,
+    }}>
+      <ShieldCheck size={8} /> {role}
+    </span>
+  )
+}
+
+/** Poll durations run up to 7 days out, so `poll.closes_at` is always in
+ *  the future while a poll is open — unlike message timestamps, which are
+ *  always in the past. Chat.tsx's formatTime is elapsed-time-since math
+ *  ("2m", "now"), so feeding it a future date makes every branch see a
+ *  negative diff and fall through to 'now' regardless of how far off the
+ *  close time actually is. This is dedicated countdown-style formatting
+ *  for a future timestamp instead. */
+function formatCloseTime(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now()
+  if (diff <= 0) return 'now'
+  if (diff < 3600000) return `${Math.max(1, Math.round(diff / 60000))}m`
+  if (diff < 86400000) return `${Math.round(diff / 3600000)}h`
+  return `${Math.round(diff / 86400000)}d`
+}
 
 interface PollMessageProps {
   pollId: string
   myId: string | null
   isStaff: boolean
-  formatTime: (iso: string) => string
   /** Bump this to force a refetch — used after a realtime poll_votes/polls event. */
   refreshToken?: number
 }
 
-export default function PollMessage({ pollId, myId, isStaff, formatTime, refreshToken }: PollMessageProps) {
+export default function PollMessage({ pollId, myId, isStaff, refreshToken }: PollMessageProps) {
   const [poll, setPoll] = useState<PollData | null>(null)
   const [loading, setLoading] = useState(true)
   const [pendingMulti, setPendingMulti] = useState<string[]>([])
@@ -75,11 +108,16 @@ export default function PollMessage({ pollId, myId, isStaff, formatTime, refresh
 
   return (
     <div style={{ margin: '10px 0', padding: '12px 14px', borderRadius: 14, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 340 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
         <BarChart3 size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
           {closed ? 'Poll closed' : 'Poll'} · {poll.vote_mode === 'multi' ? 'pick any number' : 'pick one'}
         </span>
+        {poll.creatorRole === 'staff' || poll.creatorRole === 'moderator' || poll.creatorRole === 'admin' ? (
+          <CreatorRolePill role={poll.creatorRole} />
+        ) : (
+          <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>· by {poll.creatorName}</span>
+        )}
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, lineHeight: 1.35 }}>{poll.question}</div>
@@ -129,7 +167,7 @@ export default function PollMessage({ pollId, myId, isStaff, formatTime, refresh
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 9, gap: 8 }}>
         <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
           {poll.resultsVisible ? `${poll.totalVotes} vote${poll.totalVotes === 1 ? '' : 's'}` : 'Results hidden until the poll closes'}
-          {' · '}{closed ? 'Ended' : `Closes ${formatTime(poll.closes_at)}`}
+          {' · '}{closed ? 'Ended' : `Closes in ${formatCloseTime(poll.closes_at)}`}
         </span>
         {canEnd && (
           <button type="button" onClick={handleEnd} disabled={busy} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>

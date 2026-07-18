@@ -4,6 +4,7 @@
 // end_poll); this file is just the typed wrappers plus a read-side
 // hydration helper for rendering.
 import { supabase } from '../../shared/lib/supabase'
+import type { StaffRole } from '../moderation/moderation'
 
 export type PollVoteMode = 'single' | 'multi'
 
@@ -34,6 +35,15 @@ export interface PollData {
    *  viewer's own vote row, so voteCounts/totalVotes above are NOT a
    *  trustworthy total and the UI must not render them as one. */
   resultsVisible: boolean
+  /** Creator's display name (falls back to username) — only meaningful for
+   *  rendering when creatorRole is 'user' (i.e. a Verified, non-staff
+   *  creator). Staff/Moderator/Admin creators are shown as a role tag
+   *  instead of a name, per product decision — see PollMessage. */
+  creatorName: string
+  /** 'user' here always means a Verified (non-staff) creator — create_poll
+   *  requires the creator be either Staff/Moderator/Admin or Verified, so a
+   *  'user'-role creator is Verified by construction. */
+  creatorRole: StaffRole
 }
 
 function friendlyPollError(error: { message?: string } | null): string | null {
@@ -81,12 +91,20 @@ export async function endPoll(pollId: string): Promise<{ error: string | null }>
  *  know the caller's role) since it decides whether a hidden-results poll's
  *  counts can be trusted for display — see PollData.resultsVisible. */
 export async function fetchPoll(pollId: string, myId: string | null, isStaffViewer: boolean): Promise<PollData | null> {
-  const [{ data: poll }, { data: options }, { data: votes }] = await Promise.all([
-    supabase.from('polls').select('*').eq('id', pollId).maybeSingle(),
+  const { data: poll } = await supabase.from('polls').select('*').eq('id', pollId).maybeSingle()
+  if (!poll) return null
+
+  // profiles and user_moderation are both publicly readable, so this is a
+  // plain client-side lookup — no RPC needed. user_moderation may have no
+  // row yet for a brand-new account, hence maybeSingle + the 'user' fallback
+  // (though in practice create_poll already guarantees the creator is
+  // Verified or Staff/Moderator/Admin, so that row will exist).
+  const [{ data: options }, { data: votes }, { data: creatorProfile }, { data: creatorMod }] = await Promise.all([
     supabase.from('poll_options').select('id, label, position').eq('poll_id', pollId).order('position'),
     supabase.from('poll_votes').select('option_id, user_id').eq('poll_id', pollId),
+    supabase.from('profiles').select('username, display_name').eq('id', poll.creator_id).maybeSingle(),
+    supabase.from('user_moderation').select('role').eq('user_id', poll.creator_id).maybeSingle(),
   ])
-  if (!poll) return null
 
   const resultsVisible = poll.closed_at !== null || !poll.hide_results || isStaffViewer
 
@@ -113,5 +131,7 @@ export async function fetchPoll(pollId: string, myId: string | null, isStaffView
     totalVotes,
     myVotes,
     resultsVisible,
+    creatorName: creatorProfile ? (creatorProfile.display_name || creatorProfile.username) : 'Unknown',
+    creatorRole: (creatorMod?.role as StaffRole) ?? 'user',
   }
 }

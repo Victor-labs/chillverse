@@ -2259,7 +2259,7 @@ export default function Chat() {
                         if (burst.length === 1 && first.type === 'poll' && first.poll_id) {
                           return first.hidden
                             ? <HiddenContentNotice key={first.id} reason={first.hidden_reason} isOwner={isMine} />
-                            : <PollMessage key={first.id} pollId={first.poll_id} myId={myId} isStaff={isStaff} formatTime={formatTime} refreshToken={pollRefreshToken} />
+                            : <PollMessage key={first.id} pollId={first.poll_id} myId={myId} isStaff={isStaff} refreshToken={pollRefreshToken} />
                         }
 
                         return (
