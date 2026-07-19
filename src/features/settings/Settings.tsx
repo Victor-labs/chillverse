@@ -78,7 +78,7 @@ function Row({ icon, iconBg, iconColor, label, value, danger = false, onClick, r
     <div
       onClick={onClick}
       className={onClick ? 'ripple-wrap' : undefined}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, marginBottom: 9, cursor: onClick ? 'pointer' : 'default', boxShadow: '3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, marginBottom: 9, cursor: onClick ? 'pointer' : 'default', boxShadow: 'var(--elev-raise-sm)' }}
     >
       <div style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: iconBg, color: danger ? '#ff6b6b' : iconColor }}>{icon}</div>
       <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: danger ? '#ff6b6b' : 'var(--text)' }}>{label}</div>
@@ -96,7 +96,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 380, border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'popIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 380, border: '1px solid var(--border)', boxShadow: 'var(--elev-popover)', animation: 'popIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
@@ -121,7 +121,7 @@ function Input({ label, type = 'text', value, onChange, placeholder }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{ width: '100%', background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 13px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 13px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
       />
     </div>
   )
@@ -409,12 +409,12 @@ export default function Settings() {
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 48px' }}>
 
         <div style={{ marginBottom: 20 }}>
-          <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+          <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}>
             <ArrowLeft size={15} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, marginBottom: 20, boxShadow: '3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, marginBottom: 20, boxShadow: 'var(--elev-raise-sm)' }}>
           <Search size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
           <input
             value={search}
@@ -429,7 +429,7 @@ export default function Settings() {
           )}
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '20px 18px', marginBottom: 8, boxShadow: '4px 4px 12px var(--neu-dark),-2px -2px 8px var(--neu-light)', animation: 'feedIn 0.3s ease-out both', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 18px', marginBottom: 8, boxShadow: 'var(--elev-raise)', animation: 'feedIn 0.3s ease-out both', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <div style={{ width: 58, height: 58, borderRadius: 17, boxShadow: '0 4px 16px rgba(155,109,255,0.3)' }}>
               <Avatar src={profile?.avatar} name={displayName} size={58} radius={17} disabled style={{ background: 'linear-gradient(135deg, var(--purple), var(--blue))' }} />
@@ -438,7 +438,7 @@ export default function Settings() {
               <span style={{
                 position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)',
                 fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase',
-                color: '#ff6b00', background: 'rgba(10,10,12,0.9)', border: '1px solid rgba(255,107,0,0.4)',
+                color: 'var(--accent)', background: 'rgba(10,10,12,0.9)', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)',
                 borderRadius: 6, padding: '1.5px 6px', whiteSpace: 'nowrap',
               }}>
                 {profile?.pro_tier === 'void' ? 'Void' : 'Orbit'}
@@ -500,7 +500,7 @@ export default function Settings() {
                   key={p.id}
                   onClick={() => handleSetPresence(p.id)}
                   className="ripple-wrap"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer', background: presence === p.id ? 'rgba(255,107,0,0.06)' : 'transparent' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer', background: presence === p.id ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'transparent' }}
                 >
                   <div style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', color: p.color }}>
                     <p.Icon size={14} fill={p.id === 'online' || p.id === 'offline' ? p.color : 'none'} />
@@ -534,7 +534,7 @@ export default function Settings() {
             <SectionTitle>Notifications</SectionTitle>
             <div className="settings-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
-                <div style={{ width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,107,0,0.12)', color: 'var(--accent)' }}>
+                <div style={{ width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
                   <Bell size={15} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -605,7 +605,7 @@ export default function Settings() {
           <>
             <SectionTitle>Chillverse</SectionTitle>
             <div className="settings-card">
-              <Row icon={<LifeBuoy size={15} />} iconBg="rgba(255,107,0,0.12)" iconColor="var(--accent)"
+              <Row icon={<LifeBuoy size={15} />} iconBg="color-mix(in srgb, var(--accent) 12%, transparent)" iconColor="var(--accent)"
                 label="Support"
                 onClick={(e) => { ripple(e); navigate('/support') }}
               />
@@ -622,7 +622,7 @@ export default function Settings() {
           <>
             <SectionTitle>Subscription</SectionTitle>
             <div className="settings-card">
-              <Row icon={<Crown size={15} />} iconBg="rgba(255,107,0,0.12)" iconColor="var(--accent)"
+              <Row icon={<Crown size={15} />} iconBg="color-mix(in srgb, var(--accent) 12%, transparent)" iconColor="var(--accent)"
                 label={profile?.pro_tier === 'void' ? 'Void' : 'Orbit'}
                 value={profile?.pro_cancel_at_period_end
                   ? `Ends ${profile?.pro_expires_at ? new Date(profile.pro_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
@@ -651,7 +651,7 @@ export default function Settings() {
           <>
             <SectionTitle>Danger zone</SectionTitle>
             <div className="settings-card">
-              <Row icon={<LogOut size={15} />} iconBg="rgba(255,107,0,0.12)" iconColor="var(--accent)"
+              <Row icon={<LogOut size={15} />} iconBg="color-mix(in srgb, var(--accent) 12%, transparent)" iconColor="var(--accent)"
                 label="Log out"
                 onClick={(e) => { ripple(e); setModal('logout') }}
               />
@@ -691,7 +691,7 @@ export default function Settings() {
                 <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 14 }}>{cancelSubError}</p>
               )}
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setModal(null)} disabled={cancellingSub} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: cancellingSub ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, opacity: cancellingSub ? 0.6 : 1 }}>
+                <button onClick={() => setModal(null)} disabled={cancellingSub} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: cancellingSub ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, opacity: cancellingSub ? 0.6 : 1 }}>
                   Keep subscription
                 </button>
                 <button onClick={handleCancelSubscription} disabled={cancellingSub} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', cursor: cancellingSub ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, opacity: cancellingSub ? 0.6 : 1 }}>
@@ -707,7 +707,7 @@ export default function Settings() {
         <Modal title="Log out?" onClose={() => setModal(null)}>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 20 }}>You'll need to sign back in to access your account.</p>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+            <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
             <button onClick={handleLogout} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Log out</button>
           </div>
         </Modal>
@@ -721,7 +721,7 @@ export default function Settings() {
           </div>
           {deleteError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{deleteError}</p>}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => setModal(null)} disabled={deleting} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+            <button onClick={() => setModal(null)} disabled={deleting} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--bg)', color: 'var(--text-dim)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
             <button onClick={handleDeleteAccount} disabled={deleting} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#ff6b6b', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13, opacity: deleting ? 0.7 : 1 }}>
               {deleting ? 'Deleting…' : 'Delete'}
             </button>
