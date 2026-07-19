@@ -255,7 +255,7 @@ function ToastCard({ toast, userId, onDismiss }: { toast: ToastItem; userId: str
           height: 26,
           borderRadius: 8,
           background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid var(--border)',
           color: 'var(--text-muted)',
           cursor: 'pointer',
           display: 'flex',

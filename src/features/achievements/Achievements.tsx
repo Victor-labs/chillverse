@@ -47,7 +47,7 @@ export function AchIcon({ iconKey, size = 22, color }: { iconKey: string; size?:
 
 const CATEGORY_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   xp:      { label: 'XP & Levels', icon: Zap,         color: '#f5c542' },
-  streak:  { label: 'Streaks',     icon: Flame,        color: '#ff6b00' },
+  streak:  { label: 'Streaks',     icon: Flame,        color: 'var(--accent)' },
   games:   { label: 'Games',       icon: Gamepad2,     color: '#4f8ef7' },
   rank:    { label: 'Ranks',       icon: Shield,       color: '#9b6dff' },
   social:  { label: 'Social',      icon: Users,        color: '#3ecf8e' },
@@ -127,7 +127,7 @@ export default function Achievements() {
       {/* Header */}
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#f5c542,#ff6b00)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#f5c542,var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Trophy size={20} style={{ color: '#fff' }} />
           </div>
           <div>
@@ -143,7 +143,7 @@ export default function Achievements() {
             { label: 'Completion', value: `${pct}%`, color: '#4f8ef7', icon: <BarChart2 size={14} /> },
             { label: 'XP Earned', value: totalXpEarned >= 1000 ? `${(totalXpEarned/1000).toFixed(1)}k` : totalXpEarned, color: '#f5c542', icon: <Zap size={14} /> },
           ].map(s => (
-            <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 14, padding: '12px 10px', textAlign: 'center', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+            <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 14, padding: '12px 10px', textAlign: 'center', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4, color: s.color }}>{s.icon}</div>
               <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
@@ -153,7 +153,7 @@ export default function Achievements() {
 
         {/* Progress bar */}
         <div className="xp-track" style={{ marginBottom: 18 }}>
-          <div className="xp-fill" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f5c542,#ff6b00)', transition: 'width 1s ease', boxShadow: '0 0 10px rgba(245,197,66,0.4)' }} />
+          <div className="xp-fill" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f5c542,var(--accent))', transition: 'width 1s ease', boxShadow: '0 0 10px rgba(245,197,66,0.4)' }} />
         </div>
 
         {/* Category filter */}
@@ -165,7 +165,7 @@ export default function Achievements() {
             const catColor = meta?.color ?? 'var(--accent)'
             return (
               <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 20, border: 'none', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, background: isActive ? catColor : 'var(--surface)', color: isActive ? '#fff' : 'var(--text-dim)', boxShadow: isActive ? `0 4px 14px ${catColor}44` : '2px 2px 6px var(--neu-dark)', transition: 'all 0.15s' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 20, border: 'none', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, background: isActive ? catColor : 'var(--surface)', color: isActive ? '#fff' : 'var(--text-dim)', boxShadow: isActive ? `0 4px 14px ${catColor}44` : '2px 2px 6px var(--neu-dark)', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)' }}>
                 {CatIcon && <CatIcon size={12} />}
                 {meta?.label ?? 'All'}
               </button>
@@ -188,7 +188,7 @@ export default function Achievements() {
 
           return (
             <div key={ach.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: isUnlocked ? RARITY_GLOW[ach.rarity] : 'var(--surface)', border: isUnlocked ? `1px solid ${rarityColor}33` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: isUnlocked ? `0 4px 20px ${rarityColor}22, 2px 2px 8px var(--neu-dark)` : '4px 4px 10px var(--neu-dark), -3px -3px 7px var(--neu-light)', transition: 'all 0.2s', opacity: isUnlocked ? 1 : 0.6 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: isUnlocked ? RARITY_GLOW[ach.rarity] : 'var(--surface)', border: isUnlocked ? `1px solid ${rarityColor}33` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: isUnlocked ? `0 4px 20px ${rarityColor}22, 2px 2px 8px var(--neu-dark)` : '4px 4px 10px var(--neu-dark), -3px -3px 7px var(--neu-light)', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)', opacity: isUnlocked ? 1 : 0.6 }}>
 
               {/* Icon bubble */}
               <div style={{ width: 52, height: 52, borderRadius: 16, background: isUnlocked ? `linear-gradient(135deg,${rarityColor}33,${rarityColor}11)` : 'var(--surface)', border: isUnlocked ? `1.5px solid ${rarityColor}44` : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isUnlocked ? `0 0 16px ${rarityColor}33` : 'none', filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.4)' }}>

@@ -57,7 +57,7 @@ export default function AchievementMiniToast({
         zIndex: 20500, display: 'flex', alignItems: 'center', gap: 9,
         padding: '10px 16px 10px 12px', borderRadius: 16,
         background: 'rgba(20,20,24,0.96)', border: `1px solid ${color}55`,
-        boxShadow: '0 8px 28px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)',
+        boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)',
         whiteSpace: 'nowrap', transition: dragY === 0 && !dismissing ? 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)' : dismissing ? 'transform 0.22s ease-in' : 'none',
         touchAction: 'none',
       }}
