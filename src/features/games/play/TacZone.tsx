@@ -255,7 +255,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft
                   background: inLine ? (gameResult?.winner === 'X' ? 'rgba(62,207,142,0.18)' : 'rgba(255,77,139,0.18)') : 'var(--surface)',
                   boxShadow: inLine ? `0 0 28px ${gameResult?.winner === 'X' ? 'rgba(62,207,142,0.5)' : 'rgba(255,77,139,0.5)'}` : '4px 4px 12px var(--neu-dark), -3px -3px 8px var(--neu-light)',
                   border: `1px solid rgba(255,255,255,0.06)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
                 }}>
                 {cell === 'X' && <X size={40} style={{ color: ACCENT }} />}
                 {cell === 'O' && <Circle size={38} style={{ color: 'var(--pink)' }} />}
@@ -272,7 +272,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft
               Rematch
             </button>
             <button type="button" onClick={endSession}
-              style={{ padding: '11px 24px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '3px 3px 8px var(--neu-dark)' }}>
+              style={{ padding: '11px 24px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
               End Session
             </button>
           </div>

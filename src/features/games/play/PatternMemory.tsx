@@ -306,7 +306,7 @@ export default function PatternMemory({ rank: initialRank, onEnd, onBack, sessio
                 background: st === 'flash' ? `rgba(155,109,255,0.55)` : st === 'correct' ? 'rgba(62,207,142,0.28)' : st === 'wrong' ? 'rgba(255,79,79,0.28)' : 'var(--surface)',
                 boxShadow: st === 'flash' ? '0 0 28px rgba(155,109,255,0.65)' : st === 'correct' ? '0 0 18px rgba(62,207,142,0.45)' : '4px 4px 10px var(--neu-dark), -3px -3px 7px var(--neu-light)',
                 border: `1px solid ${st === 'flash' ? 'rgba(155,109,255,0.7)' : st === 'correct' ? 'rgba(62,207,142,0.6)' : st === 'wrong' ? 'rgba(255,79,79,0.6)' : 'rgba(255,255,255,0.06)'}`,
-                transition: 'all 0.16s', opacity: phase === 'countdown' ? 0.3 : 1,
+                transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)', opacity: phase === 'countdown' ? 0.3 : 1,
               }}
             />
           )
@@ -328,7 +328,7 @@ export default function PatternMemory({ rank: initialRank, onEnd, onBack, sessio
       )}
 
       {roundMsg && (
-        <div style={{ position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'var(--surface)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 20, padding: '8px 20px', fontSize: 14, fontWeight: 700, color: 'var(--green)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 50 }}>
+        <div style={{ position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)', background: 'var(--surface)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 20, padding: '8px 20px', fontSize: 14, fontWeight: 700, color: 'var(--green)', boxShadow: 'var(--elev-raise)', zIndex: 50 }}>
           {roundMsg}
         </div>
       )}

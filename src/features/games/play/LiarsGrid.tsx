@@ -375,7 +375,7 @@ export default function LiarsGrid({ rank: initialRank, onEnd, onBack, sessionsLe
                 borderRadius: 14, padding: '12px 8px', textAlign: 'center',
                 background: bg, border: `1px solid ${border}`, boxShadow: shadow,
                 cursor: status === 'idle' ? 'pointer' : 'default',
-                transition: 'all 0.22s', opacity: isDimmed ? 0.38 : 1,
+                transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)', opacity: isDimmed ? 0.38 : 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
               }}
             >

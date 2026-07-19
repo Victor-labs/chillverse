@@ -400,7 +400,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack, sessionsLeft = 9
           border: `1.5px solid ${answerState === 'idle' ? 'rgba(255,255,255,0.07)' : stateColor + '40'}`,
           borderRadius:20, padding:'24px 22px',
           boxShadow: `0 0 ${answerState !== 'idle' ? '20px' : '0px'} ${stateColor}20, 4px 4px 12px var(--neu-dark),-2px -2px 8px var(--neu-light)`,
-          transition:'all 0.3s',
+          transition:'background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out)',
           textAlign:'center',
         }}>
           <p style={{ fontSize:16, fontWeight:700, color:'var(--text)', lineHeight:1.5, marginBottom:20 }}>
@@ -447,7 +447,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack, sessionsLeft = 9
                 background: answerState !== 'idle' || !input.trim() ? 'var(--surface2)' : ACCENT,
                 color: answerState !== 'idle' || !input.trim() ? 'var(--text-muted)' : '#fff',
                 cursor: answerState !== 'idle' || !input.trim() ? 'not-allowed' : 'pointer',
-                transition:'all 0.2s', flexShrink:0,
+                transition:'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)', flexShrink:0,
               }}
             >
               Send

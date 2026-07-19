@@ -265,7 +265,7 @@ export default function ArrowDash({ rank: initialRank, onEnd, onBack, sessionsLe
           boxShadow: flash === 'green' ? `0 0 48px rgba(62,207,142,0.45)` : flash === 'red' ? `0 0 48px rgba(255,79,79,0.45)` : '6px 6px 18px var(--neu-dark), -4px -4px 14px var(--neu-light)',
           border: `2px solid ${flash === 'green' ? 'rgba(62,207,142,0.55)' : flash === 'red' ? 'rgba(255,79,79,0.55)' : 'rgba(255,255,255,0.06)'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.15s',
+          transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)',
         }}>
           <CurIcon size={76} style={{ color: flash === 'green' ? 'var(--green)' : flash === 'red' ? 'var(--red)' : ACCENT }} />
         </div>
@@ -287,10 +287,10 @@ export default function ArrowDash({ rank: initialRank, onEnd, onBack, sessionsLe
               style={{
                 width: 76, height: 76, borderRadius: 18,
                 background: 'var(--surface)', color: 'var(--text-dim)',
-                boxShadow: '4px 4px 12px var(--neu-dark), -3px -3px 8px var(--neu-light)',
-                border: '1px solid rgba(255,255,255,0.07)',
+                boxShadow: 'var(--elev-raise)',
+                border: '1px solid var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                transition: 'all 0.12s',
+                transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)',
               }}
             >
               <Icon size={24} />

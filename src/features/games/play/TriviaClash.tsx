@@ -8,7 +8,7 @@ import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal, TimerBar, use
 import { useTriviaQuestions } from '../useTriviaQuestions'
 import { ripple } from '../../../shared/lib/ripple'
 
-const ACCENT = '#ff9a3c'
+const ACCENT = 'var(--accent2)'
 const GAME_ID = 'trivia-clash' as const
 
 // XP per correct answer
@@ -301,7 +301,7 @@ export default function TriviaClash({ rank: initialRank, onEnd, onBack, sessions
           return (
             <button key={i} type="button" className="ripple-wrap"
               onClick={(e) => { ripple(e); pick(i) }}
-              style={{ padding: '16px 10px', borderRadius: 14, fontSize: 13, fontWeight: 600, cursor: selected !== null ? 'default' : 'pointer', background: bg, border: `1px solid ${border}`, boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)', color: 'var(--text)', textAlign: 'center', transition: 'all 0.2s' }}>
+              style={{ padding: '16px 10px', borderRadius: 14, fontSize: 13, fontWeight: 600, cursor: selected !== null ? 'default' : 'pointer', background: bg, border: `1px solid ${border}`, boxShadow: 'var(--elev-raise-sm)', color: 'var(--text)', textAlign: 'center', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)' }}>
               {ans}
             </button>
           )

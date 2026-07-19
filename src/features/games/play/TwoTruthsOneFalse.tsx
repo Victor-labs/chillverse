@@ -290,8 +290,8 @@ export default function TwoTruthsOneFalse({ rank: initialRank, onEnd, onBack, se
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '16px 14px', borderRadius: 16, textAlign: 'left',
                 background: bg, border: `1.5px solid ${border}`,
-                boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
-                cursor: revealed ? 'default' : 'pointer', transition: 'all 0.22s',
+                boxShadow: 'var(--elev-raise-sm)',
+                cursor: revealed ? 'default' : 'pointer', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               }}
             >
               {/* Label bubble */}

@@ -580,7 +580,7 @@ export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 9
                     {sk.pct}%{sk.pct >= 100 ? ' · +20 XP' : ''}
                   </span>
                 </div>
-                <div style={{ height: 6, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px var(--neu-dark)' }}>
+                <div style={{ height: 6, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden', boxShadow: 'var(--elev-inset)' }}>
                   <div style={{ height: '100%', borderRadius: 3, width: `${sk.pct}%`, background: sk.color, transition: 'width 1s ease' }} />
                 </div>
               </div>
@@ -625,8 +625,8 @@ export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 9
             </button>
             <button type="button" onClick={onBack} style={{
               flex: 1, padding: 12, borderRadius: 13, cursor: 'pointer',
-              background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text)',
-              fontSize: 14, fontWeight: 700, boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+              background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
+              fontSize: 14, fontWeight: 700, boxShadow: 'var(--elev-raise-sm)',
             }}>
               Done
             </button>
@@ -699,7 +699,7 @@ export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 9
               background: `radial-gradient(circle at 50% 50%, ${ACCENT}33, var(--surface2) 70%)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 9, fontWeight: 800, letterSpacing: '1px', color: ACCENT,
-              boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
+              boxShadow: 'var(--elev-raise)',
             }}>DRAW</div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{st.deck.length}</div>
           </div>
@@ -736,7 +736,7 @@ export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 9
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 10 }}>
           <button type="button" onClick={onDrawClick} disabled={st.turn !== 'player' || st.gameOver} style={{
-            padding: '8px 18px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.08)',
+            padding: '8px 18px', borderRadius: 16, border: '1px solid var(--border)',
             background: 'var(--surface2)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700,
             cursor: st.turn === 'player' && !st.gameOver ? 'pointer' : 'not-allowed',
             opacity: st.turn === 'player' && !st.gameOver ? 1 : 0.5,

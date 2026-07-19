@@ -25,8 +25,8 @@ const MAX_CHAIN = 1
 
 // Cycles through Chillverse's existing accent palette so every level reads
 // as an on-brand color, not an arbitrary gradient.
-const LEVEL_COLORS = ['#4f8ef7', '#9b6dff', '#3ecf8e', '#ff9a3c', '#ff4f4f', '#f5c542', '#ff5fa2', '#00e5ff']
-const WILD_GRADIENT = 'linear-gradient(135deg, #f5c542, #ff9a3c)'
+const LEVEL_COLORS = ['#4f8ef7', '#9b6dff', '#3ecf8e', 'var(--accent2)', '#ff4f4f', '#f5c542', '#ff5fa2', '#00e5ff']
+const WILD_GRADIENT = 'linear-gradient(135deg, #f5c542, var(--accent2))'
 
 interface Tile {
   level: number
@@ -249,7 +249,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
         <div style={{
           display: 'grid', gridTemplateColumns: `repeat(${GRID}, 74px)`, gridTemplateRows: `repeat(${GRID}, 74px)`,
           gap: 8, background: 'var(--surface2)', padding: 10, borderRadius: 20,
-          boxShadow: 'inset 2px 2px 8px var(--neu-dark), inset -2px -2px 6px var(--neu-light)',
+          boxShadow: 'var(--elev-inset)',
         }}>
           {board.map((cell, i) => (
             <button key={i} type="button" onClick={() => place(i)} disabled={!!cell || phase !== 'play'}
@@ -261,7 +261,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
                 boxShadow: cell
                   ? `0 0 ${popIdx === i ? 26 : 14}px ${cell.wild ? '#f5c54255' : levelColor(cell.level) + '55'}, 3px 3px 8px var(--neu-dark)`
                   : '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transform: popIdx === i ? 'scale(1.08)' : 'scale(1)',
                 transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s',
@@ -291,7 +291,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
             <div style={{
               width: 44, height: 44, borderRadius: 12, opacity: 0.65,
               background: next.wild ? WILD_GRADIENT : `linear-gradient(135deg, ${levelColor(next.level)}, ${levelColor(next.level)}cc)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-strong)',
             }}>
               {next.wild ? <Sparkles size={16} style={{ color: '#fff' }} /> : <span style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{next.level}</span>}
             </div>
@@ -302,7 +302,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
 
         {emptyCells.length > 0 && (
           <button type="button" onClick={endSessionEarly}
-            style={{ padding: '9px 18px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ padding: '9px 18px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             End Session Early
           </button>
         )}

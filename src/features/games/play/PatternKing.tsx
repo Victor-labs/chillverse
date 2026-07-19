@@ -18,7 +18,7 @@ const PATTERNS: PatternDef[] = [
   { sym: '🔮', label: 'Crystal', color: '#9b6dff', glow: 'rgba(155,109,255,0.55)' },
   { sym: '⚡', label: 'Bolt',    color: '#f5c542', glow: 'rgba(245,197,66,0.55)'  },
   { sym: '🌊', label: 'Wave',    color: '#00e5ff', glow: 'rgba(0,229,255,0.55)'  },
-  { sym: '🔥', label: 'Flame',   color: '#ff9a3c', glow: 'rgba(255,154,60,0.55)' },
+  { sym: '🔥', label: 'Flame',   color: 'var(--accent2)', glow: 'rgba(255,154,60,0.55)' },
   { sym: '⭐', label: 'Star',    color: '#ff4ecd', glow: 'rgba(255,78,205,0.55)' },
   { sym: '🍀', label: 'Clover',  color: '#3ecf8e', glow: 'rgba(62,207,142,0.55)' },
   { sym: '💎', label: 'Diamond', color: '#4f8ef7', glow: 'rgba(79,142,247,0.55)' },
@@ -448,8 +448,8 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
               style={{
                 display: 'flex', alignItems: 'center', gap: 5,
                 height: 32, borderRadius: 9, padding: '0 10px',
-                background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
-                boxShadow: '2px 2px 6px var(--neu-dark)', color: 'var(--text-dim)',
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                boxShadow: 'var(--elev-raise-sm)', color: 'var(--text-dim)',
                 fontSize: 11, fontWeight: 700, cursor: 'pointer',
               }}
             >
@@ -494,7 +494,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
               borderRadius: 20, padding: '5px 11px',
               fontSize: 12, fontWeight: 700, color: isDone ? p.color : 'var(--text-dim)',
               boxShadow: isDone ? `0 0 12px ${p.color}33` : '2px 2px 6px var(--neu-dark)',
-              transition: 'all 0.25s',
+              transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
             }}>
               <span style={{ fontSize: 15 }}>{p.sym}</span>
               <span>{isDone ? '✓' : `${matchedSoFar}/${need}`}</span>

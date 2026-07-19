@@ -282,7 +282,7 @@ export default function SpeedMath({ rank: initialRank, onEnd, onBack, sessionsLe
                 padding: '22px 12px', borderRadius: 18, textAlign: 'center',
                 background: bg, border: 'none',
                 boxShadow: shadow,
-                cursor: selected !== null ? 'default' : 'pointer', transition: 'all 0.18s',
+                cursor: selected !== null ? 'default' : 'pointer', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               }}
             >
               <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{opt}</span>

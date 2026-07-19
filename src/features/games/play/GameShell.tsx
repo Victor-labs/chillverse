@@ -74,7 +74,7 @@ export function PreGameModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isDesktop ? 16 : 24 }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
             borderRadius: 20, padding: isDesktop ? '5px 10px' : '6px 12px',
           }}>
             <span style={{ color: accent }}>{icon}</span>
@@ -84,7 +84,7 @@ export function PreGameModal({
           </div>
           <button type="button" onClick={onClose} style={{
             width: isDesktop ? 28 : 32, height: isDesktop ? 28 : 32, borderRadius: 10,
-            background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
             color: 'var(--text-dim)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -116,7 +116,7 @@ export function PreGameModal({
         {/* Rules */}
         <div style={{
           background: 'var(--surface2)', borderRadius: 14,
-          border: '1px solid rgba(255,255,255,0.06)',
+          border: '1px solid var(--border)',
           padding: isDesktop ? '10px 14px' : '14px 16px', marginBottom: isDesktop ? 14 : 20,
           display: 'flex', flexDirection: 'column', gap: isDesktop ? 7 : 10,
         }}>
@@ -153,7 +153,7 @@ export function PreGameModal({
         {/* Streak progress to next rank */}
         {nextRank && streakRequired > 0 && (
           <div style={{ marginBottom: isDesktop ? 14 : 20 }}>
-            <div style={{ height: 5, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px var(--neu-dark)' }}>
+            <div style={{ height: 5, borderRadius: 3, background: 'var(--surface3)', overflow: 'hidden', boxShadow: 'var(--elev-inset)' }}>
               <div style={{
                 height: '100%', borderRadius: 3,
                 background: `linear-gradient(90deg, ${rank.color}, ${nextRank.color})`,
@@ -174,7 +174,7 @@ export function PreGameModal({
             background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
             boxShadow: `0 6px 24px ${accent}40`,
             border: 'none', color: '#fff', fontSize: isDesktop ? 14 : 15, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s',
+            cursor: 'pointer', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 8px 30px ${accent}55` }}
@@ -205,13 +205,13 @@ export function GameHUD({ gameName, accent, icon, streak, onQuit, extraLeft, ext
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 16px', height: 52, flexShrink: 0,
       background: 'rgba(17,17,19,0.92)', backdropFilter: 'blur(14px)',
-      borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 10,
+      borderBottom: '1px solid var(--border)', position: 'relative', zIndex: 10,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button type="button" onClick={onQuit} style={{
           width: 32, height: 32, borderRadius: 9,
-          background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
-          boxShadow: '2px 2px 6px var(--neu-dark)', color: 'var(--text-dim)',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          boxShadow: 'var(--elev-raise-sm)', color: 'var(--text-dim)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
         }}>
           <X size={14} />
@@ -221,7 +221,7 @@ export function GameHUD({ gameName, accent, icon, streak, onQuit, extraLeft, ext
 
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)',
+        background: 'var(--surface2)', border: '1px solid var(--border)',
         borderRadius: 20, padding: '5px 14px',
       }}>
         <span style={{ color: accent, display: 'flex' }}>{icon}</span>
@@ -251,7 +251,7 @@ export function StatChip({ label, value, accent }: { label: string; value: strin
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       background: 'var(--surface2)', borderRadius: 12, padding: '7px 13px',
-      boxShadow: '2px 2px 6px var(--neu-dark)', minWidth: 52,
+      boxShadow: 'var(--elev-raise-sm)', minWidth: 52,
     }}>
       <span style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: accent ?? 'var(--text)' }}>{value}</span>
       <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginTop: 1 }}>{label}</span>
@@ -400,7 +400,7 @@ export function ResultScreen({ payload, accent, onReplay, onBack, promoted, sess
         {/* XP banner */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)',
+          background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
           borderRadius: 12, padding: '10px 16px', marginBottom: 18,
           fontSize: 13, fontWeight: 800, color: 'var(--accent)',
           opacity: xpBannerVisible ? 1 : 0,
@@ -473,9 +473,9 @@ export function ResultScreen({ payload, accent, onReplay, onBack, promoted, sess
           </button>
           <button type="button" onClick={onBack} style={{
             flex: 1, padding: '12px', borderRadius: 13,
-            background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
             color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+            boxShadow: 'var(--elev-raise-sm)',
           }}>
             Done
           </button>
@@ -489,7 +489,7 @@ export function ResultScreen({ payload, accent, onReplay, onBack, promoted, sess
             padding: '10px 18px', borderRadius: 14,
             background: 'rgba(14,14,18,0.97)',
             border: '1px solid rgba(155,109,255,0.5)',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.6)',
+            boxShadow: 'var(--elev-raise)',
             backdropFilter: 'blur(14px)',
             fontSize: 12.5, fontWeight: 700, color: 'var(--text)',
             whiteSpace: 'nowrap',
@@ -521,9 +521,9 @@ export function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCa
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={onCancel} style={{
               flex: 1, padding: '11px', borderRadius: 12,
-              background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
               color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              boxShadow: '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+              boxShadow: 'var(--elev-raise-sm)',
             }}>Cancel</button>
             <button type="button" onClick={onConfirm} style={{
               flex: 1, padding: '11px', borderRadius: 12,
@@ -569,7 +569,7 @@ export function useRankStreak(_gameId: string, initial: GameRank = 'beginner') {
 // ─── Timer bar ────────────────────────────────────────────────
 export function TimerBar({ pct, accent, urgent = false }: { pct: number; accent: string; urgent?: boolean }) {
   return (
-    <div style={{ height: 4, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden', boxShadow: 'inset 1px 1px 4px var(--neu-dark)' }}>
+    <div style={{ height: 4, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden', boxShadow: 'var(--elev-inset)' }}>
       <div style={{
         height: '100%', borderRadius: 2,
         background: urgent && pct < 25 ? 'var(--red)' : accent,

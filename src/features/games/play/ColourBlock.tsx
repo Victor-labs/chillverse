@@ -35,13 +35,13 @@ function randomOpponent(): string {
 
 // ─── Mini avatar (letter/icon fallback, image if a URL is equipped) ──
 function VersusAvatar({ label, imgUrl, generic }: { label: string; imgUrl?: string | null; generic?: boolean }) {
-  const colors = ['#ff6b6b', '#4f8ef7', '#9b6dff', '#3ecf8e', '#f5c542', '#ff4d8b', '#ff9a3c']
+  const colors = ['#ff6b6b', '#4f8ef7', '#9b6dff', '#3ecf8e', '#f5c542', '#ff4d8b', 'var(--accent2)']
   const color = colors[(label.charCodeAt(0) || 0) % colors.length]
   return (
     <div style={{
       width: 40, height: 40, borderRadius: 12, background: color, color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden',
-      fontWeight: 800, fontSize: 15, boxShadow: '2px 2px 6px var(--neu-dark)',
+      fontWeight: 800, fontSize: 15, boxShadow: 'var(--elev-raise-sm)',
     }}>
       {imgUrl && imgUrl.startsWith('http')
         ? <img src={imgUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -54,8 +54,8 @@ function VersusAvatar({ label, imgUrl, generic }: { label: string; imgUrl?: stri
 
 // ─── Colour pool — enough distinct colours for the largest grid ──────
 const COLOR_POOL = [
-  '#ff4f4f', '#4f8ef7', '#3ecf8e', '#f5c542', '#9b6dff', '#ff9a3c', '#00e5ff', '#ff4d8b',
-  '#7CFF6B', '#ff6b00', '#c084fc', '#38bdf8', '#facc15', '#fb7185', '#34d399', '#a78bfa',
+  '#ff4f4f', '#4f8ef7', '#3ecf8e', '#f5c542', '#9b6dff', 'var(--accent2)', '#00e5ff', '#ff4d8b',
+  '#7CFF6B', 'var(--accent)', '#c084fc', '#38bdf8', '#facc15', '#fb7185', '#34d399', '#a78bfa',
 ]
 
 interface Tile { id: number; color: string; safe: boolean }
@@ -353,7 +353,7 @@ export default function ColourBlock({ rank: initialRank, onEnd, onBack, sessions
       extraContent={
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--surface2)', border: '1px solid var(--border)',
           borderRadius: 14, padding: '10px 14px', marginBottom: 16,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
@@ -505,7 +505,7 @@ export default function ColourBlock({ rank: initialRank, onEnd, onBack, sessions
                   position: 'absolute', inset: 0, borderRadius: 14, backfaceVisibility: 'hidden',
                   transform: 'rotateY(180deg)',
                   background: 'var(--surface2)',
-                  boxShadow: 'inset 1px 1px 4px var(--neu-dark)',
+                  boxShadow: 'var(--elev-inset)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <span style={{ fontSize: 16, color: 'var(--text-muted)' }}>✦</span>

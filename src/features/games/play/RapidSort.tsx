@@ -161,7 +161,7 @@ function OptionBtn({
         background: bg, border, color,
         fontSize: 13.5, fontWeight: 600, textAlign: 'left',
         cursor: state === 'idle' ? 'pointer' : 'default',
-        transition: 'all 0.18s',
+        transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
         boxShadow: state === 'idle' ? '2px 2px 6px var(--neu-dark)' : 'none',
       }}
       onMouseEnter={e => { if (state === 'idle') e.currentTarget.style.background = 'rgba(155,109,255,0.12)' }}

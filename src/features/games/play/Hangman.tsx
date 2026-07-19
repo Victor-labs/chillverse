@@ -7,7 +7,7 @@ import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal } from './Game
 import { ripple } from '../../../shared/lib/ripple'
 import { useGamePresence } from '../useGamePresence'
 
-const ACCENT    = '#ff6b00'
+const ACCENT    = 'var(--accent)'
 const MAX_LIVES = 3
 const MAX_HINTS = 3
 
@@ -443,12 +443,12 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Sidebar */}
-        <div style={{ width: 90, flexShrink: 0, padding: '14px 10px', borderRight: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ width: 90, flexShrink: 0, padding: '14px 10px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>Progress</div>
           {DIFF_ORDER.map(d => (
             <DiffProgressBar key={d} difficulty={d} winsInDiff={winsPerDiff[d]} winsNeeded={DIFF_META[d].winsNeeded} />
           ))}
-          <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 3 }}>XP earned</div>
             <div style={{ fontSize: 14, fontWeight: 800, color: ACCENT }}>{totalXP}</div>
           </div>
@@ -466,7 +466,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
           <HangmanFigure wrong={wrong} accent={ACCENT} />
 
           {entry && (
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5, marginBottom: 10, fontStyle: 'italic', padding: '8px 12px', background: 'var(--surface2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5, marginBottom: 10, fontStyle: 'italic', padding: '8px 12px', background: 'var(--surface2)', borderRadius: 12, border: '1px solid var(--border)' }}>
               💬 {entry.hint}
             </div>
           )}
@@ -482,8 +482,8 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
                   border: show ? `1px solid ${diffMeta.color}55` : '1px solid rgba(255,255,255,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 16, fontWeight: 800, color: show ? diffMeta.color : 'transparent',
-                  boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)',
-                  transition: 'all 0.2s',
+                  boxShadow: 'var(--elev-raise-sm)',
+                  transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
                 }}>
                   {show ? l : '_'}
                 </div>
@@ -511,7 +511,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
               fontSize: 11, fontWeight: 700, marginBottom: 10,
               border: `1px solid ${hintsLeft > 0 && !wordResult ? 'rgba(245,197,66,0.3)' : 'rgba(255,255,255,0.06)'}`,
               opacity: hintsLeft <= 0 || wordResult ? 0.5 : 1,
-              transition: 'all 0.2s',
+              transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
             }}
           >
             💡 Reveal letter ({hintsLeft} left)
@@ -535,7 +535,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
                     cursor: isGuessed || wordResult ? 'default' : 'pointer',
                     boxShadow: isGuessed ? 'none' : '2px 2px 5px var(--neu-dark),-1px -1px 3px var(--neu-light)',
                     opacity: isWrong ? 0.45 : 1,
-                    transition: 'all 0.15s',
+                    transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)',
                   }}>
                   {l}
                 </button>
@@ -544,7 +544,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
           </div>
 
           <button type="button" onClick={(e) => { ripple(e); endSession() }} className="ripple-wrap"
-            style={{ marginBottom: 20, padding: '8px 22px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface2)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ marginBottom: 20, padding: '8px 22px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             End Session
           </button>
         </div>
