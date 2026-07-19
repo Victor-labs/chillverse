@@ -110,19 +110,19 @@ function ClosedScreen({ onExit }: { onExit: () => void }) {
       <Bubbles />
       <div style={S.header}>
         <button onClick={onExit} style={S.backBtn} aria-label="Back to dashboard"><ArrowLeft size={17} /></button>
-        <Film size={20} color="#ff9a3c" />
+        <Film size={20} color="var(--accent2)" />
         <span style={S.headerTitle}>Chillverse Movies</span>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px 40px' }}>
         <img
           src={CLOSED_IMG}
           alt="Closed"
-          style={{ width: '100%', maxWidth: 340, borderRadius: 20, objectFit: 'cover', boxShadow: '0 16px 48px rgba(0,0,0,0.7)', marginBottom: 28 }}
+          style={{ width: '100%', maxWidth: 340, borderRadius: 20, objectFit: 'cover', boxShadow: 'var(--elev-popover)', marginBottom: 28 }}
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '20px 28px', textAlign: 'center', width: '100%', maxWidth: 320 }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 18, padding: '20px 28px', textAlign: 'center', width: '100%', maxWidth: 320 }}>
           <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 8 }}>Movies open at 5:00 AM · Opens in</div>
-          <div style={{ color: '#ff9a3c', fontSize: 36, fontWeight: 900, letterSpacing: 2, fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ color: 'var(--accent2)', fontSize: 36, fontWeight: 900, letterSpacing: 2, fontVariantNumeric: 'tabular-nums' }}>
             {fmtCountdown(secs)}
           </div>
         </div>
@@ -145,10 +145,10 @@ function RefreshScreen({ onDone }: { onDone: () => void }) {
         <img
           src={REFRESH_IMG}
           alt="Refreshing"
-          style={{ width: '100%', maxWidth: 320, borderRadius: 20, objectFit: 'cover', boxShadow: '0 16px 48px rgba(0,0,0,0.7)', marginBottom: 24 }}
+          style={{ width: '100%', maxWidth: 320, borderRadius: 20, objectFit: 'cover', boxShadow: 'var(--elev-popover)', marginBottom: 24 }}
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,107,0,0.2)', borderRadius: 16, padding: '16px 24px', textAlign: 'center' }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', borderRadius: 16, padding: '16px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>✨</div>
           <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Refreshing your movie feed</div>
           <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Shuffling new content for you…</div>
@@ -165,7 +165,7 @@ function CategoryPicker({ onPick, onExit, secsLeft }: { onPick: (cat: Category) 
       <Bubbles />
       <div style={S.header}>
         <button onClick={onExit} style={S.backBtn} aria-label="Back to dashboard"><ArrowLeft size={17} /></button>
-        <Film size={20} color="#ff9a3c" />
+        <Film size={20} color="var(--accent2)" />
         <span style={S.headerTitle}>Chillverse Movies</span>
       </div>
 
@@ -185,7 +185,7 @@ function CategoryPicker({ onPick, onExit, secsLeft }: { onPick: (cat: Category) 
         </div>
 
         <div onClick={() => onPick('adult')} style={{ ...S.catCard, marginTop: 14 }}>
-          <div style={{ ...S.catIconWrap, background: 'linear-gradient(135deg,#ff6b00,#ff9a3c)' }}>
+          <div style={{ ...S.catIconWrap, background: 'linear-gradient(135deg,var(--accent),var(--accent2))' }}>
             <Users size={32} color="#fff" />
           </div>
           <div style={{ flex: 1 }}>
@@ -236,7 +236,7 @@ function AdPlayer({ onDone }: { onDone: () => void }) {
   const adUrl = `https://www.youtube.com/embed/${AD_VIDEO_ID}?autoplay=1&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${window.location.origin}&controls=0`
 
   return (
-    <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: '0 12px 40px rgba(0,0,0,0.7)', marginBottom: 12 }}>
+    <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: 'var(--elev-popover)', marginBottom: 12 }}>
       {/* 16:9 wrapper */}
       <div style={{ paddingTop: '56.25%', position: 'relative' }}>
         <iframe
@@ -263,7 +263,7 @@ function AdPlayer({ onDone }: { onDone: () => void }) {
               Skip Ad ›
             </button>
           ) : (
-            <div style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '6px 12px', borderRadius: 8 }}>
+            <div style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid var(--border-strong)', color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '6px 12px', borderRadius: 8 }}>
               Skip in {skipCountdown}s
             </div>
           )}
@@ -337,7 +337,7 @@ function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { categor
 
       <div style={{ padding: '0 16px', zIndex: 2, flex: 1 }}>
         {!hasContent ? (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '32px 20px', textAlign: 'center' }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 18, padding: '32px 20px', textAlign: 'center' }}>
             <Film size={28} color="rgba(255,255,255,0.3)" style={{ marginBottom: 10 }} />
             <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Nothing queued up yet</div>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>No {category} content has been added for this category yet.</div>
@@ -348,7 +348,7 @@ function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { categor
             {showAd ? (
               <AdPlayer onDone={handleAdDone} />
             ) : (
-              <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: '0 12px 40px rgba(0,0,0,0.7)', marginBottom: 16 }}>
+              <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#000', boxShadow: 'var(--elev-popover)', marginBottom: 16 }}>
                 <div style={{ paddingTop: '56.25%', position: 'relative' }}>
                   <iframe
                     key={`${current!.id}-${idx}`}
@@ -367,15 +367,15 @@ function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { categor
             {/* Now playing info — only show when movie is playing */}
             {!showAd && (
               <>
-                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'blink 1.2s infinite' }} />
+                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)', animation: 'blink 1.2s infinite' }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 2 }}>NOW PLAYING</div>
                     <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{current!.title}</div>
                   </div>
                   <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>{idx + 1} / {shuffled.length}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 16px' }}>
                   <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, lineHeight: 1.6 }}>
                     🔒 Content is curated and auto-plays. Next content loads automatically when this ends.
                   </div>
@@ -403,10 +403,10 @@ function Ticker({ secsLeft: initialSecs }: { secsLeft: number }) {
 
   return (
     <div style={{ position: 'sticky', bottom: 0, zIndex: 20, padding: '10px 16px 16px', background: 'linear-gradient(0deg,rgba(17,17,19,1) 60%,transparent)' }}>
-      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <Clock size={13} color="rgba(255,255,255,0.4)" />
         <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Movie page closes in</span>
-        <span style={{ color: '#ff9a3c', fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmtCountdown(secs)}</span>
+        <span style={{ color: 'var(--accent2)', fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmtCountdown(secs)}</span>
       </div>
     </div>
   )
@@ -428,7 +428,7 @@ function Bubbles() {
           width: b.w, height: b.w,
           ...(b.top ? { top: b.top } : {}), ...(b.bottom ? { bottom: b.bottom } : {}),
           ...(b.left ? { left: b.left } : {}), ...(b.right ? { right: b.right } : {}),
-          background: 'radial-gradient(circle,rgba(255,107,0,0.08) 0%,transparent 70%)',
+          background: 'radial-gradient(circle,color-mix(in srgb, var(--accent) 8%, transparent) 0%,transparent 70%)',
           filter: 'blur(30px)',
           animationName: b.a, animationDuration: b.d,
           animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite',
@@ -575,7 +575,7 @@ const S: Record<string, React.CSSProperties> = {
   backBtn: {
     width: 36, height: 36, borderRadius: 10,
     background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.09)',
+    border: '1px solid var(--border-strong)',
     color: '#fff', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontFamily: "'Inter',sans-serif", flexShrink: 0,
@@ -583,7 +583,7 @@ const S: Record<string, React.CSSProperties> = {
   catCard: {
     display: 'flex', alignItems: 'center', gap: 16,
     background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid var(--border)',
     borderRadius: 18, padding: '18px 16px',
     cursor: 'pointer', transition: 'transform 0.15s, background 0.15s',
     boxShadow: '4px 4px 12px rgba(0,0,0,0.4), -1px -1px 6px rgba(255,255,255,0.02)',
@@ -591,6 +591,6 @@ const S: Record<string, React.CSSProperties> = {
   catIconWrap: {
     width: 60, height: 60, borderRadius: 16,
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+    boxShadow: 'var(--elev-raise)',
   },
 }
