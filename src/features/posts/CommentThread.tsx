@@ -62,17 +62,15 @@ export default function CommentThread({ postId }: { postId: string }) {
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Add a comment…"
             maxLength={300}
-            style={{
-              flex: 1, background: 'var(--surface)', border: 'none', borderRadius: 10,
-              padding: '8px 10px', fontSize: 12.5, color: 'var(--text)', outline: 'none',
-            }}
+            className="cv-input"
+            style={{ flex: 1 }}
           />
           <button
             type="button"
             onClick={handleSend}
             disabled={!draft.trim() || posting}
-            className="btn-primary"
-            style={{ padding: 8, display: 'flex', opacity: !draft.trim() || posting ? 0.5 : 1 }}
+            className="btn-primary cv-send-btn"
+            style={{ opacity: !draft.trim() || posting ? 0.5 : 1 }}
           >
             <Send size={14} />
           </button>
