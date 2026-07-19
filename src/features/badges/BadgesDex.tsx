@@ -71,7 +71,7 @@ export default function BadgesDex() {
               type="button"
               onClick={() => setSelected(def)}
               className="ripple-wrap"
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 16, background: 'var(--surface)', border: `1px solid ${owned ? color + '33' : 'rgba(255,255,255,0.05)'}`, cursor: 'pointer', textAlign: 'left', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)', opacity: owned ? 1 : 0.55 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 16, background: 'var(--surface)', border: `1px solid ${owned ? color + '33' : 'rgba(255,255,255,0.05)'}`, cursor: 'pointer', textAlign: 'left', boxShadow: 'var(--elev-raise-sm)', opacity: owned ? 1 : 0.55 }}
             >
               <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: owned ? color + '1c' : 'var(--surface2)' }}>
                 {owned ? <BadgeIcon iconKey={def.icon} size={19} color={color} /> : <Lock size={15} color="var(--text-muted)" />}
@@ -103,7 +103,7 @@ function BadgeDetailModal({ def, owned, originalUsername, onClose }: { def: Badg
   const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg)', borderRadius: 22, padding: '22px 20px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg)', borderRadius: 22, padding: '22px 20px', boxShadow: 'var(--elev-popover)' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <X size={14} color="var(--text-dim)" />

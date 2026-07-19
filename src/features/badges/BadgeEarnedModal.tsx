@@ -143,7 +143,7 @@ export default function BadgeEarnedModal() {
         {/* Big box — hero image */}
         <div style={{
           position: 'relative', width: '100%', height: 160, borderRadius: 18, overflow: 'hidden',
-          marginBottom: 16, border: '1px solid rgba(255,255,255,0.08)',
+          marginBottom: 16, border: '1px solid var(--border)',
         }}>
           <img
             src={HERO_IMAGE_URL}

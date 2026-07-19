@@ -59,7 +59,7 @@ export default function BadgeRow({
             onClick={onOpenAll}
             style={{
               height: 22, minWidth: 22, padding: '0 6px', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', flexShrink: 0,
+              background: 'var(--surface2)', border: '1px solid var(--border-strong)', cursor: 'pointer', flexShrink: 0,
             }}
           >
             <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-dim)' }}>+{overflow}</span>
