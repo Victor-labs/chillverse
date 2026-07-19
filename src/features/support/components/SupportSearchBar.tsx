@@ -44,10 +44,10 @@ export default function SupportSearchBar({
         alignItems: 'center',
         gap: 10,
         background: 'var(--surface)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid var(--border)',
         borderRadius: 'var(--radius)',
         padding: '14px 18px',
-        boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+        boxShadow: 'var(--elev-raise-sm)',
       }}
     >
       <Search size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
