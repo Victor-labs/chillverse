@@ -13,7 +13,7 @@ import { useProfilePreviewOptional } from '../../context/ProfilePreview'
 // A handful of Discord-like gradient pairs. Picked deterministically from
 // the user's id/name so the same person always gets the same colour.
 const PALETTES: Array<[string, string]> = [
-  ['#ff6b00', '#ff9a3c'], // accent (brand default)
+  ['var(--accent)', 'var(--accent2)'], // accent (brand default)
   ['#7c5cff', '#4d8dff'], // purple/blue
   ['#ff4d8b', '#ff8fb3'], // pink
   ['#3ecf8e', '#2fa8ff'], // green/blue

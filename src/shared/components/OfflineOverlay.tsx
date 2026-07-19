@@ -99,7 +99,7 @@ export default function OfflineOverlay() {
         }}>
           {[
             { letter: 'C', color: 'var(--text)' },
-            { letter: 'V', color: '#ff6b00' },
+            { letter: 'V', color: 'var(--accent)' },
           ].map(({ letter, color }) => (
             <span
               key={letter}
@@ -117,7 +117,7 @@ export default function OfflineOverlay() {
             borderRadius: '50%',
             margin: '0 auto 20px',
             background: 'var(--surface2)',
-            boxShadow: '6px 6px 14px var(--neu-dark), -4px -4px 10px var(--neu-light)',
+            boxShadow: 'var(--elev-raise)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
