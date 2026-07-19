@@ -91,17 +91,17 @@ export default function Rooms() {
       )}
 
       {/* Create room */}
-      <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 16, marginBottom: 14 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16, marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Create a room</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={() => setIsPrivate(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${!isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: !isPrivate ? 'rgba(255,107,0,0.1)' : 'var(--bg)', color: !isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Public</button>
-          <button onClick={() => setIsPrivate(true)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: isPrivate ? 'rgba(255,107,0,0.1)' : 'var(--bg)', color: isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Private (code only)</button>
+          <button onClick={() => setIsPrivate(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${!isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: !isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: !isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Public</button>
+          <button onClick={() => setIsPrivate(true)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Private (code only)</button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Max players</span>
           <div style={{ display: 'flex', gap: 6 }}>
             {[2, 4, 6, 8].map(n => (
-              <button key={n} onClick={() => setMaxPlayers(n)} style={{ width: 30, height: 30, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1px solid ${maxPlayers === n ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: maxPlayers === n ? 'rgba(255,107,0,0.1)' : 'var(--bg)', color: maxPlayers === n ? 'var(--accent)' : 'var(--text-dim)' }}>{n}</button>
+              <button key={n} onClick={() => setMaxPlayers(n)} style={{ width: 30, height: 30, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1px solid ${maxPlayers === n ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: maxPlayers === n ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: maxPlayers === n ? 'var(--accent)' : 'var(--text-dim)' }}>{n}</button>
             ))}
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function Rooms() {
       </div>
 
       {/* Join by code */}
-      <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 16, marginBottom: 20 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16, marginBottom: 20 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Join with a code</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
@@ -119,7 +119,7 @@ export default function Rooms() {
             onChange={e => setCodeInput(e.target.value.toUpperCase())}
             placeholder="e.g. 7F3K9Q"
             maxLength={6}
-            style={{ flex: 1, background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 13px', fontSize: 15, letterSpacing: 3, fontWeight: 700, color: 'var(--text)', outline: 'none' }}
+            style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 13px', fontSize: 15, letterSpacing: 3, fontWeight: 700, color: 'var(--text)', outline: 'none' }}
           />
           <button onClick={handleJoinByCode} disabled={joining || !codeInput.trim()} style={{ padding: '0 18px', borderRadius: 10, border: 'none', background: 'var(--surface2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: joining ? 0.7 : 1 }}>
             {joining ? '…' : 'Join'}
@@ -136,7 +136,7 @@ export default function Rooms() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rooms.map(room => (
-            <div key={room.id} onClick={() => handleJoinRoom(room)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14, cursor: 'pointer' }}>
+            <div key={room.id} onClick={() => handleJoinRoom(room)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', flexShrink: 0 }}>
                 {room.is_private ? <Lock size={14} /> : <Users size={14} />}
               </div>

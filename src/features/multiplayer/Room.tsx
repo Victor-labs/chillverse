@@ -113,7 +113,7 @@ export default function Room() {
       )}
 
       {/* Invite code */}
-      <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 18, marginBottom: 14, textAlign: 'center' }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 18, marginBottom: 14, textAlign: 'center' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
           {room.is_private ? 'Private room · invite code' : 'Invite code'}
         </div>
@@ -130,7 +130,7 @@ export default function Room() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         {players.map(p => (
-          <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14 }}>
+          <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14 }}>
             <Avatar src={p.avatar} name={p.display_name || p.username || '?'} userId={p.user_id} size={34} radius="50%" />
             <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
               {p.display_name || p.username || 'Player'}
@@ -176,7 +176,7 @@ export default function Room() {
         <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--text-muted)', padding: '8px 0' }}>Waiting for host to start…</div>
       )}
 
-      <button onClick={handleLeave} disabled={busy} style={{ width: '100%', marginTop: 10, padding: '11px 0', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+      <button onClick={handleLeave} disabled={busy} style={{ width: '100%', marginTop: 10, padding: '11px 0', borderRadius: 12, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-dim)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
         <LogOut size={14} /> Leave Room
       </button>
     </div>
