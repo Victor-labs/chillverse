@@ -33,7 +33,7 @@ export default function VoiceNoteRecorderButton({ onSend, onError, onRecordingCh
     return (
       <div style={{
         flex:1, display:'flex', alignItems:'center', gap:10, background:'var(--surface)',
-        boxShadow:'inset 2px 2px 6px var(--neu-dark)', border:'1px solid rgba(255,79,79,0.25)',
+        boxShadow:'var(--elev-inset)', border:'1px solid rgba(255,79,79,0.25)',
         borderRadius:14, padding:'9px 12px',
       }}>
         <span style={{ width:8, height:8, borderRadius:'50%', background:'#ff4f4f', flexShrink:0, animation:'recPulse 1s ease-in-out infinite' }} />
@@ -58,7 +58,7 @@ export default function VoiceNoteRecorderButton({ onSend, onError, onRecordingCh
     <button type="button" disabled={disabled} onClick={startRecording} title="Record a voice note"
       style={{
         width:36, height:36, borderRadius:10, flexShrink:0, background:'var(--surface)',
-        border:'1px solid rgba(255,255,255,0.06)', color: disabled ? 'var(--text-muted)' : 'var(--text-dim)',
+        border:'1px solid var(--border)', color: disabled ? 'var(--text-muted)' : 'var(--text-dim)',
         cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         display:'flex', alignItems:'center', justifyContent:'center',
       }}>
