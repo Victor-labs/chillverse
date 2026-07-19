@@ -19,7 +19,7 @@ const RARITY_META: Record<MallRarity, { color: string; bg: string }> = {
   Common: { color: '#888899', bg: 'rgba(136,136,153,0.14)' },
   Rare:   { color: '#4f8ef7', bg: 'rgba(79,142,247,0.14)'  },
   Epic:   { color: '#9b6dff', bg: 'rgba(155,109,255,0.14)' },
-  Mythic: { color: '#ff6b00', bg: 'rgba(255,107,0,0.14)'   },
+  Mythic: { color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 14%, transparent)'   },
 }
 
 // ─── Recipient search ───────────────────────────────────────────
@@ -47,7 +47,7 @@ function Toast({ toast, onDone }: { toast: ToastState; onDone: () => void }) {
   }
   const c = colors[toast.kind]
   return (
-    <div style={{ position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:c.bg, border:`1px solid ${c.border}`, borderRadius:14, padding:'11px 18px', display:'flex', alignItems:'center', gap:9, boxShadow:'0 8px 32px rgba(0,0,0,0.55)', backdropFilter:'blur(10px)', animation:'feedIn 0.25s ease-out both', whiteSpace:'nowrap' }}>
+    <div style={{ position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:c.bg, border:`1px solid ${c.border}`, borderRadius:14, padding:'11px 18px', display:'flex', alignItems:'center', gap:9, boxShadow:'var(--elev-raise)', backdropFilter:'blur(10px)', animation:'feedIn 0.25s ease-out both', whiteSpace:'nowrap' }}>
       {c.icon}
       <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{toast.msg}</span>
     </div>
@@ -158,7 +158,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'fadeIn 0.2s ease both' }}>
 
-      <div style={{ width:'100%', maxWidth:360, background:'var(--surface2)', borderRadius:24, border:'1px solid rgba(255,255,255,0.08)', boxShadow:'0 24px 80px rgba(0,0,0,0.7)', overflow:'visible', position:'relative', animation:'popIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+      <div style={{ width:'100%', maxWidth:360, background:'var(--surface2)', borderRadius:24, border:'1px solid var(--border)', boxShadow:'var(--elev-popover)', overflow:'visible', position:'relative', animation:'popIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both' }}>
 
         {/* Close */}
         <button onClick={onClose} style={{ position:'absolute', top:14, right:14, width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)', border:'none', cursor:'pointer', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10 }}>
@@ -166,7 +166,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
         </button>
 
         {/* Big box — promo image area */}
-        <div style={{ position:'relative', height:200, borderRadius:'24px 24px 0 0', overflow:'visible', background:'linear-gradient(160deg,rgba(255,107,0,0.12),rgba(155,109,255,0.08))', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ position:'relative', height:200, borderRadius:'24px 24px 0 0', overflow:'visible', background:'linear-gradient(160deg,color-mix(in srgb, var(--accent) 12%, transparent),rgba(155,109,255,0.08))', borderBottom:'1px solid var(--border)' }}>
           {/* background blurred img */}
           <div style={{ position:'absolute', inset:0, borderRadius:'24px 24px 0 0', overflow:'hidden' }}>
             <img src={SEND_IMG} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.18, filter:'blur(4px)', transform:'scale(1.1)' }} />
@@ -176,11 +176,11 @@ function SendModal({ item, senderName, onClose, onSent }: {
             <img
               src={SEND_IMG}
               alt="Gift character"
-              style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', borderRadius:16, boxShadow:'0 12px 40px rgba(0,0,0,0.45)', filter:'drop-shadow(0 8px 24px rgba(255,107,0,0.3))' }}
+              style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', borderRadius:16, boxShadow:'var(--elev-popover)', filter:'drop-shadow(0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent))' }}
             />
           </div>
           {/* item badge */}
-          <div style={{ position:'absolute', top:14, left:16, background:'var(--surface)', borderRadius:10, padding:'5px 10px', display:'flex', alignItems:'center', gap:6, boxShadow:'0 4px 12px rgba(0,0,0,0.4)', zIndex:6 }}>
+          <div style={{ position:'absolute', top:14, left:16, background:'var(--surface)', borderRadius:10, padding:'5px 10px', display:'flex', alignItems:'center', gap:6, boxShadow:'var(--elev-raise)', zIndex:6 }}>
             <span style={{ fontSize:12, fontWeight:700, color:'var(--text)' }}>💎 {price}</span>
           </div>
         </div>
@@ -188,7 +188,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
         {/* Content */}
         <div style={{ padding:'28px 20px 22px' }}>
           {/* Item info */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, background:'var(--surface)', borderRadius:14, padding:'10px 12px', border:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, background:'var(--surface)', borderRadius:14, padding:'10px 12px', border:'1px solid var(--border)' }}>
             {item.image_url ? (
               <img src={item.image_url} alt={item.name} style={{ width:44, height:44, borderRadius:10, objectFit:'cover', flexShrink:0 }} />
             ) : (
@@ -205,7 +205,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
           {/* Recipient search */}
           <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', letterSpacing:'0.8px', textTransform:'uppercase', marginBottom:8 }}>Recipient</div>
           <div style={{ position:'relative', marginBottom:6 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'10px 13px', boxShadow:'inset 2px 2px 6px var(--neu-dark)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'10px 13px', boxShadow:'var(--elev-inset)' }}>
               {hasValidPick ? <Check size={14} color="#3ecf8e" style={{ flexShrink:0 }} /> : <User size={14} color="var(--text-muted)" style={{ flexShrink:0 }} />}
               <input
                 type="text"
@@ -224,7 +224,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
 
             {/* Live results dropdown */}
             {query.trim() && !hasValidPick && (
-              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:20, background:'var(--surface2)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:14, boxShadow:'0 16px 40px rgba(0,0,0,0.55)', maxHeight:220, overflowY:'auto' }}>
+              <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:20, background:'var(--surface2)', border:'1px solid var(--border-strong)', borderRadius:14, boxShadow:'var(--elev-popover)', maxHeight:220, overflowY:'auto' }}>
                 {searching ? (
                   <div style={{ display:'flex', justifyContent:'center', padding:14 }}>
                     <span style={{ width:18, height:18, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
@@ -261,7 +261,7 @@ function SendModal({ item, senderName, onClose, onSent }: {
             onClick={(e) => { ripple(e); handleGift() }}
             disabled={!hasValidPick || !canAfford || sending}
             className="ripple-wrap"
-            style={{ width:'100%', padding:'13px', borderRadius:14, border:'none', cursor: !hasValidPick || !canAfford || sending ? 'not-allowed' : 'pointer', background: !hasValidPick || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)', color: !hasValidPick || !canAfford || sending ? 'var(--text-muted)' : '#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow: hasValidPick && canAfford && !sending ? '0 4px 20px rgba(255,107,0,0.35)' : 'none', transition:'all 0.2s', marginTop:4 }}>
+            style={{ width:'100%', padding:'13px', borderRadius:14, border:'none', cursor: !hasValidPick || !canAfford || sending ? 'not-allowed' : 'pointer', background: !hasValidPick || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),var(--accent2))', color: !hasValidPick || !canAfford || sending ? 'var(--text-muted)' : '#fff', fontSize:14, fontWeight:800, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow: hasValidPick && canAfford && !sending ? '0 4px 20px color-mix(in srgb, var(--accent) 35%, transparent)' : 'none', transition:'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)', marginTop:4 }}>
             {sending ? (
               <><span style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }} /> Sending…</>
             ) : (
@@ -279,17 +279,17 @@ function ReceiveModal({ itemName, senderName, onClose }: { itemName: string; sen
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'fadeIn 0.2s ease both' }}>
-      <div style={{ width:'100%', maxWidth:340, background:'var(--surface2)', borderRadius:24, border:'1px solid rgba(255,255,255,0.08)', boxShadow:'0 24px 80px rgba(0,0,0,0.7)', overflow:'visible', position:'relative', animation:'popIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+      <div style={{ width:'100%', maxWidth:340, background:'var(--surface2)', borderRadius:24, border:'1px solid var(--border)', boxShadow:'var(--elev-popover)', overflow:'visible', position:'relative', animation:'popIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both' }}>
         {/* Big box image */}
-        <div style={{ position:'relative', height:180, borderRadius:'24px 24px 0 0', overflow:'visible', background:'linear-gradient(160deg,rgba(62,207,142,0.12),rgba(79,142,247,0.08))', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ position:'relative', height:180, borderRadius:'24px 24px 0 0', overflow:'visible', background:'linear-gradient(160deg,rgba(62,207,142,0.12),rgba(79,142,247,0.08))', borderBottom:'1px solid var(--border)' }}>
           <div style={{ position:'absolute', inset:0, borderRadius:'24px 24px 0 0', overflow:'hidden' }}>
             <img src={RECV_IMG} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.18, filter:'blur(4px)', transform:'scale(1.1)' }} />
           </div>
           <div style={{ position:'absolute', bottom:-8, left:'50%', transform:'translateX(-50%)', width:140, height:200, zIndex:5 }}>
-            <img src={RECV_IMG} alt="Gift received" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.45)', filter:'drop-shadow(0 8px 24px rgba(62,207,142,0.3))' }} />
+            <img src={RECV_IMG} alt="Gift received" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', borderRadius:14, boxShadow:'var(--elev-popover)', filter:'drop-shadow(0 8px 24px rgba(62,207,142,0.3))' }} />
           </div>
           {/* confetti dots */}
-          {['#ff6b00','#3ecf8e','#f5c542','#9b6dff','#4f8ef7'].map((c,i) => (
+          {['var(--accent)','#3ecf8e','#f5c542','#9b6dff','#4f8ef7'].map((c,i) => (
             <div key={i} style={{ position:'absolute', width:8, height:8, borderRadius:'50%', background:c, left:`${15+i*18}%`, top:`${20+((i%3)*20)}%`, animation:`confetti 1.8s ease-in-out ${i*0.15}s infinite`, opacity:0.7 }} />
           ))}
         </div>
@@ -317,8 +317,8 @@ function GiftCard({ item, onSelect }: { item: MallItem; onSelect: () => void }) 
   const meta = RARITY_META[item.rarity]
   return (
     <div onClick={(e) => { ripple(e); onSelect() }} className="ripple-wrap"
-      style={{ background:'var(--surface)', border: item.rarity === 'Mythic' ? '1px solid rgba(255,107,0,0.3)' : '1px solid rgba(255,255,255,0.05)', borderRadius:16, padding:12, cursor:'pointer', position:'relative', overflow:'hidden', boxShadow:'3px 3px 9px var(--neu-dark),-2px -2px 7px var(--neu-light)' }}>
-      {item.rarity === 'Mythic' && <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(255,107,0,0.04),rgba(245,197,66,0.04))', pointerEvents:'none' }} />}
+      style={{ background:'var(--surface)', border: item.rarity === 'Mythic' ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid rgba(255,255,255,0.05)', borderRadius:16, padding:12, cursor:'pointer', position:'relative', overflow:'hidden', boxShadow:'var(--elev-raise-sm)' }}>
+      {item.rarity === 'Mythic' && <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,color-mix(in srgb, var(--accent) 4%, transparent),rgba(245,197,66,0.04))', pointerEvents:'none' }} />}
       <div style={{ width:'100%', aspectRatio:'1', borderRadius:10, overflow:'hidden', marginBottom:10, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
         {item.image_url ? (
           <img src={item.image_url} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
@@ -412,25 +412,25 @@ export default function GiftPage() {
 
         {/* Topbar */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <button type="button" onClick={() => navigate(-1)} style={{ width:36, height:36, borderRadius:10, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'2px 2px 6px var(--neu-dark)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <button type="button" onClick={() => navigate(-1)} style={{ width:36, height:36, borderRadius:10, background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'var(--elev-raise-sm)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <ArrowLeft size={15} />
           </button>
           <h1 style={{ fontSize:20, fontWeight:800, color:'var(--text)', flex:1 }}>Gift Shop</h1>
-          <div style={{ display:'flex', alignItems:'center', gap:5, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'6px 12px', boxShadow:'2px 2px 6px var(--neu-dark)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'6px 12px', boxShadow:'var(--elev-raise-sm)' }}>
             <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>💎 {wallet?.gem_balance ?? 0}</span>
           </div>
         </div>
 
         {/* Hero */}
-        <div className="neu-card" style={{ padding:'18px 20px', marginBottom:20, background:'linear-gradient(135deg,rgba(255,107,0,0.08),rgba(155,109,255,0.06))', border:'1px solid rgba(255,107,0,0.15)', position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle,rgba(255,107,0,0.12),transparent 70%)', pointerEvents:'none' }} />
+        <div className="neu-card" style={{ padding:'18px 20px', marginBottom:20, background:'linear-gradient(135deg,color-mix(in srgb, var(--accent) 8%, transparent),rgba(155,109,255,0.06))', border:'1px solid color-mix(in srgb, var(--accent) 15%, transparent)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle,color-mix(in srgb, var(--accent) 12%, transparent),transparent 70%)', pointerEvents:'none' }} />
           <div style={{ fontSize:22, marginBottom:4 }}>🎁</div>
           <div style={{ fontSize:16, fontWeight:800, color:'var(--text)', marginBottom:4 }}>Send a gift to a friend</div>
           <div style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.5 }}>Browse avatars and profile pics below. Tap any item to gift it directly to another player.</div>
         </div>
 
         {/* Search */}
-        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:13, padding:'9px 14px', marginBottom:18, boxShadow:'inset 2px 2px 6px var(--neu-dark)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:13, padding:'9px 14px', marginBottom:18, boxShadow:'var(--elev-inset)' }}>
           <Search size={14} color="var(--text-muted)" />
           <input type="text" placeholder="Search gifts…" value={search} onChange={e => setSearch(e.target.value)}
             style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13.5, color:'var(--text)', fontFamily:'inherit' }} />

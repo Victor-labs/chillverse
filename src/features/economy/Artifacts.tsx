@@ -179,7 +179,7 @@ function ArtifactModal({
               position: 'absolute', top: 14, right: 14,
               width: 32, height: 32, borderRadius: 10,
               background: 'rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid var(--border-strong)',
               color: '#fff', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -283,7 +283,7 @@ function ArtifactModal({
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 padding: '12px', borderRadius: 14,
                 background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--border)',
               }}
             >
               <Lock size={14} style={{ color: 'var(--text-muted)' }} />
@@ -507,7 +507,7 @@ export default function Artifacts() {
             background: 'var(--surface2)',
             overflow: 'hidden',
             marginBottom: 6,
-            boxShadow: 'inset 2px 2px 4px var(--neu-dark)',
+            boxShadow: 'var(--elev-inset)',
           }}
         >
           <div
@@ -535,7 +535,7 @@ export default function Artifacts() {
                 background: 'var(--surface)',
                 borderRadius: 14, padding: '11px 10px',
                 textAlign: 'center',
-                boxShadow: '4px 4px 10px var(--neu-dark),-2px -2px 6px var(--neu-light)',
+                boxShadow: 'var(--elev-raise)',
               }}
             >
               <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>

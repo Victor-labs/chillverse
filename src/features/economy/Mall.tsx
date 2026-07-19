@@ -38,7 +38,7 @@ function WishlistToast({ message, onDone }: { message: string; onDone: () => voi
       position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
       zIndex: 9999, background: 'rgba(20,20,24,0.95)', border: '1px solid rgba(255,77,139,0.35)',
       borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
+      boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)',
       animation: 'feedIn 0.25s ease-out both', whiteSpace: 'nowrap',
     }}>
       <Heart size={14} style={{ color: '#ff4d8b', fill: '#ff4d8b', flexShrink: 0 }} />
@@ -54,7 +54,7 @@ const RARITY_META: Record<MallRarity, { color: string; bg: string }> = {
   Common: { color: '#888899', bg: 'rgba(136,136,153,0.14)' },
   Rare:   { color: '#4f8ef7', bg: 'rgba(79,142,247,0.14)' },
   Epic:   { color: '#9b6dff', bg: 'rgba(155,109,255,0.14)' },
-  Mythic: { color: '#ff6b00', bg: 'linear-gradient(135deg,rgba(255,107,0,0.18),rgba(245,197,66,0.14))' },
+  Mythic: { color: 'var(--accent)', bg: 'linear-gradient(135deg,color-mix(in srgb, var(--accent) 18%, transparent),rgba(245,197,66,0.14))' },
 }
 
 function RarityBadge({ rarity }: { rarity: MallRarity }) {
@@ -131,9 +131,9 @@ function SquareCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0, com
       onClick={(e) => { ripple(e); onSelect(item) }}
       className="ripple-wrap"
       style={{
-        background: 'var(--surface)', border: isMythic ? '1px solid rgba(255,107,0,0.3)' : '1px solid rgba(255,255,255,0.05)',
+        background: 'var(--surface)', border: isMythic ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid rgba(255,255,255,0.05)',
         borderRadius: compact ? 13 : 16, padding: compact ? 7 : 10, cursor: 'pointer', position: 'relative',
-        boxShadow: isMythic ? '0 0 0 1px rgba(255,107,0,0.18),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+        boxShadow: isMythic ? '0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
         opacity: lock.locked ? 0.55 : 1,
       }}
     >
@@ -179,9 +179,9 @@ function RectCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { i
       onClick={(e) => { ripple(e); onSelect(item) }}
       className="ripple-wrap"
       style={{
-        background: 'var(--surface)', border: isMythic ? '1px solid rgba(255,107,0,0.3)' : '1px solid rgba(255,255,255,0.05)',
+        background: 'var(--surface)', border: isMythic ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid rgba(255,255,255,0.05)',
         borderRadius: 18, padding: 12, cursor: 'pointer', position: 'relative',
-        boxShadow: isMythic ? '0 0 0 1px rgba(255,107,0,0.18),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+        boxShadow: isMythic ? '0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
         opacity: lock.locked ? 0.55 : 1,
       }}
     >
@@ -231,9 +231,9 @@ function BannerCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: {
       onClick={(e) => { ripple(e); onSelect(item) }}
       className="ripple-wrap"
       style={{
-        background: 'var(--surface)', border: isMythic ? '1px solid rgba(255,107,0,0.3)' : '1px solid rgba(255,255,255,0.05)',
+        background: 'var(--surface)', border: isMythic ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid rgba(255,255,255,0.05)',
         borderRadius: 14, padding: 9, cursor: 'pointer', position: 'relative',
-        boxShadow: isMythic ? '0 0 0 1px rgba(255,107,0,0.18),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+        boxShadow: isMythic ? '0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),4px 4px 10px var(--neu-dark)' : '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
         opacity: lock.locked ? 0.55 : 1,
       }}
     >
@@ -279,10 +279,10 @@ function PurchaseToast({ message, onDone }: { message: string; onDone: () => voi
     <div style={{
       position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
       zIndex: 9999, background: 'rgba(17,17,19,0.97)',
-      border: '1px solid rgba(255,107,0,0.4)',
+      border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)',
       borderRadius: 14, padding: '11px 18px',
       display: 'flex', alignItems: 'center', gap: 9,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)',
+      boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(12px)',
       animation: 'feedIn 0.25s ease-out both', whiteSpace: 'nowrap',
     }}>
       <ShoppingBag size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
@@ -460,7 +460,7 @@ function ItemModal({
     >
       <div style={{
         background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '0 20px 24px', width: '100%', maxWidth: 460,
-        border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none', boxShadow: '0 -20px 60px rgba(0,0,0,0.55)',
+        border: '1px solid var(--border)', borderBottom: 'none', boxShadow: '0 -12px 40px -12px var(--sh)',
         position: 'relative', height: `${BUY_SHEET_HEIGHT_VH}vh`, overflowY: 'auto', overscrollBehavior: 'contain',
         display: 'flex', flexDirection: 'column', animation: 'slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both',
       }}>
@@ -480,8 +480,8 @@ function ItemModal({
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 20,
-                  background: (showPicPreview || showEffectPreview) ? 'rgba(255,107,0,0.14)' : 'rgba(255,255,255,0.06)',
-                  border: (showPicPreview || showEffectPreview) ? '1px solid rgba(255,107,0,0.35)' : '1px solid transparent',
+                  background: (showPicPreview || showEffectPreview) ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'rgba(255,255,255,0.06)',
+                  border: (showPicPreview || showEffectPreview) ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid transparent',
                   cursor: 'pointer', color: (showPicPreview || showEffectPreview) ? 'var(--accent)' : 'var(--text-dim)',
                   fontSize: 11.5, fontWeight: 700,
                 }}
@@ -497,12 +497,12 @@ function ItemModal({
                   style={{
                     position: 'absolute', top: '100%', left: 0, marginTop: 8, zIndex: 5,
                     display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 12,
-                    background: 'rgba(20,20,24,0.97)', border: '1px solid rgba(255,107,0,0.3)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.45)', cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: 'rgba(20,20,24,0.97)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                    boxShadow: 'var(--elev-raise)', cursor: 'pointer', whiteSpace: 'nowrap',
                     animation: 'feedIn 0.25s ease-out both',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: -5, left: 16, width: 9, height: 9, background: 'rgba(20,20,24,0.97)', borderLeft: '1px solid rgba(255,107,0,0.3)', borderTop: '1px solid rgba(255,107,0,0.3)', transform: 'rotate(45deg)' }} />
+                  <div style={{ position: 'absolute', top: -5, left: 16, width: 9, height: 9, background: 'rgba(20,20,24,0.97)', borderLeft: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderTop: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', transform: 'rotate(45deg)' }} />
                   <Sparkles size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>Tap preview to see how it'll look</span>
                 </div>
@@ -528,8 +528,8 @@ function ItemModal({
           <div style={{ flexShrink: 0 }}>
             <div style={{
               width: PIC_THUMB_SIZE, height: PIC_THUMB_SIZE, margin: '0 auto 14px', borderRadius: 22,
-              overflow: 'hidden', background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '4px 4px 12px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+              overflow: 'hidden', background: 'var(--surface2)', border: '1px solid var(--border)',
+              boxShadow: 'var(--elev-raise)',
             }}>
               {isCardEffect ? (
                 cardEffectPosterSrc ? (
@@ -547,7 +547,7 @@ function ItemModal({
             </div>
 
             {showPicPreview && !isCardEffect && (
-              <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)', minHeight: MOCK_TOTAL_H, animation: 'feedIn 0.25s ease-out both' }}>
+              <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', marginBottom: 16, border: '1px solid var(--border)', minHeight: MOCK_TOTAL_H, animation: 'feedIn 0.25s ease-out both' }}>
                 <div style={{ position: 'relative', width: '100%', height: MOCK_BANNER_H, background: 'var(--surface2)' }}>
                   {previewProfile?.banner ? (
                     /\.(mp4|webm)$/i.test(previewProfile.banner) ? (
@@ -592,7 +592,7 @@ function ItemModal({
              with the parent's own margin and escapes upward, which is
              what was clipping the avatar against the banner before.
              Absolute positioning can't collapse, so it can't get clipped. ── */
-          <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)', minHeight: MOCK_TOTAL_H }}>
+          <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', marginBottom: 16, border: '1px solid var(--border)', minHeight: MOCK_TOTAL_H }}>
             <div style={{ position: 'relative', width: '100%', height: MOCK_BANNER_H, background: 'var(--surface2)' }}>
               {mockBannerSrc ? (
                 /\.(mp4|webm)$/i.test(mockBannerSrc) ? (
@@ -676,7 +676,7 @@ function ItemModal({
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center', marginBottom: 10 }}>
           Give your profile a distinct look
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
           <Users size={14} color="var(--text-dim)" />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
             {ownerCount.toLocaleString()} {ownerCount === 1 ? 'person' : 'people'} already {item.is_consumable ? 'used' : 'have'} this
@@ -715,11 +715,11 @@ function ItemModal({
               style={{
                 width: '100%', padding: 13, borderRadius: 14, border: 'none',
                 cursor: buying || (!isXpUnlock && !canAfford) ? 'not-allowed' : 'pointer',
-                background: buying || (!isXpUnlock && !canAfford) ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)',
+                background: buying || (!isXpUnlock && !canAfford) ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),var(--accent2))',
                 color: buying || (!isXpUnlock && !canAfford) ? 'var(--text-muted)' : '#fff',
                 fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                boxShadow: buying || (!isXpUnlock && !canAfford) ? 'none' : '0 4px 16px rgba(255,107,0,0.35)',
-                transition: 'all 0.2s',
+                boxShadow: buying || (!isXpUnlock && !canAfford) ? 'none' : '0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent)',
+                transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               }}
             >
               <ShoppingBag size={14} /> {buying ? 'Buying…' : item.price_gems != null ? buyLabelBase : 'Unlock'}
@@ -754,7 +754,7 @@ function SubPage({ title, onBack, children }: { title: string; onBack: () => voi
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', animation: 'feedIn 0.25s ease-out both' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-        <button type="button" onClick={onBack} style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)', flexShrink: 0 }}>
+        <button type="button" onClick={onBack} style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', boxShadow: 'var(--elev-raise-sm)', flexShrink: 0 }}>
           <ArrowLeft size={16} />
         </button>
         <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
@@ -1012,10 +1012,10 @@ export default function Mall() {
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         {/* Topbar row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+          <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}>
             <ArrowLeft size={15} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.05)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
             💎 {diamondBalance.toLocaleString()} Diamonds
           </div>
         </div>
@@ -1028,12 +1028,12 @@ export default function Mall() {
             display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)',
             border: '1px solid rgba(79,142,247,0.25)', borderRadius: 18, padding: 16, marginBottom: 20,
             cursor: 'pointer', position: 'relative', overflow: 'hidden',
-            boxShadow: '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+            boxShadow: 'var(--elev-raise)',
             animation: 'feedIn 0.35s ease-out both',
           }}
         >
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(79,142,247,0.06),rgba(155,109,255,0.04))', pointerEvents: 'none' }} />
-          <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: 'rgba(79,142,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f8ef7', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: 'rgba(79,142,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f8ef7', boxShadow: 'var(--elev-raise-sm)' }}>
             💎
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1051,13 +1051,13 @@ export default function Mall() {
             onClick={(e) => { ripple(e); setOpenSection(section.id) }}
             className="ripple-wrap"
             style={{
-              display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 18, padding: 16, marginBottom: 11, cursor: 'pointer',
-              boxShadow: '4px 4px 10px var(--neu-dark),-2px -2px 8px var(--neu-light)',
+              boxShadow: 'var(--elev-raise)',
               animation: 'feedIn 0.35s ease-out both', animationDelay: `${i * 0.05}s`,
             }}
           >
-            <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: section.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor, boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: section.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor, boxShadow: 'var(--elev-raise-sm)' }}>
               <section.Icon size={19} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -1083,9 +1083,9 @@ export default function Mall() {
                   onClick={(e) => { ripple(e); setSelectedItem(item) }}
                   className="ripple-wrap"
                   style={{
-                    flex: '0 0 auto', width: 200, background: 'var(--surface)', border: '1px solid rgba(255,107,0,0.2)',
+                    flex: '0 0 auto', width: 200, background: 'var(--surface)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                     borderRadius: 18, padding: 14, cursor: 'pointer',
-                    boxShadow: '5px 5px 14px var(--neu-dark),-3px -3px 10px var(--neu-light)',
+                    boxShadow: 'var(--elev-raise)',
                   }}
                 >
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,var(--accent),#f5c542)', color: '#1a1108', fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>

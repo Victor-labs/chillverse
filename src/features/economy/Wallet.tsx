@@ -68,7 +68,7 @@ function CurrencyCard({
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        boxShadow: '2px 2px 10px rgba(0,0,0,0.25)',
+        boxShadow: 'var(--elev-raise-sm)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -122,7 +122,7 @@ function TxRow({
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 0',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid var(--border)',
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: 11,
@@ -241,8 +241,8 @@ export default function Wallet() {
           style={{
             width: 38, height: 38, borderRadius: 11,
             background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '2px 2px 6px var(--neu-dark)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--elev-raise-sm)',
             color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
@@ -291,7 +291,7 @@ export default function Wallet() {
               display: 'flex',
               flexDirection: 'column',
               gap: 5,
-              boxShadow: '2px 2px 10px rgba(0,0,0,0.25)',
+              boxShadow: 'var(--elev-raise-sm)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -328,7 +328,7 @@ export default function Wallet() {
                 background: activeTab === t.key ? 'var(--surface2)' : 'transparent',
                 border: activeTab === t.key ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
                 color: activeTab === t.key ? 'var(--text)' : 'var(--text-muted)',
-                cursor: 'pointer', transition: 'all 0.18s',
+                cursor: 'pointer', transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               }}
             >
               {t.label}
@@ -341,7 +341,7 @@ export default function Wallet() {
       {activeTab === 'diamonds' && (
         <div style={{ padding: '0 20px' }}>
           <SectionLabel>Diamond Purchases</SectionLabel>
-          <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: '0 16px', boxShadow: '2px 2px 8px var(--neu-dark)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '0 16px', boxShadow: 'var(--elev-raise-sm)' }}>
             {txLoading ? (
               <div style={{ padding: '24px 0', textAlign: 'center' }}>
                 <div style={{ width: 20, height: 20, border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
@@ -363,7 +363,7 @@ export default function Wallet() {
           </div>
 
           <SectionLabel>Spent on Items</SectionLabel>
-          <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: '0 16px', boxShadow: '2px 2px 8px var(--neu-dark)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '0 16px', boxShadow: 'var(--elev-raise-sm)' }}>
             {spendsLoading ? (
               <div style={{ padding: '24px 0', textAlign: 'center' }}>
                 <div style={{ width: 20, height: 20, border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
@@ -390,7 +390,7 @@ export default function Wallet() {
       {activeTab === 'orbs' && (
         <div style={{ padding: '0 20px' }}>
           <SectionLabel>Orb Activity</SectionLabel>
-          <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: '0 16px', boxShadow: '2px 2px 8px var(--neu-dark)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '0 16px', boxShadow: 'var(--elev-raise-sm)' }}>
             {orbSpends.length === 0 ? (
               <div style={{ padding: '36px 0', textAlign: 'center' }}>
                 <OrbIcon size={28} />
@@ -417,7 +417,7 @@ export default function Wallet() {
       {activeTab === 'vouchers' && (
         <div style={{ padding: '0 20px' }}>
           <SectionLabel>Voucher Activity</SectionLabel>
-          <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: '0 16px', boxShadow: '2px 2px 8px var(--neu-dark)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '0 16px', boxShadow: 'var(--elev-raise-sm)' }}>
             {voucherSpends.length === 0 ? (
               <div style={{ padding: '36px 0', textAlign: 'center' }}>
                 <Ticket size={26} style={{ color: '#f0c060', margin: '0 auto', display: 'block' }} />

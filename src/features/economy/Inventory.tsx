@@ -69,7 +69,7 @@ const RARITY_COLOR: Record<MallRarity, string> = {
   Common: '#888899',
   Rare:   '#4f8ef7',
   Epic:   '#9b6dff',
-  Mythic: '#ff6b00',
+  Mythic: 'var(--accent)',
 }
 
 /* ══════════════════════════════════════════════════
@@ -83,10 +83,10 @@ function EquipToast({ msg, onDone }: { msg: ToastMsg; onDone: () => void }) {
     <div style={{
       position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
       zIndex: 9999, background: 'rgba(17,17,19,0.97)',
-      border: `1px solid ${msg.equipped ? 'rgba(255,107,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+      border: `1px solid ${msg.equipped ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.1)'}`,
       borderRadius: 14, padding: '11px 18px',
       display: 'flex', alignItems: 'center', gap: 9,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)',
+      boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(12px)',
       animation: 'invFeedIn 0.25s ease-out both', whiteSpace: 'nowrap',
     }}>
       {msg.equipped
@@ -133,8 +133,8 @@ function EquipModal({
       <div style={{
         background: 'var(--surface)', borderRadius: 24, padding: 24,
         width: '100%', maxWidth: 340,
-        border: `1px solid ${isEquipped ? 'rgba(255,107,0,0.3)' : 'rgba(255,255,255,0.07)'}`,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.6)', position: 'relative',
+        border: `1px solid ${isEquipped ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'rgba(255,255,255,0.07)'}`,
+        boxShadow: 'var(--elev-popover)', position: 'relative',
         animation: 'invModalIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both',
       }}>
         {/* Close */}
@@ -156,8 +156,8 @@ function EquipModal({
           width: '100%', height: 160, borderRadius: 16, marginBottom: 16,
           background: item.image_url
             ? `url(${item.image_url}) center/cover`
-            : `linear-gradient(135deg, rgba(255,107,0,0.08), rgba(155,109,255,0.08))`,
-          border: '1px solid rgba(255,255,255,0.06)',
+            : `linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(155,109,255,0.08))`,
+          border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {!item.image_url && (
@@ -208,7 +208,7 @@ function EquipModal({
             onClick={(e) => { ripple(e); onUnequip() }}
             className="ripple-wrap"
             style={{
-              width: '100%', padding: 13, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)',
+              width: '100%', padding: 13, borderRadius: 14, border: '1px solid var(--border-strong)',
               cursor: 'pointer', background: 'var(--surface2)',
               color: 'var(--text-dim)', fontSize: 14, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
@@ -223,10 +223,10 @@ function EquipModal({
             style={{
               width: '100%', padding: 13, borderRadius: 14, border: 'none',
               cursor: 'pointer',
-              background: 'linear-gradient(135deg, var(--accent), #ff9a3c)',
+              background: 'linear-gradient(135deg, var(--accent), var(--accent2))',
               color: '#fff', fontSize: 14, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              boxShadow: '0 4px 18px rgba(255,107,0,0.35)',
+              boxShadow: '0 4px 18px color-mix(in srgb, var(--accent) 35%, transparent)',
             }}
           >
             <CheckCircle2 size={15} /> Equip
@@ -252,13 +252,13 @@ function InventoryCard({ entry, onTap }: { entry: InventoryEntry; onTap: () => v
       style={{
         background: 'var(--surface)',
         border: entry.is_equipped
-          ? '1.5px solid rgba(255,107,0,0.45)'
+          ? '1.5px solid color-mix(in srgb, var(--accent) 45%, transparent)'
           : isMythic
-          ? '1px solid rgba(255,107,0,0.2)'
+          ? '1px solid color-mix(in srgb, var(--accent) 20%, transparent)'
           : '1px solid rgba(255,255,255,0.05)',
         borderRadius: 16, padding: 10, cursor: 'pointer', position: 'relative',
         boxShadow: entry.is_equipped
-          ? '0 0 0 1px rgba(255,107,0,0.15), 4px 4px 12px var(--neu-dark)'
+          ? '0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent), 4px 4px 12px var(--neu-dark)'
           : '4px 4px 10px var(--neu-dark), -2px -2px 8px var(--neu-light)',
         transition: 'border-color 0.2s, box-shadow 0.2s',
       }}
@@ -269,7 +269,7 @@ function InventoryCard({ entry, onTap }: { entry: InventoryEntry; onTap: () => v
           position: 'absolute', top: 8, right: 8,
           width: 8, height: 8, borderRadius: '50%',
           background: 'var(--accent)',
-          boxShadow: '0 0 6px rgba(255,107,0,0.7)',
+          boxShadow: '0 0 6px color-mix(in srgb, var(--accent) 70%, transparent)',
         }} />
       )}
 
@@ -317,10 +317,10 @@ function SectionHeader({ icon, label, count }: { icon: React.ReactNode; label: s
     }}>
       <div style={{
         width: 34, height: 34, borderRadius: 10, background: 'var(--surface2)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        border: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
-        boxShadow: '2px 2px 6px var(--neu-dark), -1px -1px 4px var(--neu-light)',
+        boxShadow: 'var(--elev-raise-sm)',
       }}>
         {icon}
       </div>
@@ -512,7 +512,7 @@ export default function Inventory() {
         {/* ─── Profile Card Effects ────────────────── */}
         {cardEffects.length > 0 && (
           <div style={{ animation: 'invSectionIn 0.3s ease-out both', animationDelay: '0.2s' }}>
-            <SectionHeader icon={<Sparkles size={16} style={{ color: '#ff6b00' }} />} label="Profile Card Effects" count={cardEffects.length} />
+            <SectionHeader icon={<Sparkles size={16} style={{ color: 'var(--accent)' }} />} label="Profile Card Effects" count={cardEffects.length} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               {cardEffects.map(e => <InventoryCard key={e.id} entry={e} onTap={() => setSelected(e)} />)}
             </div>

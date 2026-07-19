@@ -143,9 +143,9 @@ export default function ProfileEffectPreview({
               it. zIndex is above ProfilePreviewModal's own 20000. */}
           <div style={{
             position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 20010, background: 'rgba(20,20,24,0.92)', border: '1px solid rgba(255,255,255,0.12)',
+            zIndex: 20010, background: 'rgba(20,20,24,0.92)', border: '1px solid var(--border-strong)',
             borderRadius: 20, padding: '9px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text)',
-            whiteSpace: 'nowrap', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
+            whiteSpace: 'nowrap', boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(8px)',
             pointerEvents: 'none',
           }}>
             This is what others see when they view your profile.

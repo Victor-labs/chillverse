@@ -124,7 +124,7 @@ export default function Pro() {
 
       {/* Back */}
       <div style={{ marginBottom: 20 }}>
-        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}>
           <ArrowLeft size={15} />
         </button>
       </div>
@@ -136,9 +136,9 @@ export default function Pro() {
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16, margin: '0 auto 14px',
-          background: 'linear-gradient(135deg,#ff6b00,#ff9a3c)',
+          background: 'linear-gradient(135deg,var(--accent),var(--accent2))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 8px 24px rgba(255,107,0,0.4)',
+          boxShadow: '0 8px 24px color-mix(in srgb, var(--accent) 40%, transparent)',
         }}>
           <Crown size={26} color="#fff" fill="#fff" />
         </div>
@@ -155,7 +155,7 @@ export default function Pro() {
       }}>
         <div style={{
           display: 'inline-flex', background: 'var(--surface)', borderRadius: 14, padding: 4,
-          boxShadow: 'inset 2px 2px 6px var(--neu-dark), inset -1px -1px 4px var(--neu-light)',
+          boxShadow: 'var(--elev-inset)',
         }}>
           {(['monthly', 'yearly'] as BillingInterval[]).map(iv => (
             <button
@@ -294,7 +294,7 @@ export default function Pro() {
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             width: '100%', maxWidth: 340, background: 'var(--surface2)',
-            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 22, padding: 24,
+            border: '1px solid var(--border-strong)', borderRadius: 22, padding: 24,
             textAlign: 'center', position: 'relative',
             animation: 'cvproPop 0.3s cubic-bezier(0.34,1.3,0.64,1) both',
           }}>
@@ -326,7 +326,7 @@ export default function Pro() {
               <>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Checkout closed</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 18 }}>No charge was made. You can try again anytime.</p>
-                <button onClick={() => setModal(null)} style={{ width: '100%', padding: 13, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => setModal(null)} style={{ width: '100%', padding: 13, borderRadius: 14, border: '1px solid var(--border-strong)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 14, fontWeight: 700 }}>
                   Close
                 </button>
               </>

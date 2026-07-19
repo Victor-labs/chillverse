@@ -59,9 +59,9 @@ const PACKS: Pack[] = [
     priceCents: 300000,
     priceDisplay: '₦3,000',
     diamonds: 310,
-    accentColor: '#ff6b00',
-    borderColor: 'rgba(255,107,0,0.3)',
-    badgeBg: 'rgba(255,107,0,0.15)',
+    accentColor: 'var(--accent)',
+    borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+    badgeBg: 'color-mix(in srgb, var(--accent) 15%, transparent)',
     image:
       'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Diamond%20purchase/file_00000000710071f4807acc7a14ca9b74.png',
   },
@@ -272,7 +272,7 @@ function PackCard({
           fontWeight: 800,
           fontFamily: 'inherit',
           boxShadow: loading ? 'none' : `0 4px 16px ${pack.borderColor}`,
-          transition: 'all 0.2s',
+          transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
           marginTop: 2,
         }}
       >
@@ -319,8 +319,8 @@ function PurchaseModal({
           maxWidth: 360,
           background: 'var(--surface2)',
           borderRadius: 24,
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--elev-popover)',
           overflow: 'visible',
           position: 'relative',
           animation: 'popIn 0.38s cubic-bezier(0.34,1.56,0.64,1) both',
@@ -359,8 +359,8 @@ function PurchaseModal({
             background:
               kind === 'success'
                 ? 'linear-gradient(160deg,rgba(62,207,142,0.12),rgba(79,142,247,0.08))'
-                : 'linear-gradient(160deg,rgba(255,107,0,0.12),rgba(245,197,66,0.08))',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                : 'linear-gradient(160deg,color-mix(in srgb, var(--accent) 12%, transparent),rgba(245,197,66,0.08))',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           {/* blurred bg */}
@@ -406,11 +406,11 @@ function PurchaseModal({
                 objectFit: 'cover',
                 objectPosition: 'center top',
                 borderRadius: 16,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+                boxShadow: 'var(--elev-popover)',
                 filter:
                   kind === 'success'
                     ? 'drop-shadow(0 8px 24px rgba(62,207,142,0.3))'
-                    : 'drop-shadow(0 8px 24px rgba(255,107,0,0.3))',
+                    : 'drop-shadow(0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent))',
               }}
             />
           </div>
@@ -481,12 +481,12 @@ function PurchaseModal({
                   borderRadius: 14,
                   border: 'none',
                   cursor: 'pointer',
-                  background: 'linear-gradient(135deg,var(--accent),#ff9a3c)',
+                  background: 'linear-gradient(135deg,var(--accent),var(--accent2))',
                   color: '#fff',
                   fontSize: 14,
                   fontWeight: 800,
                   fontFamily: 'inherit',
-                  boxShadow: '0 4px 20px rgba(255,107,0,0.35)',
+                  boxShadow: '0 4px 20px color-mix(in srgb, var(--accent) 35%, transparent)',
                 }}
               >
                 Try Again
@@ -502,7 +502,7 @@ function PurchaseModal({
                 width: '100%',
                 padding: 13,
                 borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid var(--border-strong)',
                 cursor: 'pointer',
                 background: 'var(--surface)',
                 color: 'var(--text-dim)',
@@ -650,8 +650,8 @@ export default function BuyDiamonds() {
               height: 36,
               borderRadius: 10,
               background: 'var(--surface)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              boxShadow: '2px 2px 6px var(--neu-dark)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--elev-raise-sm)',
               color: 'var(--text-dim)',
               display: 'flex',
               alignItems: 'center',
@@ -678,10 +678,10 @@ export default function BuyDiamonds() {
               alignItems: 'center',
               gap: 5,
               background: 'var(--surface)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid var(--border)',
               borderRadius: 10,
               padding: '6px 12px',
-              boxShadow: '2px 2px 6px var(--neu-dark)',
+              boxShadow: 'var(--elev-raise-sm)',
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
@@ -776,7 +776,7 @@ export default function BuyDiamonds() {
                 fontWeight: 700,
                 fontStyle: 'italic',
                 letterSpacing: '0.5px',
-                background: 'linear-gradient(135deg, #ff6b00, #f5c542)',
+                background: 'linear-gradient(135deg, var(--accent), #f5c542)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
@@ -798,7 +798,7 @@ export default function BuyDiamonds() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   background: 'var(--surface)',
-                  border: '1px solid rgba(255,107,0,0.2)',
+                  border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                   borderRadius: 14,
                   padding: '12px 16px',
                   gap: 12,
@@ -814,8 +814,8 @@ export default function BuyDiamonds() {
                       width: 36,
                       height: 36,
                       borderRadius: 10,
-                      background: 'rgba(255,107,0,0.1)',
-                      border: '1px solid rgba(255,107,0,0.2)',
+                      background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -876,14 +876,14 @@ export default function BuyDiamonds() {
                     borderRadius: 11,
                     border: 'none',
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    background: loading ? 'var(--surface3)' : 'linear-gradient(135deg,#ff6b00,#f5c542)',
+                    background: loading ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#f5c542)',
                     color: '#fff',
                     fontSize: 13,
                     fontWeight: 800,
                     fontFamily: 'inherit',
                     flexShrink: 0,
-                    boxShadow: loading ? 'none' : '0 4px 14px rgba(255,107,0,0.35)',
-                    transition: 'all 0.2s',
+                    boxShadow: loading ? 'none' : '0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent)',
+                    transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
                   }}
                 >
                   {fp.priceDisplay}

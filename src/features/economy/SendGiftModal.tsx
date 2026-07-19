@@ -27,7 +27,7 @@ const RARITY_META: Record<MallRarity, { color: string; bg: string }> = {
   Common: { color: '#888899', bg: 'rgba(136,136,153,0.14)' },
   Rare:   { color: '#4f8ef7', bg: 'rgba(79,142,247,0.14)'  },
   Epic:   { color: '#9b6dff', bg: 'rgba(155,109,255,0.14)' },
-  Mythic: { color: '#ff6b00', bg: 'rgba(255,107,0,0.14)'   },
+  Mythic: { color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 14%, transparent)'   },
 }
 
 const BLESSED_HANDS_GOAL = 5
@@ -186,7 +186,7 @@ export default function SendGiftModal({
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px 16px 8px', flexShrink: 0 }}>
         <button type="button" onClick={onClose}
-          style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <X size={16} />
         </button>
         <h1 style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 800, color: 'var(--text)', marginRight: 34 }}>Send a gift</h1>
@@ -196,9 +196,9 @@ export default function SendGiftModal({
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 20px 28px', maxWidth: 480, width: '100%', margin: '0 auto' }}>
 
         {/* Promo card */}
-        <div style={{ position: 'relative', borderRadius: 22, overflow: 'hidden', marginBottom: 24, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 40px rgba(0,0,0,0.4)' }}>
+        <div style={{ position: 'relative', borderRadius: 22, overflow: 'hidden', marginBottom: 24, border: '1px solid var(--border)', boxShadow: 'var(--elev-popover)' }}>
           <img src={CARD_IMG} alt="" style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
-          <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(14,14,18,0.72)', backdropFilter: 'blur(6px)', borderRadius: 10, padding: '6px 11px 6px 8px', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}>
+          <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(14,14,18,0.72)', backdropFilter: 'blur(6px)', borderRadius: 10, padding: '6px 11px 6px 8px', boxShadow: 'var(--elev-raise)' }}>
             <Logo size={16} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#fff' }}>ChillVerse</span>
           </div>
@@ -206,7 +206,7 @@ export default function SendGiftModal({
 
         {/* Send To */}
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Send To</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 20 }}>
           <SharedAvatar src={recipientAvatar} name={recipientName} size={34} radius={10} disabled />
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{recipientName}</span>
         </div>
@@ -214,13 +214,13 @@ export default function SendGiftModal({
         {/* Item */}
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Your Gift</div>
         {itemLoading ? (
-          <div style={{ height: 66, borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: 20 }} />
+          <div style={{ height: 66, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 20 }} />
         ) : itemUnavailable || !item ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12.5, fontWeight: 600, marginBottom: 20 }}>
             <AlertCircle size={14} /> This item is no longer available to gift.
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 20 }}>
             {item.image_url ? (
               <img src={item.image_url} alt={item.name} style={{ width: 46, height: 46, borderRadius: 11, objectFit: 'cover', flexShrink: 0 }} />
             ) : (
@@ -254,7 +254,7 @@ export default function SendGiftModal({
       </div>
 
       {/* Buy Gift */}
-      <div style={{ padding: '12px 20px calc(20px + env(safe-area-inset-bottom))', flexShrink: 0, maxWidth: 480, width: '100%', margin: '0 auto', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '12px 20px calc(20px + env(safe-area-inset-bottom))', flexShrink: 0, maxWidth: 480, width: '100%', margin: '0 auto', borderTop: '1px solid var(--border)' }}>
         <button
           onClick={(e) => { ripple(e); handleBuyGift() }}
           disabled={!item || itemUnavailable || !canAfford || sending}
@@ -262,11 +262,11 @@ export default function SendGiftModal({
           style={{
             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
             cursor: !item || itemUnavailable || !canAfford || sending ? 'not-allowed' : 'pointer',
-            background: !item || itemUnavailable || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#ff9a3c)',
+            background: !item || itemUnavailable || !canAfford || sending ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),var(--accent2))',
             color: !item || itemUnavailable || !canAfford || sending ? 'var(--text-muted)' : '#fff',
             fontSize: 15, fontWeight: 800, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: item && !itemUnavailable && canAfford && !sending ? '0 4px 20px rgba(255,107,0,0.35)' : 'none',
-            transition: 'all 0.2s',
+            boxShadow: item && !itemUnavailable && canAfford && !sending ? '0 4px 20px color-mix(in srgb, var(--accent) 35%, transparent)' : 'none',
+            transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
           }}>
           {sending ? (
             <><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} /> Sending…</>
