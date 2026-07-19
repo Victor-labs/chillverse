@@ -64,8 +64,8 @@ export default function SearchPage() {
           onClick={(e) => { ripple(e); navigate(-1) }}
           style={{
             width: 38, height: 38, borderRadius: 11,
-            background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '2px 2px 6px var(--neu-dark)', color: 'var(--text-dim)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            boxShadow: 'var(--elev-raise-sm)', color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
           }}
@@ -80,7 +80,7 @@ export default function SearchPage() {
 
       <div style={{ padding: '0 20px' }}>
         {/* Search input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)', marginBottom: 12 }}>
           <SearchIcon size={15} style={{ color: 'var(--text-muted)' }} />
           <input
             autoFocus
@@ -136,7 +136,7 @@ export default function SearchPage() {
               tabIndex={0}
               onClick={() => goToPlayer(p.id)}
               onKeyDown={e => { if (e.key === 'Enter') goToPlayer(p.id) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}
             >
               <Avatar src={p.avatar} name={p.display_name || p.username} userId={p.id} size={36} radius={10} />
               <div style={{ minWidth: 0 }}>
@@ -154,7 +154,7 @@ export default function SearchPage() {
               key={g.id}
               type="button"
               onClick={goToGame}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}
             >
               <div style={{ width: 36, height: 36, borderRadius: 10, background: `${g.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <g.icon size={17} style={{ color: g.accent }} />
@@ -174,7 +174,7 @@ export default function SearchPage() {
               key={item.id}
               type="button"
               onClick={goToMall}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}
             >
               <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {item.image_url ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}

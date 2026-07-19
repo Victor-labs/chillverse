@@ -73,7 +73,7 @@ export default function FollowSuggestions({ myId }: { myId: string }) {
               onKeyDown={e => { if (e.key === 'Enter') navigate(`/profile/${p.id}`) }}
               style={{
                 position: 'relative', flex: '0 0 150px', padding: '18px 12px 14px',
-                borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
                 cursor: 'pointer',
               }}
