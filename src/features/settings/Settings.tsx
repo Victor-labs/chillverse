@@ -5,9 +5,11 @@ import {
   ArrowLeft, ChevronRight, Trash2,
   Calendar, Tag, Lock, Eye,
   Circle, Moon, EyeOff, Check, Mail, Key,
-  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy, Crown, Bell, Search,
+  AlertTriangle, Edit2, X, LogOut, Layers, Volume2, LifeBuoy, Crown, Bell, Search, Palette,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
+import { useTheme } from '../../context/ThemeContext'
+import { getTheme } from '../../shared/lib/themes'
 import { isGameSoundEnabled, setGameSoundEnabled } from '../games/soundSettings'
 import { useProfile } from '../profile/useProfile'
 import { isProActive } from '../../shared/lib/proPlans'
@@ -151,6 +153,7 @@ export default function Settings() {
   const navigate = useNavigate()
   const { profile, refetch: refetchProfile } = useProfile()
   const isPro = isProActive(profile)
+  const { theme } = useTheme()
   const { session } = useAuth()
 
   const [modal, setModal] = useState<'logout' | 'delete' | 'email' | 'username' | 'password' | 'cancelSub' | null>(null)
@@ -509,6 +512,19 @@ export default function Settings() {
                   {presence === p.id && <Check size={16} color="var(--accent)" />}
                 </div>
               ))}
+            </div>
+          </>
+        )}
+
+        {sectionMatches(['Appearance', 'App Theme']) && (
+          <>
+            <SectionTitle>Appearance</SectionTitle>
+            <div className="settings-card">
+              <Row icon={<Palette size={15} />} iconBg="rgba(155,109,255,0.12)" iconColor="#9b6dff"
+                label="App Theme"
+                value={getTheme(theme).label}
+                onClick={(e) => { ripple(e); navigate('/settings/theme') }}
+              />
             </div>
           </>
         )}
