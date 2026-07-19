@@ -15,7 +15,7 @@ export default function Nav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[300] flex items-center justify-between h-[60px] px-5 md:px-10 bg-[rgba(5,5,6,0.75)] backdrop-blur-2xl border-b border-chill-border">
       <Link to="/" className="flex items-center gap-2.5 no-underline">
-        <Logo size={34} className="drop-shadow-[0_0_14px_rgba(255,107,0,0.35)]" />
+        <Logo size={34} className="drop-shadow-[0_0_14px_color-mix(in srgb, var(--accent) 35%, transparent)]" />
         <Wordmark size={20} animated />
       </Link>
 

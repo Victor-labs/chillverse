@@ -143,11 +143,11 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
             <Logo size={30} />
           )}
           <button type="button" onClick={onClose} className="lg:hidden ml-auto"
-            style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <X size={14} />
           </button>
           <button type="button" onClick={onToggleCollapse} className="hidden lg:flex"
-            style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-dim)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0, flexShrink: 0 }}
+            style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-dim)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0, flexShrink: 0 }}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
@@ -285,7 +285,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
         </nav>
 
         {/* User panel — Discord-style; tap to open full profile */}
-        <div className="px-2 pb-2 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-2 pb-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
           {!collapsed ? (
             <div
               className="ripple-wrap"

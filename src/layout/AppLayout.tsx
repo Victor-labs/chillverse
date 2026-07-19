@@ -92,7 +92,7 @@ export default function AppLayout() {
       <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
         {/* Ambient bubbles */}
         <div className="bubble-bg">
-          <div className="bubble" style={{ width: 420, height: 420, background: '#ff6b00', left: '-10%', top: '10%', animationDuration: '22s' }} />
+          <div className="bubble" style={{ width: 420, height: 420, background: 'var(--accent)', left: '-10%', top: '10%', animationDuration: '22s' }} />
           <div className="bubble" style={{ width: 300, height: 300, background: '#9b6dff', right: '5%', top: '30%', animationDuration: '28s', animationDelay: '-8s' }} />
           <div className="bubble" style={{ width: 250, height: 250, background: '#4f8ef7', left: '40%', bottom: '15%', animationDuration: '18s', animationDelay: '-4s' }} />
           <div className="bubble" style={{ width: 180, height: 180, background: '#3ecf8e', right: '25%', top: '5%', animationDuration: '32s', animationDelay: '-12s' }} />
