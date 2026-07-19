@@ -22,7 +22,7 @@ export const THEMES: ThemeDef[] = [
   { id: 'emerald',  label: 'Emerald',  locked: true,  swatch: 'linear-gradient(135deg,#0d3b30,#00ff87)' },
 ]
 
-export const DEFAULT_THEME: ThemeId = 'midnight'
+export const DEFAULT_THEME: ThemeId = 'grey'
 export const THEME_STORAGE_KEY = 'chillverse-theme'
 
 export function isValidTheme(value: string | null): value is ThemeId {
