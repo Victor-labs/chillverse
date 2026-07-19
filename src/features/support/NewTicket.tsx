@@ -84,9 +84,9 @@ export default function NewTicket() {
       <form
         onSubmit={handleSubmit}
         style={{
-          background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 18,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
           padding: 22, display: 'flex', flexDirection: 'column', gap: 18,
-          boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+          boxShadow: 'var(--elev-raise-sm)',
         }}
       >
         <Field label="Topic (optional)">
@@ -175,7 +175,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
+  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
   borderRadius: 10, padding: '11px 13px', color: 'var(--text)', fontSize: 13.5, outline: 'none',
 }
 

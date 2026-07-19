@@ -76,7 +76,7 @@ export default function SupportCategory() {
         <div style={{
           width: 46, height: 46, borderRadius: 13, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(255,107,0,0.12)', color: 'var(--accent)',
+          background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
         }}>
           <Icon size={22} />
         </div>
@@ -124,9 +124,9 @@ export default function SupportCategory() {
 
 const articleRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 12, width: '100%', cursor: 'pointer',
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
   padding: '14px 16px', marginBottom: 9,
-  boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  boxShadow: 'var(--elev-raise-sm)',
 }
 
 const errorBoxStyle: React.CSSProperties = {

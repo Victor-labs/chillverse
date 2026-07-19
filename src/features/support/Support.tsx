@@ -97,7 +97,7 @@ export default function Support() {
             width: 56, height: 56, borderRadius: 16, margin: '0 auto 14px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'linear-gradient(135deg, var(--accent), var(--accent2))',
-            boxShadow: '0 8px 24px rgba(255,107,0,0.35)',
+            boxShadow: '0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent)',
           }}
         >
           <LifeBuoy size={26} color="#fff" />
@@ -172,7 +172,7 @@ export default function Support() {
                       <div style={{
                         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'rgba(255,107,0,0.12)', color: 'var(--accent)',
+                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
                       }}>
                         <Icon size={19} />
                       </div>
@@ -279,22 +279,22 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 const quickActionStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', cursor: 'pointer',
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
-  padding: '14px 16px', boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+  padding: '14px 16px', boxShadow: 'var(--elev-raise-sm)',
 }
 
 const categoryCardStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 12, width: '100%', cursor: 'pointer',
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
   padding: '14px 16px', marginBottom: 9,
-  boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  boxShadow: 'var(--elev-raise-sm)',
 }
 
 const articleRowStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 12, width: '100%', cursor: 'pointer',
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
   padding: '14px 16px', marginBottom: 9,
-  boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  boxShadow: 'var(--elev-raise-sm)',
 }
 
 const errorBoxStyle: React.CSSProperties = {

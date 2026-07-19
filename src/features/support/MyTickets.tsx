@@ -109,9 +109,9 @@ export default function MyTickets() {
 }
 
 const ticketCardStyle: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
   padding: '16px 18px', marginBottom: 12,
-  boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  boxShadow: 'var(--elev-raise-sm)',
 }
 
 const errorBoxStyle: React.CSSProperties = {

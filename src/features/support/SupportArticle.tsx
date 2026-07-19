@@ -130,9 +130,9 @@ export default function SupportArticle() {
       )}
 
       <div style={{
-        background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 18,
+        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
         padding: '22px 24px', marginBottom: 24,
-        boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+        boxShadow: 'var(--elev-raise-sm)',
       }}>
         {paragraphs.map((para, i) => (
           <p key={i} style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', marginBottom: i === paragraphs.length - 1 ? 0 : 16 }}>
@@ -157,7 +157,7 @@ export default function SupportArticle() {
       {/* Feedback */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14,
-        background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
         padding: '16px 18px', marginBottom: 16,
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Was this article helpful?</span>
@@ -196,9 +196,9 @@ export default function SupportArticle() {
         className="ripple-wrap"
         style={{
           display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer',
-          background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
           padding: '14px 16px',
-          boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+          boxShadow: 'var(--elev-raise-sm)',
         }}
       >
         <MessageSquarePlus size={18} color="var(--accent)" />
