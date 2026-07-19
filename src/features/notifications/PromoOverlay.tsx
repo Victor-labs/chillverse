@@ -65,8 +65,8 @@ export default function PromoOverlay({ notification, onDismiss }: Props) {
           width: '100%', maxWidth: 340,
           background: 'var(--surface2)',
           borderRadius: 24,
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.75)',
+          border: '1px solid var(--border-strong)',
+          boxShadow: 'var(--elev-popover)',
           overflow: 'hidden',
           position: 'relative',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(0.88) translateY(20px)',
@@ -156,7 +156,7 @@ export default function PromoOverlay({ notification, onDismiss }: Props) {
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={handleDismiss} style={{
               flex: 1, padding: '12px 0', borderRadius: 13,
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid var(--border-strong)',
               background: 'var(--surface)', color: 'var(--text-dim)',
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
             }}>

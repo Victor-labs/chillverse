@@ -53,10 +53,10 @@ const TYPE_COLOR: Record<string, string> = {
   follow:      '#3ecf8e',
   message:     '#4f8ef7',
   level_up:    '#9b6dff',
-  rank_up:     '#ff6b00',
+  rank_up:     'var(--accent)',
   streak:      '#ff4d8b',
   session_reset: '#4f8ef7',
-  movies_open:   '#ff9a3c',
+  movies_open:   'var(--accent2)',
   come_back:     '#9b6dff',
   streak_warning: '#ff4d8b',
   exploration_complete: '#3ecf8e',
@@ -153,10 +153,10 @@ export default function Notifications() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button type="button" onClick={() => navigate(-1)}
-            style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <ArrowLeft size={14} />
           </button>
           <div>
@@ -176,7 +176,7 @@ export default function Notifications() {
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '14px 20px 0', scrollbarWidth: 'none' }}>
         {FILTERS.map(f => (
           <button key={f} type="button" onClick={() => setActiveFilter(f)}
-            style={{ padding: '6px 14px', borderRadius: 20, border: 'none', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeFilter === f ? 'var(--accent)' : 'var(--surface)', color: activeFilter === f ? '#fff' : 'var(--text-dim)', boxShadow: activeFilter === f ? '0 4px 12px rgba(255,107,0,0.3)' : '2px 2px 6px var(--neu-dark)', transition: 'all 0.15s' }}>
+            style={{ padding: '6px 14px', borderRadius: 20, border: 'none', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeFilter === f ? 'var(--accent)' : 'var(--surface)', color: activeFilter === f ? '#fff' : 'var(--text-dim)', boxShadow: activeFilter === f ? '0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent)' : '2px 2px 6px var(--neu-dark)', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)' }}>
             {f}
           </button>
         ))}
@@ -201,7 +201,7 @@ export default function Notifications() {
             const label = TYPE_LABEL[n.type] ?? n.type
             return (
               <div key={n.id}
-                style={{ display: 'flex', gap: 12, padding: '14px 16px', background: !n.read ? `${color}08` : 'var(--surface)', border: !n.read ? `1px solid ${color}22` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: '2px 2px 8px var(--neu-dark)', transition: 'all 0.15s', position: 'relative' }}>
+                style={{ display: 'flex', gap: 12, padding: '14px 16px', background: !n.read ? `${color}08` : 'var(--surface)', border: !n.read ? `1px solid ${color}22` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: 'var(--elev-raise-sm)', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)', position: 'relative' }}>
 
                 {/* Icon */}
                 <div style={{ width: 42, height: 42, borderRadius: 13, background: `${color}18`, border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color }}>

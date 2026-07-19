@@ -52,7 +52,7 @@ const TYPE_COLOR: Record<string, string> = {
   follow:      '#3ecf8e',
   message:     '#4f8ef7',
   level_up:    '#9b6dff',
-  rank_up:     '#ff6b00',
+  rank_up:     'var(--accent)',
   streak:      '#ff4d8b',
 }
 
@@ -130,17 +130,17 @@ export default function NotificationBell() {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button type="button" onClick={handleOpen}
-        style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--surface)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--surface)', boxShadow: 'var(--elev-raise-sm)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         <Bell size={16} />
         {unread > 0 && (
-          <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: '#ff6b00', border: '2px solid var(--bg)' }} />
+          <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', border: '2px solid var(--bg)' }} />
         )}
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', top: 46, right: 0, width: 320, maxWidth: 'calc(100vw - 24px)', background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', zIndex: 300, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 46, right: 0, width: 320, maxWidth: 'calc(100vw - 24px)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: 'var(--elev-popover)', zIndex: 300, overflow: 'hidden' }}>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Notifications</span>
             <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <X size={14} />
@@ -162,7 +162,7 @@ export default function NotificationBell() {
                 const color = TYPE_COLOR[n.type] ?? '#888899'
                 const iconKey = n.icon && n.icon !== 'bell' ? n.icon : (TYPE_ICON[n.type] ?? 'bell')
                 return (
-                  <div key={n.id} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: !n.read ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
+                  <div key={n.id} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: !n.read ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}18`, border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color }}>
                       <NotifIcon iconKey={iconKey} size={16} />
                     </div>
@@ -181,8 +181,8 @@ export default function NotificationBell() {
           <button
             type="button"
             onClick={() => { setOpen(false); navigate('/notifications') }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderTop: '1px solid rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--accent)', transition: 'background 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,0,0.08)' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderTop: '1px solid var(--border)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--accent)', transition: 'background 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 8%, transparent)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
           >
             View All Notifications <ChevronRight size={14} />
