@@ -110,8 +110,8 @@ export default function ReportModal({
               rows={3}
               maxLength={500}
               style={{
-                width: '100%', background: 'var(--surface)', boxShadow: 'inset 2px 2px 6px var(--neu-dark)',
-                border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: '9px 12px',
+                width: '100%', background: 'var(--surface)', boxShadow: 'var(--elev-inset)',
+                border: '1px solid var(--border)', borderRadius: 10, padding: '9px 12px',
                 color: 'var(--text)', fontSize: 12.5, resize: 'none', fontFamily: 'inherit', marginBottom: 12,
               }}
             />
