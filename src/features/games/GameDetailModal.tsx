@@ -112,7 +112,7 @@ export default function GameDetailModal({
         transform: entered && !closing ? 'scale(1)' : 'scale(0.94)',
         opacity: entered && !closing ? 1 : 0,
         transition: 'transform 0.24s cubic-bezier(0.32,0.72,0,1), opacity 0.2s ease-out',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.55)',
+        boxShadow: 'var(--elev-popover)',
       }
     : {
         width: '100%',
@@ -122,7 +122,7 @@ export default function GameDetailModal({
         marginTop: 'auto',
         transform: entered && !closing ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+        boxShadow: '0 -12px 40px -12px var(--sh)',
       }
 
   return createPortal(
@@ -181,8 +181,8 @@ export default function GameDetailModal({
             {menuOpen && (
               <div style={{
                 position: 'absolute', top: 36, right: 0, minWidth: 200, background: 'var(--surface2)',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 6,
-                boxShadow: '0 10px 32px rgba(0,0,0,0.5)',
+                border: '1px solid var(--border)', borderRadius: 14, padding: 6,
+                boxShadow: 'var(--elev-raise)',
               }}>
                 <MenuItem
                   icon={idCopied ? <Check size={14} /> : <Copy size={14} />}
@@ -254,7 +254,7 @@ export default function GameDetailModal({
           </div>
           {bestStreak > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-              <Flame size={12} style={{ color: '#ff9a3c' }} />
+              <Flame size={12} style={{ color: 'var(--accent2)' }} />
               <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Best streak: <strong style={{ color: 'var(--text-dim)' }}>{bestStreak}</strong></span>
             </div>
           )}

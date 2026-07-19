@@ -344,7 +344,7 @@ export default function Games() {
     <div>
       <PageOnboarding pageKey="games" />
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-        <button type="button" onClick={() => navigate('/dashboard')} style={{ width:34, height:34, borderRadius:10, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'2px 2px 6px var(--neu-dark)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+        <button type="button" onClick={() => navigate('/dashboard')} style={{ width:34, height:34, borderRadius:10, background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'var(--elev-raise-sm)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
           <ArrowLeft size={15} />
         </button>
       </div>
@@ -429,7 +429,7 @@ export default function Games() {
             onClick={(e) => { ripple(e); navigate('/leaderboards') }}
             style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, cursor: 'pointer' }}
           >
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: 'linear-gradient(135deg,#f5c542,#ff9a3c)', boxShadow: '0 4px 14px rgba(245,197,66,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 13, background: 'linear-gradient(135deg,#f5c542,var(--accent2))', boxShadow: '0 4px 14px rgba(245,197,66,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Trophy size={20} style={{ color: '#fff' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
