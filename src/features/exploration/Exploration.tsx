@@ -137,7 +137,7 @@ function NoAvatarModal({ onClose }: { onClose: () => void }) {
           background: 'linear-gradient(160deg, #1a1a1f, #111113)',
           border: '1.5px solid rgba(255,255,255,0.08)',
           borderRadius: 28,
-          boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+          boxShadow: 'var(--elev-popover)',
           overflow: 'hidden',
           animation: 'modalUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both',
         }}
@@ -158,7 +158,7 @@ function NoAvatarModal({ onClose }: { onClose: () => void }) {
             position: 'absolute', bottom: 16, left: 16, right: 16,
             background: 'rgba(10,10,14,0.82)',
             backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 16,
             padding: '12px 14px',
             display: 'flex', alignItems: 'center', gap: 10,
@@ -208,11 +208,11 @@ function NoAvatarModal({ onClose }: { onClose: () => void }) {
                 padding: '12px 18px',
                 borderRadius: 14,
                 background: 'var(--surface)',
-                border: '1px solid rgba(255,255,255,0.07)',
+                border: '1px solid var(--border)',
                 color: 'var(--text-muted)',
                 fontSize: 13, fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '4px 4px 10px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+                boxShadow: 'var(--elev-raise)',
               }}
             >
               Close
@@ -245,7 +245,7 @@ function EnergyBar({ current, max, onTap }: { current: number; max: number; onTa
             height: 8, borderRadius: 4,
             background: 'var(--surface2)',
             overflow: 'hidden',
-            boxShadow: 'inset 2px 2px 4px var(--neu-dark)',
+            boxShadow: 'var(--elev-inset)',
           }}>
             <div style={{
               height: '100%', width: `${pct}%`, borderRadius: 4,
@@ -475,7 +475,7 @@ function ChamberRow({
           : '1.5px solid rgba(255,255,255,0.05)',
       borderRadius: 16,
       padding: '14px 16px',
-      boxShadow: '4px 4px 10px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+      boxShadow: 'var(--elev-raise)',
       transition: 'border-color 0.3s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -567,7 +567,7 @@ function ChamberRow({
             height: 5, borderRadius: 4,
             background: 'var(--surface2)',
             overflow: 'hidden',
-            boxShadow: 'inset 2px 2px 4px var(--neu-dark)',
+            boxShadow: 'var(--elev-inset)',
           }}>
             <div style={{
               height: '100%',
@@ -897,7 +897,7 @@ function MapView({
           borderRadius: 12, padding: '8px 16px',
           color: 'var(--text-muted)', fontSize: 13, fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: '4px 4px 10px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+          boxShadow: 'var(--elev-raise)',
         }}
       >
         <ChevronLeft size={16} /> Back
@@ -949,7 +949,7 @@ function MapView({
                 border: `2px solid ${done ? '#3ecf8e' : running ? '#9b6dff' : 'rgba(255,255,255,0.15)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 9, color: '#fff', fontWeight: 800,
-                transition: 'all 0.3s',
+                transition: 'background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out)',
                 boxShadow: done ? '0 0 10px rgba(62,207,142,0.5)' : running ? '0 0 10px rgba(155,109,255,0.5)' : 'none',
               }}>
                 {done ? '✓' : i + 1}
@@ -978,13 +978,13 @@ function MapView({
         border: '1.5px solid rgba(255,255,255,0.06)',
         borderRadius: 16, padding: '14px 16px',
         marginBottom: 14,
-        boxShadow: '4px 4px 10px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+        boxShadow: 'var(--elev-raise)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Map Progress</span>
           <span style={{ fontSize: 11, fontWeight: 800, color: tierColor }}>{Math.floor(progressPct)}%</span>
         </div>
-        <div style={{ height: 6, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden', boxShadow: 'inset 2px 2px 4px var(--neu-dark)' }}>
+        <div style={{ height: 6, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden', boxShadow: 'var(--elev-inset)' }}>
           <div style={{
             height: '100%', width: `${progressPct}%`,
             background: `linear-gradient(90deg, ${tierColor}bb, ${tierColor})`,
@@ -1220,7 +1220,7 @@ export default function Exploration() {
             border: '1.5px solid rgba(255,255,255,0.06)',
             borderRadius: 16, padding: '12px 16px',
             marginBottom: 18,
-            boxShadow: '4px 4px 12px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+            boxShadow: 'var(--elev-raise)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -1250,7 +1250,7 @@ export default function Exploration() {
               borderRadius: 20, overflow: 'hidden',
               marginBottom: 20, position: 'relative', height: 90,
               border: '1.5px solid rgba(255,255,255,0.06)',
-              boxShadow: '4px 4px 14px var(--neu-dark)',
+              boxShadow: 'var(--elev-raise-sm)',
             }}>
               <img src={MAP5_IMAGE} alt="World" style={{
                 width: '100%', height: '100%', objectFit: 'cover',
