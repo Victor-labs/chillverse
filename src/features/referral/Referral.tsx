@@ -55,8 +55,8 @@ export default function ReferralPage() {
           onClick={(e) => { ripple(e); navigate('/profile') }}
           style={{
             width: 38, height: 38, borderRadius: 11,
-            background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '2px 2px 6px var(--neu-dark)', color: 'var(--text-dim)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            boxShadow: 'var(--elev-raise-sm)', color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
           }}
@@ -95,14 +95,14 @@ export default function ReferralPage() {
 
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ flex: 1, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Users size={13} style={{ color: 'var(--accent)' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Referred</span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{info.referralCount}</div>
               </div>
-              <div style={{ flex: 1, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ flex: 1, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Gem size={13} style={{ color: '#f5c542' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Max reward</span>
