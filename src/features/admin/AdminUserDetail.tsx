@@ -111,9 +111,9 @@ function ActionButton({ children, onClick, disabled, tone = 'neutral' }: {
   tone?: 'neutral' | 'danger' | 'accent'
 }) {
   const colors = {
-    neutral: { text: 'var(--text-dim)', border: 'rgba(255,255,255,0.07)', bg: 'rgba(255,255,255,0.03)' },
+    neutral: { text: 'var(--text-dim)', border: 'var(--border)', bg: 'rgba(255,255,255,0.03)' },
     danger: { text: 'var(--red)', border: 'rgba(255,79,79,0.35)', bg: 'rgba(255,79,79,0.08)' },
-    accent: { text: 'var(--purple)', border: 'rgba(255,107,0,0.45)', bg: 'rgba(108,80,255,0.12)' },
+    accent: { text: 'var(--purple)', border: 'color-mix(in srgb, var(--accent) 45%, transparent)', bg: 'rgba(108,80,255,0.12)' },
   }[tone]
   return (
     <button
@@ -238,7 +238,7 @@ export default function AdminUserDetail() {
           onClick={(e) => { ripple(e); navigate('/admin') }}
           style={{
             width: 38, height: 38, borderRadius: 11, background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)', boxShadow: '2px 2px 6px var(--neu-dark)',
+            border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)',
             color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
           }}
@@ -262,7 +262,7 @@ export default function AdminUserDetail() {
           disabled={loading}
           style={{
             width: 38, height: 38, borderRadius: 11, background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-dim)',
+            border: '1px solid var(--border)', color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: loading ? 'default' : 'pointer',
             opacity: loading ? 0.5 : 1, flexShrink: 0,
           }}
@@ -285,7 +285,7 @@ export default function AdminUserDetail() {
             {/* ── Identity header ── */}
             <div className="neu-card flex items-center gap-3" style={{ padding: 16, marginTop: 16 }}>
               <Avatar src={detail.avatar} name={detail.display_name || detail.username} size={54}
-                ring={detail.is_banned ? 'var(--red)' : detail.is_pro ? 'var(--gold)' : 'rgba(255,107,0,0.45)'} />
+                ring={detail.is_banned ? 'var(--red)' : detail.is_pro ? 'var(--gold)' : 'color-mix(in srgb, var(--accent) 45%, transparent)'} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="flex items-center gap-1.5">
                   <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -337,7 +337,7 @@ export default function AdminUserDetail() {
                       display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                       padding: '9px 14px', borderRadius: 11, cursor: 'pointer', whiteSpace: 'nowrap',
                       background: active ? 'var(--surface2)' : 'transparent',
-                      border: active ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.04)',
+                      border: active ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid rgba(255,255,255,0.04)',
                       color: active ? 'var(--accent)' : 'var(--text-dim)',
                       fontSize: 12.5, fontWeight: 800,
                     }}
@@ -579,7 +579,7 @@ export default function AdminUserDetail() {
                         onChange={e => setBanReason(e.target.value)}
                         placeholder="Ban reason (required)"
                         style={{
-                          width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.07)',
+                          width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)',
                           background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, marginBottom: 8,
                         }}
                       />
@@ -588,7 +588,7 @@ export default function AdminUserDetail() {
                           value={banHours ?? ''}
                           onChange={e => setBanHours(e.target.value === '' ? null : Number(e.target.value))}
                           style={{
-                            padding: '8px 10px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.07)',
+                            padding: '8px 10px', borderRadius: 9, border: '1px solid var(--border)',
                             background: 'var(--surface2)', color: 'var(--text)', fontSize: 12,
                           }}
                         >

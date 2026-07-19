@@ -100,7 +100,7 @@ export default function AdminUserSearch({ onClose }: AdminUserSearchProps) {
         position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 20,
         width: 320, maxWidth: 'calc(100vw - 40px)', borderRadius: 14,
         boxShadow: '0 12px 28px rgba(0,0,0,0.4), 4px 4px 12px var(--neu-dark)',
-        border: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface)',
+        border: '1px solid var(--border)', background: 'var(--surface)',
         overflow: 'hidden',
       }}
     >
@@ -112,15 +112,15 @@ export default function AdminUserSearch({ onClose }: AdminUserSearchProps) {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search username, name, or email…"
           style={{
-            width: '100%', background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10,
+            width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10,
             padding: '9px 12px 9px 32px', fontSize: 12.5, color: 'var(--text)', outline: 'none',
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = 'rgba(255,107,0,0.45)' }}
+          onFocus={e => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, transparent)' }}
           onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
         />
       </div>
 
-      <div style={{ maxHeight: 320, overflowY: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ maxHeight: 320, overflowY: 'auto', borderTop: '1px solid var(--border)' }}>
         {error ? (
           <p style={{ fontSize: 11.5, color: 'var(--red)', textAlign: 'center', padding: '18px 12px' }}>{error}</p>
         ) : !debouncedSearch.trim() ? (

@@ -165,7 +165,7 @@ export default function AdminDashboard() {
           onClick={(e) => { ripple(e); navigate('/dashboard') }}
           style={{
             width: 38, height: 38, borderRadius: 11, background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)', boxShadow: '2px 2px 6px var(--neu-dark)',
+            border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)',
             color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
           }}
@@ -184,7 +184,7 @@ export default function AdminDashboard() {
           disabled={loading}
           style={{
             width: 38, height: 38, borderRadius: 11, background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-dim)',
+            border: '1px solid var(--border)', color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: loading ? 'default' : 'pointer',
             opacity: loading ? 0.5 : 1,
           }}
@@ -219,7 +219,7 @@ export default function AdminDashboard() {
                         display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                         padding: '9px 14px', borderRadius: 11, cursor: 'pointer', whiteSpace: 'nowrap',
                         background: active ? 'var(--surface2)' : 'transparent',
-                        border: active ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.04)',
+                        border: active ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid rgba(255,255,255,0.04)',
                         color: active ? 'var(--accent)' : 'var(--text-dim)',
                         fontSize: 12.5, fontWeight: 800,
                       }}
@@ -237,10 +237,10 @@ export default function AdminDashboard() {
                 style={{
                   width: 36, height: 36, borderRadius: 11, flexShrink: 0,
                   background: searchOpen ? 'var(--surface2)' : 'var(--surface)',
-                  border: searchOpen ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                  border: searchOpen ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid rgba(255,255,255,0.07)',
                   color: searchOpen ? 'var(--accent)' : 'var(--text-dim)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  boxShadow: '2px 2px 6px var(--neu-dark)',
+                  boxShadow: 'var(--elev-raise-sm)',
                 }}
               >
                 <Search size={15} />

@@ -52,7 +52,7 @@ export default function AdminDrawer({ open, title, subtitle, depth = 0, onClose,
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+            borderBottom: '1px solid var(--border)', flexShrink: 0,
             background: 'var(--surface)',
           }}
         >
@@ -61,7 +61,7 @@ export default function AdminDrawer({ open, title, subtitle, depth = 0, onClose,
               type="button"
               onClick={onBack}
               style={{
-                background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 9,
+                background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 9,
                 color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 7, flexShrink: 0,
               }}
             >
@@ -81,7 +81,7 @@ export default function AdminDrawer({ open, title, subtitle, depth = 0, onClose,
             type="button"
             onClick={onClose}
             style={{
-              background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 9,
+              background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 9,
               color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', padding: 7, flexShrink: 0,
             }}
           >
