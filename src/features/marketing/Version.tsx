@@ -153,7 +153,7 @@ function UpgradeModal({
         background: 'var(--surface)',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 24, overflow: 'hidden',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+        boxShadow: 'var(--elev-popover)',
         animation: 'popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both',
       }}>
         <img
@@ -375,7 +375,7 @@ function VersionCard({
               color: isNext ? '#fff' : 'var(--text-muted)',
               fontSize: 13, fontWeight: 800, cursor: isNext ? 'pointer' : 'not-allowed',
               boxShadow: isNext ? '0 8px 24px rgba(155,109,255,0.35)' : 'none',
-              transition: 'all 0.2s',
+              transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               letterSpacing: 0.3,
             }}
           >
@@ -468,7 +468,7 @@ export default function Version() {
         <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => navigate(-1)}
-            style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}
+            style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}
           >
             <ArrowLeft size={15} />
           </button>
@@ -502,7 +502,7 @@ export default function Version() {
           display: 'inline-flex', alignItems: 'center', gap: 7,
           background: 'var(--surface)', border: '1px solid rgba(245,197,66,0.25)',
           borderRadius: 99, padding: '6px 14px', marginBottom: 24,
-          boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)',
+          boxShadow: 'var(--elev-raise-sm)',
         }}>
           <span style={{ fontSize: 15 }}>💎</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: '#f5c542' }}>{diamonds.toLocaleString()}</span>
