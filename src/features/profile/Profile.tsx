@@ -110,7 +110,7 @@ function InfoTagPills({
 }) {
   function Pill({ icon, label }: { icon: React.ReactNode; label?: string }) {
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)', background: 'var(--surface)', boxShadow: '2px 2px 6px var(--neu-dark)' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border-strong)', background: 'var(--surface)', boxShadow: 'var(--elev-raise-sm)' }}>
         {icon}
         {label && <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)' }}>{label}</span>}
       </div>
@@ -146,7 +146,7 @@ function SaveToast({ message, onDone }: { message: string; onDone: () => void })
   }, [])
 
   return (
-    <div style={{ position: 'fixed', top: visible ? 16 : -80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, transition: 'top 0.32s cubic-bezier(0.34,1.56,0.64,1)', background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
+    <div style={{ position: 'fixed', top: visible ? 16 : -80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, transition: 'top 0.32s cubic-bezier(0.34,1.56,0.64,1)', background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
       <Check size={14} color="#3ecf8e" />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{message}</span>
     </div>
@@ -201,7 +201,7 @@ function AddFriendSheet({ myId, onClose, onFollowed }: {
             <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Find Players</p>
             <button type="button" onClick={close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '10px 14px', marginBottom: 16, boxShadow: 'inset 2px 2px 6px var(--neu-dark)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 14px', marginBottom: 16, boxShadow: 'var(--elev-inset)' }}>
             <Search size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
             <input autoFocus type="text" placeholder="Search by username or display name…" value={query} onChange={e => setQuery(e.target.value)}
               style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14 }} />
@@ -219,7 +219,7 @@ function AddFriendSheet({ myId, onClose, onFollowed }: {
                 const rank = getRank(p.xp)
                 const isFollowed = followed.has(p.id)
                 return (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderBottom: '1px solid var(--border)' }}>
                     <button type="button" onClick={() => { close(); navigate(`/profile/${p.id}`) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       <MiniAvatar name={p.display_name || p.username} avatar={p.avatar} size={42} />
                     </button>
@@ -298,7 +298,7 @@ function FollowListSheet({ profileId, mode, onClose }: {
               const rank = getRank(p.xp)
               return (
                 <button key={p.id} type="button" onClick={() => { close(); navigate(`/profile/${p.id}`) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid rgba(255,255,255,0.04)', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 10 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid var(--border)', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 10 }}>
                   <MiniAvatar name={p.display_name || p.username} avatar={p.avatar} size={44} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{p.display_name || p.username}</div>
@@ -360,7 +360,7 @@ function WishlistSheet({ profileId, onClose }: { profileId: string; onClose: () 
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Heart items in the Mall to add them here</p>
               </div>
             ) : items.map(item => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--surface)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.item_image
                     ? <img src={item.item_image} alt={item.item_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -416,7 +416,7 @@ function AchievementsModal({
               {recent.map(a => {
                 const color = RARITY_COLOR[a.rarity] ?? RARITY_COLOR.common
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                     <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${color}33,${color}11)`, border: `1.5px solid ${color}44` }}>
                       <AchIcon iconKey={a.icon} size={18} color={color} />
                     </div>
@@ -502,7 +502,7 @@ function AlbumDetailModal({
     <>
       <div className="overlay-backdrop" onClick={close} style={{ zIndex: 505 }} />
       <div style={{ position: 'fixed', inset: 0, zIndex: 510, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface2)', borderRadius: 22, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 80px rgba(0,0,0,0.7)', padding: 18, transform: visible ? 'scale(1)' : 'scale(0.9)', opacity: visible ? 1 : 0, transition: 'all 0.25s ease' }}>
+        <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface2)', borderRadius: 22, border: '1px solid var(--border)', boxShadow: 'var(--elev-popover)', padding: 18, transform: visible ? 'scale(1)' : 'scale(0.9)', opacity: visible ? 1 : 0, transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
             <button type="button" onClick={close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={16} /></button>
           </div>
@@ -790,12 +790,12 @@ export default function Profile() {
         {/* Topbar over banner */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
           <button type="button" onClick={() => navigate('/dashboard')}
-            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-strong)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <ArrowLeft size={14} />
           </button>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>My Profile</span>
           <button type="button" onClick={() => navigate('/settings')}
-            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-strong)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <Settings size={14} />
           </button>
         </div>
@@ -837,7 +837,7 @@ export default function Profile() {
       <div style={{ padding: '0 20px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={(e) => { ripple(e); handleLike() }} disabled={liking}
           className="ripple-wrap"
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.1)'}`, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', cursor: liking ? 'default' : 'pointer', boxShadow: '2px 2px 6px var(--neu-dark)' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.1)'}`, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', cursor: liking ? 'default' : 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
           <Heart size={13} color={liked ? '#ff4d8b' : 'var(--text-muted)'} style={{ fill: liked ? '#ff4d8b' : 'none' }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: liked ? '#ff4d8b' : 'var(--text-dim)' }}>{likeCount}</span>
         </button>
@@ -896,7 +896,7 @@ export default function Profile() {
           {/* Locked: Followers / Following (combined, can't be removed) */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={() => showFollowCounts && setFollowListMode('followers')} disabled={!showFollowCounts}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: showFollowCounts ? 'pointer' : 'default', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: showFollowCounts ? 'pointer' : 'default', boxShadow: 'var(--elev-raise-sm)' }}>
               <Users size={15} style={{ color: '#4f8ef7' }} />
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{!showFollowCounts ? '—' : (followers ?? 0).toLocaleString()}</div>
@@ -904,7 +904,7 @@ export default function Profile() {
               </div>
             </button>
             <button type="button" onClick={() => showFollowCounts && setFollowListMode('following')} disabled={!showFollowCounts}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: showFollowCounts ? 'pointer' : 'default', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: showFollowCounts ? 'pointer' : 'default', boxShadow: 'var(--elev-raise-sm)' }}>
               <Users size={15} style={{ color: '#9b6dff' }} />
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{!showFollowCounts ? '—' : (following ?? 0).toLocaleString()}</div>
@@ -915,7 +915,7 @@ export default function Profile() {
 
           {/* Locked: Wishlist */}
           <button type="button" onClick={() => setShowWishlist(true)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Heart size={15} style={{ color: '#ff4d8b' }} />
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Wishlist</span>
@@ -927,7 +927,7 @@ export default function Profile() {
           <BadgesStatRow collected={playerBadges.length} total={badgeDefs.length} onClick={() => setShowBadgesModal(true)} />
 
           {/* Locked: Current XP (tap does nothing) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Zap size={15} style={{ color: '#f5c542' }} />
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Current XP</span>
@@ -938,7 +938,7 @@ export default function Profile() {
           {/* Optional, up to 3: Achievements / Rank / Leaderboard */}
           {gridCards.includes('achievements') && (
             <button type="button" onClick={() => setShowAchievements(true)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Trophy size={15} style={{ color: '#f5c542' }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Achievements</span>
@@ -948,7 +948,7 @@ export default function Profile() {
           )}
           {gridCards.includes('rank') && (
             <button type="button" onClick={() => setShowRankInfo(true)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 15 }}>{rank.emoji}</span>
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Rank</span>
@@ -958,7 +958,7 @@ export default function Profile() {
           )}
           {gridCards.includes('leaderboard') && (
             <button type="button" onClick={() => navigate('/ranks')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Trophy size={15} style={{ color: '#4f8ef7' }} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Leaderboard</span>
@@ -996,7 +996,7 @@ export default function Profile() {
         return (
           <div style={{ padding: '0 20px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Favorite Game</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ width: 40, height: 40, borderRadius: 11, background: `${meta.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <meta.icon size={19} style={{ color: meta.accent }} />
               </div>
@@ -1031,7 +1031,7 @@ export default function Profile() {
         {/* Equipped Avatar — image preview + name, tap to change in Mall */}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Avatar</p>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: equippedAvatar ? `${rank.color}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedAvatar ? `1px solid ${rank.color}33` : '1px solid rgba(255,255,255,0.06)' }}>
               {equippedAvatar && equippedAvatar.startsWith('http')
                 ? <img src={equippedAvatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -1047,7 +1047,7 @@ export default function Profile() {
         {/* Equipped Artifact — image preview + name, tap to change in Mall */}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>Artifact</p>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 10px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
             <div style={{ width: 54, height: 54, borderRadius: 12, background: equippedArtifact ? `${rank.color}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedArtifact ? `1px solid ${rank.color}33` : '1px solid rgba(255,255,255,0.06)' }}>
               {equippedArtifactImage && equippedArtifactImage.startsWith('http')
                 ? <img src={equippedArtifactImage} alt="artifact" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -1096,7 +1096,7 @@ export default function Profile() {
         <RankModal tier={rank} onClose={() => setShowRankInfo(false)} />
       )}
       {likeToast && (
-        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(255,77,139,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 8px 32px rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(255,77,139,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
           <Heart size={14} color="#ff4d8b" style={{ fill: '#ff4d8b' }} />
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{likeToast}</span>
         </div>

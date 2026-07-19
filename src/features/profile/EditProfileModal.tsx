@@ -145,7 +145,7 @@ function InfoTagsPicker({
           const disabled = !isSelected && selected.length >= 2
           return (
             <button key={key} type="button" disabled={disabled} onClick={() => onToggle(key)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.07)', background: isSelected ? 'rgba(255,107,0,0.08)' : 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, textAlign: 'left' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.07)', background: isSelected ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, textAlign: 'left' }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{INFO_TAG_META[key].label}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{previewFor(key)}</div>
@@ -207,7 +207,7 @@ function FavoriteGameDropdown({ value, onChange }: { value: string | null; onCha
     <div style={{ position: 'relative' }}>
       <SectionLabel>Game you love playing</SectionLabel>
       <button type="button" onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', background: 'var(--surface)', cursor: 'pointer', boxSizing: 'border-box' }}>
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', boxSizing: 'border-box' }}>
         {current ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: `${current.accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -221,16 +221,16 @@ function FavoriteGameDropdown({ value, onChange }: { value: string | null; onCha
         <ChevronDown size={15} style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
       {open && (
-        <div style={{ marginTop: 6, borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)', background: 'var(--surface2)', overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
+        <div style={{ marginTop: 6, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
           {value && (
             <button type="button" onClick={() => { onChange(null); setOpen(false) }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12.5, textAlign: 'left' }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12.5, textAlign: 'left' }}>
               <X size={13} /> Clear selection
             </button>
           )}
           {GAMES.map(g => (
             <button key={g.dbKey} type="button" onClick={() => { onChange(g.dbKey); setOpen(false) }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: value === g.dbKey ? 'rgba(255,107,0,0.08)' : 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', textAlign: 'left' }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: value === g.dbKey ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ width: 26, height: 26, borderRadius: 7, background: `${g.accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <g.icon size={13} style={{ color: g.accent }} />
               </div>
@@ -263,7 +263,7 @@ function GridCardsPicker({ selected, onToggle }: { selected: string[]; onToggle:
           const disabled = !isSelected && selected.length >= 3
           return (
             <button key={card.id} type="button" disabled={disabled} onClick={() => onToggle(card.id)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.07)', background: isSelected ? 'rgba(255,107,0,0.08)' : 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, textAlign: 'left' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.07)', background: isSelected ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--surface)', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, textAlign: 'left' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{card.label}</span>
               <div style={{ width: 20, height: 20, borderRadius: 6, border: isSelected ? 'none' : '1.5px solid rgba(255,255,255,0.15)', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {isSelected && <Check size={12} color="#fff" />}
@@ -311,7 +311,7 @@ function WishlistEditor({ profileId }: { profileId: string }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {items.map(item => (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--surface2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {item.item_image ? <img src={item.item_image} alt={item.item_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={14} style={{ color: 'var(--text-muted)' }} />}
               </div>
@@ -334,7 +334,7 @@ function WishlistEditor({ profileId }: { profileId: string }) {
 function DiscardConfirm({ onDiscard, onKeepEditing }: { onDiscard: () => void; onKeepEditing: () => void }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', inset: 0, zIndex: 20002, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface2)', borderRadius: 22, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 80px rgba(0,0,0,0.7)', padding: '24px 22px', textAlign: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface2)', borderRadius: 22, border: '1px solid var(--border)', boxShadow: 'var(--elev-popover)', padding: '24px 22px', textAlign: 'center' }}>
         <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Unsaved changes</p>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 20 }}>
           You're leaving this page with unsaved changes.
@@ -486,7 +486,7 @@ export default function EditProfileModal({
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         {/* ── Header ── */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'var(--bg)' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
           <button type="button" onClick={requestClose}
             style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={16} />
@@ -500,7 +500,7 @@ export default function EditProfileModal({
 
           {/* Username (locked) */}
           <SectionLabel>Username</SectionLabel>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>@{profile.username}</span>
             <Lock size={13} style={{ color: 'var(--text-muted)' }} />
           </div>
@@ -508,12 +508,12 @@ export default function EditProfileModal({
           {/* Display name */}
           <SectionLabel>Display Name</SectionLabel>
           <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30}
-            style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '12px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
 
           {/* Bio */}
           <SectionLabel>Bio</SectionLabel>
           <textarea value={bio} onChange={e => setBio(truncateToWords(e.target.value, BIO_WORD_LIMIT))} rows={2} placeholder="Say something about yourself…"
-            style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '12px 14px', color: 'var(--text)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', resize: 'none', fontFamily: 'inherit' }} />
+            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', color: 'var(--text)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', resize: 'none', fontFamily: 'inherit' }} />
           <p style={{ fontSize: 10.5, color: wordCount >= BIO_WORD_LIMIT ? 'var(--accent)' : 'var(--text-muted)', marginTop: 5, textAlign: 'right' }}>
             {wordCount}/{BIO_WORD_LIMIT} words
           </p>
@@ -552,7 +552,7 @@ export default function EditProfileModal({
         </div>
 
         {/* ── Footer save bar ── */}
-        <div style={{ flexShrink: 0, padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'var(--bg)' }}>
+        <div style={{ flexShrink: 0, padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
           <button type="button" onClick={(e) => { ripple(e); save() }} disabled={saving} className="btn-primary"
             style={{ width: '100%', padding: 14, borderRadius: 14, fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: saving ? 0.7 : 1 }}>
             {saving ? <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} /> : <><Check size={14} /> Save Changes</>}

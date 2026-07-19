@@ -557,7 +557,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
         style={{
           ...sheetBase,
           background: 'var(--bg)', overflowY: isPreview ? 'hidden' : 'auto', overscrollBehavior: 'contain', position: 'relative',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+          boxShadow: '0 -12px 40px -12px var(--sh)',
         }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.22)', margin: '10px auto 0' }} />
@@ -591,8 +591,8 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
           {menuOpen && (
             <div style={{
               position: 'absolute', top: 36, right: 0, minWidth: 190, background: 'var(--surface2)',
-              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 6,
-              boxShadow: '0 10px 32px rgba(0,0,0,0.5)', zIndex: 1,
+              border: '1px solid var(--border)', borderRadius: 14, padding: 6,
+              boxShadow: 'var(--elev-raise)', zIndex: 1,
             }}>
               <MenuItem icon={usernameCopied ? <Check size={14} /> : <Copy size={14} />} label={usernameCopied ? 'Copied!' : 'Copy username'} onClick={handleCopyUsername} />
               {!isMe && (
@@ -673,7 +673,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflowX: 'auto' }}>
                   {!isModerator && profile.info_tags?.includes('gender') && profile.gender && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid var(--border-strong)', flexShrink: 0 }}>
                       <UserRound size={12} style={{ color: 'var(--text-muted)' }} />
                       <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', letterSpacing: 0.3 }}>
                         {GENDER_LABELS[profile.gender] ?? profile.gender.toUpperCase()}
@@ -685,7 +685,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                       badges by rarity, one straight horizontal line inside
                       a single bordered box (never a wrapping grid). */}
                   {!isModerator && (rank || ownedBadges.length > 0) && (
-                    <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, padding: 4, borderRadius: 8, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, padding: 4, borderRadius: 8, background: 'var(--surface2)', border: '1px solid var(--border-strong)', flexShrink: 0 }}>
                       {rank && (
                         <button
                           type="button"
@@ -779,8 +779,8 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
               )}
 
               {activity.movie && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.28)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ff6b00', boxShadow: '0 0 8px #ff6b00', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 12, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 28%, transparent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)', animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>🎬 Watching movies</span>
                 </div>
               )}
@@ -818,7 +818,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
 
               {/* Main / Wishlist / Stats tabs — wishlist can't be hidden, so
                   the tab is always shown even for a profile with nothing in it. */}
-              <div style={{ display: 'flex', marginTop: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', marginTop: 16, borderBottom: '1px solid var(--border)' }}>
                 {(['main', 'wishlist', 'stats'] as const).map(tab => (
                   <button
                     key={tab}
@@ -841,11 +841,11 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
               {activeTab === 'main' ? (
                 <div className="pv-panel" style={{ marginTop: 12, background: 'var(--surface)', borderRadius: 12, padding: '2px 12px' }}>
                   <div className="pv-section" style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{profile.show_follow_counts ? followers.toLocaleString() : '—'}</span>
                       <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Followers</span>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{profile.show_follow_counts ? following.toLocaleString() : '—'}</span>
                       <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Following</span>
                     </div>
@@ -907,7 +907,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                           className="pv-btn"
                           disabled={isMe}
                           onClick={() => !isMe && setGiftTarget({ itemId: item.item_id, itemName: item.item_name, itemImage: item.item_image })}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', width: '100%', textAlign: 'left', cursor: isMe ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', width: '100%', textAlign: 'left', cursor: isMe ? 'default' : 'pointer', fontFamily: 'inherit' }}>
                           <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--surface2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {item.item_image ? <img src={item.item_image} alt={item.item_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={14} style={{ color: 'var(--text-muted)' }} />}
                           </div>
@@ -921,7 +921,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
               ) : (
                 <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {/* XP — always shown */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                       <Zap size={14} style={{ color: '#f5c542' }} />
                       <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>Current XP</span>
@@ -934,7 +934,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                     <button
                       type="button" className="pv-btn"
                       onClick={() => { close(); navigate('/ranks') }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <Trophy size={14} style={{ color: '#4f8ef7' }} />
@@ -946,7 +946,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
 
                   {/* Active mornings/nights — owner's chosen play-time tag */}
                   {profile.info_tags?.includes('play_time') && profile.play_time && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         {profile.play_time === 'morning'
                           ? <Sunrise size={14} style={{ color: '#f5c542' }} />
@@ -969,7 +969,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                         <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, marginLeft: 2 }}>
                           @{profile.username} likes playing
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                           <div style={{ width: 34, height: 34, borderRadius: 9, background: `${meta.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <meta.icon size={16} style={{ color: meta.accent }} />
                           </div>
@@ -988,7 +988,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
 
                   {/* Equipped avatar + artifact */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                       <div style={{ width: 44, height: 44, borderRadius: 11, background: profile.equipped_avatar ? `${rank?.color ?? '#888899'}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: profile.equipped_avatar ? `1px solid ${rank?.color ?? '#888899'}33` : '1px solid rgba(255,255,255,0.06)' }}>
                         {profile.equipped_avatar && profile.equipped_avatar.startsWith('http')
                           ? <img src={profile.equipped_avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -999,7 +999,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                         {profile.equipped_avatar ? 'Avatar' : 'No avatar'}
                       </span>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                       <div style={{ width: 44, height: 44, borderRadius: 11, background: equippedArtifact ? `${rank?.color ?? '#888899'}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedArtifact ? `1px solid ${rank?.color ?? '#888899'}33` : '1px solid rgba(255,255,255,0.06)' }}>
                         {equippedArtifactImage && equippedArtifactImage.startsWith('http')
                           ? <img src={equippedArtifactImage} alt="artifact" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1096,7 +1096,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
         <BadgeToast
           title={giftToast}
           icon="" rarity=""
-          colorOverride="#ff6b00"
+          colorOverride="var(--accent)"
           customIcon={<Gift size={14} />}
           onDone={() => setGiftToast(null)}
         />

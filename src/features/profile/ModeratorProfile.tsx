@@ -182,7 +182,7 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: 130, background: 'linear-gradient(135deg, #9b6dff44, #4f8ef722)' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
           <button type="button" onClick={() => navigate(-1)}
-            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-strong)', backdropFilter: 'blur(8px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <ArrowLeft size={14} />
           </button>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>Moderator Profile</span>
@@ -228,18 +228,18 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
       <div style={{ padding: '0 20px', marginBottom: 20, display: 'flex', gap: 10 }}>
         <button type="button" onClick={(e) => { ripple(e); handleLike() }} disabled={!myId || liking}
           className="ripple-wrap"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '13px 16px', borderRadius: 16, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.06)'}`, cursor: !myId || liking ? 'default' : 'pointer', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '13px 16px', borderRadius: 16, background: liked ? 'rgba(255,77,139,0.14)' : 'var(--surface)', border: `1px solid ${liked ? 'rgba(255,77,139,0.4)' : 'rgba(255,255,255,0.06)'}`, cursor: !myId || liking ? 'default' : 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
           <Heart size={15} color={liked ? '#ff4d8b' : 'var(--text-muted)'} style={{ fill: liked ? '#ff4d8b' : 'none' }} />
           <span style={{ fontSize: 13, fontWeight: 800, color: liked ? '#ff4d8b' : 'var(--text-dim)' }}>{likeCount}</span>
         </button>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
           <Users size={15} style={{ color: '#4f8ef7' }} />
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{followers.toLocaleString()}</div>
             <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Followers</div>
           </div>
         </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
           <Users size={15} style={{ color: '#9b6dff' }} />
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{following.toLocaleString()}</div>
@@ -258,7 +258,7 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
         {myId && myId !== userId && <FollowButton myId={myId} authorId={userId} />}
         <button type="button" onClick={(e) => { ripple(e); handleShare() }}
           className="ripple-wrap"
-          style={{ flex: 1, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', transition: 'all 0.15s' }}>
+          style={{ flex: 1, padding: '10px 8px', borderRadius: 13, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)' }}>
           {shared ? <Check size={13} color="var(--gold)" /> : <Share2 size={13} />} {shared ? 'Link copied!' : 'Share'}
         </button>
       </div>
@@ -307,7 +307,7 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
             {achievements.map(a => {
               const color = RARITY_COLOR[a.rarity] ?? RARITY_COLOR.common
               return (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${color}33,${color}11)`, border: `1.5px solid ${color}44` }}>
                     <AchIcon iconKey={a.icon} size={18} color={color} />
                   </div>

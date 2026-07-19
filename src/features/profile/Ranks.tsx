@@ -63,7 +63,7 @@ function RankCard({
         boxShadow: isCurrent
           ? `0 0 20px ${tier.glowColor}, 4px 4px 12px var(--neu-dark)`
           : '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
-        transition: 'all 0.2s',
+        transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
       }}
     >
       {/* Row */}
@@ -116,7 +116,7 @@ function RankCard({
 
       {/* Expanded rewards */}
       {open && (
-        <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {tier.rewards.map((reward, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               {reward.imageUrl && (
@@ -337,7 +337,7 @@ export default function Ranks() {
 
       {/* Back */}
       <div style={{ marginBottom: 20 }}>
-        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}>
+        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}>
           <ArrowLeft size={15} />
         </button>
       </div>
@@ -415,7 +415,7 @@ export default function Ranks() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--surface)', borderRadius: 16, padding: 5, boxShadow: '3px 3px 10px var(--neu-dark), -2px -2px 8px var(--neu-light)' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--surface)', borderRadius: 16, padding: 5, boxShadow: 'var(--elev-raise-sm)' }}>
         {([
           { id: 'my-rank',   label: 'My Rank',   icon: <Star size={14} /> },
           { id: 'all-ranks', label: 'All Ranks', icon: <Shield size={14} /> },
@@ -430,7 +430,7 @@ export default function Ranks() {
               fontSize: 12, fontWeight: 700,
               background: tab === t.id ? userTier.color : 'transparent',
               color: tab === t.id ? '#111' : 'var(--text-dim)',
-              transition: 'all 0.2s',
+              transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               boxShadow: tab === t.id ? `0 4px 14px ${userTier.glowColor}` : 'none',
             }}
           >
@@ -446,7 +446,7 @@ export default function Ranks() {
             fontSize: 12, fontWeight: 700,
             background: 'transparent',
             color: 'var(--text-dim)',
-            transition: 'all 0.2s',
+            transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
           }}
         >
           <Trophy size={14} /> Leaderboard
@@ -464,7 +464,7 @@ export default function Ranks() {
               .filter(t => unlockedIds.has(t.id) && t.rewards.some(r => r.type !== 'nothing'))
             if (unlocked.length === 0) {
               return (
-                <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 18, padding: '28px 20px', textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '28px 20px', textAlign: 'center', marginBottom: 20 }}>
                   <div style={{ fontSize: 28, marginBottom: 10 }}>🏆</div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No rewards yet</p>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rewards start at Gold I ({fmtXP(RANK_TIERS.find(t => t.id === 'gold_1')!.xpRequired)} XP). You're on your way.</p>
@@ -492,7 +492,7 @@ export default function Ranks() {
             <>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Coming Up Next</p>
               {upcomingRewards.map(tier => (
-                <div key={tier.id} style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '3px 3px 8px var(--neu-dark),-2px -2px 6px var(--neu-light)' }}>
+                <div key={tier.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14, boxShadow: 'var(--elev-raise-sm)' }}>
                   <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: `${tier.color}15`, border: `1px solid ${tier.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                     {tier.emoji}
                   </div>
@@ -554,7 +554,7 @@ export default function Ranks() {
             <div style={{ position: 'sticky', top: 0, zIndex: 20, paddingTop: 16, paddingBottom: 10, background: 'var(--bg, #0e0e12)' }}>
               <button
                 onClick={() => { setShowLeaderboard(false); setLbMode('tier') }}
-                style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: '2px 2px 6px var(--neu-dark),-1px -1px 4px var(--neu-light)' }}
+                style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}
               >
                 <ArrowLeft size={15} />
               </button>
