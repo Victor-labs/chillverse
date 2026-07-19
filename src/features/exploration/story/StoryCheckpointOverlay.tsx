@@ -69,7 +69,7 @@ export default function StoryCheckpointOverlay({ checkpoint, onComplete }: Props
           border: '1.5px solid rgba(255,255,255,0.08)',
           borderRadius: 20,
           padding: '22px 20px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+          boxShadow: 'var(--elev-popover)',
           animation: 'modalUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both',
         }}
       >
@@ -86,7 +86,7 @@ export default function StoryCheckpointOverlay({ checkpoint, onComplete }: Props
                   onClick={() => choose(opt)}
                   style={{
                     textAlign: 'left', padding: '14px 16px', borderRadius: 14,
-                    background: 'var(--surface2)', border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
                     color: 'var(--text)', fontSize: 13, fontWeight: 600, lineHeight: 1.4,
                     cursor: 'pointer',
                   }}
