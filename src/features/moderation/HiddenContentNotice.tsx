@@ -32,7 +32,7 @@ export default function HiddenContentNotice({
 }) {
   const wrapperStyle = {
     display: inline ? 'inline-flex' : 'flex',
-    alignItems: 'flex-start' as const, gap: 6, fontStyle: 'italic' as const, color: '#ff9a3c', fontSize: 'inherit', lineHeight: 1.4,
+    alignItems: 'flex-start' as const, gap: 6, fontStyle: 'italic' as const, color: 'var(--accent2)', fontSize: 'inherit', lineHeight: 1.4,
   }
 
   if (!isOwner) {

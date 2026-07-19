@@ -16,7 +16,7 @@ import { BadgeIcon } from '../badges/badgeIcons'
 type Tab = 'alerts' | 'reports' | 'users' | 'log'
 
 const REASON_COLORS: Record<ContentReport['status'], string> = {
-  open: '#ff9a3c',
+  open: 'var(--accent2)',
   reviewed: '#5b9cff',
   actioned: '#4fd18a',
   dismissed: 'var(--text-muted)',
@@ -59,8 +59,8 @@ export default function ModerationPanel() {
         <ShieldCheck size={22} color="var(--accent)" />
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>Moderation</h1>
         <span style={{
-          fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'rgba(255,107,0,0.12)',
-          border: '1px solid rgba(255,107,0,0.3)', borderRadius: 999, padding: '3px 10px', marginLeft: 2,
+          fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: 999, padding: '3px 10px', marginLeft: 2,
         }}>
           {isAdmin ? 'Admin' : role === 'staff' ? 'Staff' : 'Moderator'}
         </span>
@@ -79,7 +79,7 @@ export default function ModerationPanel() {
                 display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                 padding: '9px 14px', borderRadius: 11, cursor: 'pointer', whiteSpace: 'nowrap',
                 background: active ? 'var(--surface2)' : 'transparent',
-                border: active ? '1px solid rgba(255,107,0,0.35)' : '1px solid rgba(255,255,255,0.04)',
+                border: active ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)' : '1px solid rgba(255,255,255,0.04)',
                 color: active ? 'var(--accent)' : 'var(--text-dim)',
                 fontSize: 12.5, fontWeight: 800,
               }}
@@ -219,7 +219,7 @@ function AlertsTab({ onResolved }: { onResolved: () => void }) {
                 value={banReason}
                 onChange={e => setBanReason(e.target.value)}
                 placeholder="Reason (required)"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, marginBottom: 8 }}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, marginBottom: 8 }}
               />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <SmallButton danger onClick={() => handleBan(a, 168)} disabled={busy}>
@@ -476,7 +476,7 @@ function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: b
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by exact username…"
           style={{
-            width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
+            width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1px solid var(--border)',
             background: 'var(--surface2)', color: 'var(--text)', fontSize: 13,
           }}
         />
@@ -523,13 +523,13 @@ function UsersTab({ isAdmin, isModOrAdmin }: { isAdmin: boolean; isModOrAdmin: b
                 value={banReason}
                 onChange={e => setBanReason(e.target.value)}
                 placeholder="Reason (required)"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, marginBottom: 8 }}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, marginBottom: 8 }}
               />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <select
                   value={banHours}
                   onChange={e => setBanHours(e.target.value === '' ? '' : Number(e.target.value))}
-                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5 }}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5 }}
                 >
                   <option value="">Permanent</option>
                   <option value={24}>24 hours</option>
@@ -670,7 +670,7 @@ function SmallButton({ children, onClick, danger, disabled, type = 'button' }: {
       className="ripple-wrap"
       style={{
         display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
-        padding: '8px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.08)',
+        padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)',
         background: danger ? 'rgba(255,79,79,0.1)' : 'var(--surface2)',
         color: danger ? 'var(--red)' : 'var(--text)',
         cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
@@ -691,9 +691,9 @@ function EmptyState({ icon: Icon, text }: { icon: typeof Flag; text: string }) {
 }
 
 const cardStyle: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
   padding: '16px 18px', marginBottom: 12,
-  boxShadow: '3px 3px 9px var(--neu-dark), -2px -2px 7px var(--neu-light)',
+  boxShadow: 'var(--elev-raise-sm)',
 }
 
 const errorBox: React.CSSProperties = {
