@@ -1,35 +1,99 @@
 // tailwind.config.js
+// Semantic-first: every color utility maps to the CSS custom properties
+// defined per-theme in src/app/index.css, so Tailwind classes are
+// automatically theme-aware. The old hard-coded `neu.*` values and the
+// entirely unused `chill.*` palette are gone — index.css is the single
+// source of truth for color.
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
+        // Semantic surfaces (theme-aware)
+        bg:        'var(--bg)',
+        nav:       'var(--nav)',
+        surface:   'var(--surface)',
+        surface2:  'var(--surface2)',
+        surface3:  'var(--surface3)',
+        active:    'var(--active)',
+        popover:   'var(--popover)',
+        // Text
+        body:      'var(--text)',
+        secondary: 'var(--text-secondary)',
+        muted:     'var(--text-muted)',
+        // Accent (theme-aware: orange on free themes, per-theme on premium)
+        accent:  'var(--accent)',
+        accent2: 'var(--accent2)',
+        // Brand + status primitives (constant)
+        gold:   'var(--gold)',
+        blue:   'var(--blue)',
+        purple: 'var(--purple)',
+        green:  'var(--green)',
+        pink:   'var(--pink)',
+        red:    'var(--red)',
+        violet: 'var(--brand-violet)',
+        cyan:   'var(--brand-cyan)',
+        // Legacy `neu.*` names kept as aliases so existing `bg-neu-surface`
+        // style classes keep working during the Phase 2 sweep.
         neu: {
-          bg: '#111113', surface: '#1a1a1f', surface2: '#222228', surface3: '#2a2a32',
-          dark: '#0a0a0c', light: '#262630', accent: '#ff6b00', accent2: '#ff9a3c',
-          gold: '#f5c542', text: '#e8e8f0', dim: '#888899', muted: '#555566',
-          blue: '#4f8ef7', purple: '#9b6dff', green: '#3ecf8e', pink: '#ff4d8b', red: '#ff4f4f',
+          bg:       'var(--bg)',
+          surface:  'var(--surface)',
+          surface2: 'var(--surface2)',
+          surface3: 'var(--surface3)',
+          dark:     'var(--neu-dark)',
+          light:    'var(--neu-light)',
+          accent:   'var(--accent)',
+          accent2:  'var(--accent2)',
+          gold:     'var(--gold)',
+          text:     'var(--text)',
+          dim:      'var(--text-secondary)',
+          muted:    'var(--text-muted)',
+          blue:     'var(--blue)',
+          purple:   'var(--purple)',
+          green:    'var(--green)',
+          pink:     'var(--pink)',
+          red:      'var(--red)',
         },
-        chill: {
-          bg:          '#050506',
-          bg2:         '#0a0a10',
-          surface:     '#0d0d16',
-          surface2:    '#14141f',
-          surface3:    '#1b1b28',
-          border:      'rgba(124,102,255,0.14)',
-          borderBright:'rgba(124,102,255,0.4)',
-          violet:      '#6c50ff',
-          violetSoft:  '#a78bfa',
-          cyan:        '#00e5ff',
-          pink:        '#ff4ecd',
-          amber:       '#ffb800',
-          green:       '#00ff87',
-          red:         '#ff4f4f',
-          text:        '#f2f0fb',
-          textSecondary:'#9b96c0',
-          textMuted:   '#5a5678',
-        },
+      },
+      borderColor: {
+        DEFAULT: 'var(--border)',
+        strong:  'var(--border-strong)',
+      },
+      borderRadius: {
+        card: 'var(--radius)',
+        el:   'var(--radius-sm)',
+        tight:'var(--radius-xs)',
+      },
+      boxShadow: {
+        raise:    'var(--elev-raise)',
+        'raise-sm':'var(--elev-raise-sm)',
+        hover:    'var(--elev-hover)',
+        inset:    'var(--elev-inset)',
+        popover:  'var(--elev-popover)',
+        ring:     'var(--ring)',
+      },
+      // Type scale — one place; use as text-display / text-title / etc.
+      fontSize: {
+        display: ['clamp(28px,4vw,34px)', { lineHeight: '1.12', fontWeight: '800', letterSpacing: '-0.02em' }],
+        title:   ['22px',   { lineHeight: '1.2',  fontWeight: '700', letterSpacing: '-0.02em' }],
+        heading: ['16.5px', { lineHeight: '1.3',  fontWeight: '700', letterSpacing: '-0.01em' }],
+        body:    ['13.5px', { lineHeight: '1.55', fontWeight: '400' }],
+        caption: ['11.5px', { lineHeight: '1.4',  fontWeight: '500' }],
+        label:   ['11px',   { lineHeight: '1.2',  fontWeight: '700', letterSpacing: '0.08em' }],
+        micro:   ['10px',   { lineHeight: '1.2',  fontWeight: '600' }],
+      },
+      // Motion language — durations + easings, everywhere
+      transitionDuration: {
+        fast:   '120ms',
+        base:   '200ms',
+        slow:   '320ms',
+        reveal: '550ms',
+      },
+      transitionTimingFunction: {
+        out:    'cubic-bezier(0.16, 1, 0.3, 1)',
+        inout:  'cubic-bezier(0.65, 0, 0.35, 1)',
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       fontFamily: { sans: ['Inter', 'sans-serif'] },
     },
