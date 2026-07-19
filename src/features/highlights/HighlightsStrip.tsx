@@ -35,14 +35,14 @@ export default function HighlightsStrip() {
       style={{
         display: 'flex', alignItems: 'center', gap: 12, width: '100%',
         padding: '13px 16px', borderRadius: 16, marginBottom: 16,
-        background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '2px 2px 8px var(--neu-dark),-1px -1px 5px var(--neu-light)',
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        boxShadow: 'var(--elev-raise-sm)',
         cursor: 'pointer', textAlign: 'left',
       }}
     >
       <div style={{
         width: 38, height: 38, borderRadius: 11, flexShrink: 0,
-        background: 'rgba(255,107,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Camera size={17} style={{ color: 'var(--accent)' }} />
       </div>

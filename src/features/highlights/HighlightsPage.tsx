@@ -31,8 +31,8 @@ export default function HighlightsPage() {
           style={{
             width: 38, height: 38, borderRadius: 11,
             background: 'var(--surface)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '2px 2px 6px var(--neu-dark)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--elev-raise-sm)',
             color: 'var(--text-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,

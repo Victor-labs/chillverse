@@ -51,7 +51,7 @@ export default function HighlightCard({ highlight }: { highlight: Highlight }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 10, padding: '18px 4px',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      borderBottom: '1px solid var(--border)',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         {/* -- Left: name, caption -- */}
@@ -163,7 +163,7 @@ function HighlightArt({ highlight, authorName }: { highlight: Highlight; authorN
   // instead of a blank circle.
   if (highlight.kind === 'game_result') {
     const game = highlight.game_key ? getGameMeta(highlight.game_key) : undefined
-    const accent = game?.accent ?? '#ff6b00'
+    const accent = game?.accent ?? 'var(--accent)'
     const GameIcon = game?.icon
     return (
       <div style={{
@@ -180,7 +180,7 @@ function HighlightArt({ highlight, authorName }: { highlight: Highlight; authorN
   return (
     <div style={{
       width: size, height: size, borderRadius: size * 0.3, flexShrink: 0,
-      background: 'rgba(255,107,0,0.12)',
+      background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
     }} />
   )
 }
