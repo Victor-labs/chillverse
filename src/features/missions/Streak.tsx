@@ -5,8 +5,11 @@ import { useAuth } from "../auth/useAuth";
 import { supabase } from "../../shared/lib/supabase";
 import { updateStreak } from "../auth/auth";
 import { updateMissionProgress } from "./weeklyMissions";
-import emberFlame from "../../assets/streak-ember.png";
 import furnaceMarker from "../../assets/streak-furnace.png";
+import flameRed from "../../assets/streak-flame-red.png";
+import flameBlue from "../../assets/streak-flame-blue.png";
+import flameGreen from "../../assets/streak-flame-green.png";
+import flamePurple from "../../assets/streak-flame-purple.png";
 
 /* ═══════════════════════════════════════════════════
    MILESTONES
@@ -43,6 +46,29 @@ const MOOD_META: Record<string, { label: string; sub: string; color: string }> =
   good:    { label: "On fire",       sub: "This streak has real heat now.",        color: "#ff4500" },
   blazing: { label: "Legendary",     sub: "Untouchable. Keep the halo lit.",        color: "var(--gold)" },
 };
+
+/* ═══════════════════════════════════════════════════
+   FLAME COLOR TIERS — the mascot's flame shifts color
+   as the streak grows, getting "hotter": red → blue →
+   green → purple. Thresholds line up with the existing
+   milestone breakpoints (7 / 30 / 100 days) so the color
+   change and the milestone track advance together.
+═══════════════════════════════════════════════════ */
+type FlameTier = "red" | "blue" | "green" | "purple";
+
+const FLAME_TIER_META: Record<FlameTier, { src: string; glow: string }> = {
+  red:    { src: flameRed,    glow: "#ff5a36" },
+  blue:   { src: flameBlue,   glow: "#3b82f6" },
+  green:  { src: flameGreen,  glow: "#22c55e" },
+  purple: { src: flamePurple, glow: "#a855f7" },
+};
+
+function getFlameTier(streak: number): FlameTier {
+  if (streak < 7)   return "red";
+  if (streak < 30)  return "blue";
+  if (streak < 100) return "green";
+  return "purple";
+}
 
 /* ═══════════════════════════════════════════════════
    WEEKLY DOTS — derived from streak length + last check-in date
@@ -107,20 +133,22 @@ const EMBER_PARTICLES = [
 
 function Mascot({ mood, streak }: { mood: string; streak: number }) {
   const meta = MOOD_META[mood];
+  const tier = getFlameTier(streak);
+  const flame = FLAME_TIER_META[tier];
 
   return (
     <div style={{ position:"relative", width:200, height:190, display:"flex", alignItems:"flex-end", justifyContent:"center", margin:"0 auto" }}>
-      {/* ambient pulsing glow behind the flame */}
-      <div style={{ position:"absolute", bottom:16, width:150, height:150, borderRadius:"50%", background:"radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent) 0%, transparent 70%)", filter:"blur(4px)", animation:"emberPulse 2.1s ease-in-out infinite" }} />
+      {/* ambient pulsing glow behind the flame — tinted to the current flame tier */}
+      <div style={{ position:"absolute", bottom:16, width:150, height:150, borderRadius:"50%", background:`radial-gradient(circle, color-mix(in srgb, ${flame.glow} 45%, transparent) 0%, transparent 70%)`, filter:"blur(4px)", animation:"emberPulse 2.1s ease-in-out infinite", transition:"background 0.6s ease" }} />
 
-      {/* rising embers */}
+      {/* rising embers — tinted to the current flame tier */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
         {EMBER_PARTICLES.map((p, i) => (
           <span
             key={i}
             style={{
               position:"absolute", bottom:36, left:p.left, width:p.size, height:p.size, borderRadius:"50%",
-              background:"var(--gold)", boxShadow:"0 0 6px 1px var(--accent)", opacity:0,
+              background: flame.glow, boxShadow:`0 0 6px 1px ${flame.glow}`, opacity:0,
               animation:"emberRise 3.2s ease-in infinite", animationDelay:p.delay,
               ['--drift' as unknown as string]: p.drift,
             } as React.CSSProperties}
@@ -140,16 +168,17 @@ function Mascot({ mood, streak }: { mood: string; streak: number }) {
       )}
 
       <img
-        src={emberFlame}
-        alt={`${meta.label} — ${streak} day streak`}
+        key={tier}
+        src={flame.src}
+        alt={`${meta.label} — ${streak} day streak (${tier} flame)`}
         style={{
           position: "relative",
           zIndex: 2,
           width: 128,
           height: 128,
           objectFit: "contain",
-          filter: "drop-shadow(0 12px 20px color-mix(in srgb, var(--accent) 55%, transparent)) brightness(1.08) saturate(1.2)",
-          animation: "emberFlicker 2.6s ease-in-out infinite",
+          filter: `drop-shadow(0 12px 20px color-mix(in srgb, ${flame.glow} 55%, transparent)) brightness(1.08) saturate(1.2)`,
+          animation: "emberFlicker 2.6s ease-in-out infinite, flameFadeIn 0.5s ease-out",
         }}
       />
     </div>
@@ -255,6 +284,8 @@ export default function Streak({ onBack }: StreakProps) {
   const lastStreakDate = liveLastDate !== undefined ? liveLastDate : profile?.last_streak_date;
   const mood = getMood(streak);
   const meta = MOOD_META[mood];
+  const flameTier = getFlameTier(streak);
+  const flameGlow = FLAME_TIER_META[flameTier].glow;
 
   // ── Furnace track: 9 milestones mapped onto evenly-spaced flags,
   // with the marker position interpolated within whichever milestone
@@ -279,6 +310,7 @@ export default function Streak({ onBack }: StreakProps) {
         @keyframes spin         { to { transform: rotate(360deg); } }
         @keyframes emberPulse   { 0%,100%{opacity:.55; transform:scale(0.92);} 50%{opacity:1; transform:scale(1.1);} }
         @keyframes emberFlicker { 0%,100%{transform:scale(1) rotate(0deg) skewX(0deg);} 20%{transform:scale(1.02,0.985) rotate(-1deg) skewX(-1deg);} 45%{transform:scale(0.98,1.03) rotate(1.2deg) skewX(1deg);} 65%{transform:scale(1.03,0.97) rotate(-0.6deg) skewX(-0.5deg);} 85%{transform:scale(0.99,1.01) rotate(0.8deg) skewX(0.6deg);} }
+        @keyframes flameFadeIn  { 0%{opacity:0; transform:scale(0.85);} 100%{opacity:1; transform:scale(1);} }
         @keyframes emberRise    { 0%{opacity:0; transform:translate(0,0) scale(1);} 12%{opacity:1;} 80%{opacity:.5;} 100%{opacity:0; transform:translate(var(--drift,10px), -120px) scale(.3);} }
         @keyframes haloFloat    { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-3deg)} 50%{transform:translateX(-50%) translateY(-4px) rotate(3deg)} }
         @keyframes wingFlapL    { 0%,100%{transform:rotate(-8deg) scaleX(1)} 50%{transform:rotate(14deg) scaleX(0.92)} }
@@ -365,8 +397,8 @@ export default function Streak({ onBack }: StreakProps) {
 
               {/* marker */}
               <div style={{ position:"absolute", top:"50%", left:`${trackPct}%`, transform:"translate(-50%,-50%)" }}>
-                <div style={{ position:"absolute", top:"50%", left:"50%", width:44, height:44, transform:"translate(-50%,-50%)", background:"radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 70%)", filter:"blur(3px)", animation:"emberPulse 2s ease-in-out infinite" }} />
-                <img src={furnaceMarker} alt="Current position" style={{ position:"relative", width:32, height:32, zIndex:2, filter:"drop-shadow(0 6px 8px color-mix(in srgb, var(--accent) 50%, transparent))", animation:"markerBob 2.4s ease-in-out infinite" }} />
+                <div style={{ position:"absolute", top:"50%", left:"50%", width:44, height:44, transform:"translate(-50%,-50%)", background:`radial-gradient(circle, color-mix(in srgb, ${flameGlow} 55%, transparent) 0%, transparent 70%)`, filter:"blur(3px)", animation:"emberPulse 2s ease-in-out infinite", transition:"background 0.6s ease" }} />
+                <img src={furnaceMarker} alt="Current position" style={{ position:"relative", width:32, height:32, zIndex:2, filter:`drop-shadow(0 6px 8px color-mix(in srgb, ${flameGlow} 50%, transparent))`, animation:"markerBob 2.4s ease-in-out infinite" }} />
               </div>
             </div>
 
