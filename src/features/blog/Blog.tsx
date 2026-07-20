@@ -114,6 +114,17 @@ export default function Blog() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={(e) => { ripple(e); navigate('/blog/updates') }}
+            className="ripple-wrap"
+            style={{
+              fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', cursor: 'pointer',
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px',
+            }}
+          >
+            Update Log
+          </button>
           {isAdmin && (
             <button
               type="button"
