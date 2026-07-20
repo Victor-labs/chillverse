@@ -38,6 +38,9 @@ export interface Profile {
   username_changed_at: string | null     // ISO timestamp of last username change, null if never changed
   original_username: string              // set once at signup, never changed again — powers the "Legacy Username" badge
   banner_url: string | null              // equipped profile banner image, null if none equipped
+  // ── Blog authorship ──
+  can_author: boolean                    // eligible to appear in the blog admin's author picker
+  is_founder: boolean                    // renders a "Founder" badge on the blog byline
 }
 
 export interface SignupProfileInput {
@@ -271,5 +274,16 @@ export interface BlogPostInput {
   tags: string[]
   locale: BlogLocale
   translationGroupId: string | null
+  authorId: string | null
   isPublished: boolean
+}
+
+/** Minimal profile shape for the author picker and post byline. */
+export interface BlogAuthor {
+  id: string
+  username: string
+  display_name: string | null
+  avatar: string
+  bio: string | null
+  is_founder: boolean
 }
