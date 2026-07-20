@@ -213,3 +213,63 @@ export interface NewSupportTicketInput {
   message: string
   contactEmail: string | null
 }
+
+// ── Blog ───────────────────────────────────────────────────────────────────
+
+export type BlogCategory =
+  | 'game-updates'
+  | 'community-spotlight'
+  | 'chillverse-hq'
+  | 'how-to'
+  | 'safety'
+
+export type BlogLocale = 'en' | 'pcm'
+
+export interface BlogPost {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  content: string
+  hero_image_url: string | null
+  category: BlogCategory
+  series: string | null
+  tags: string[]
+  locale: BlogLocale
+  translation_group_id: string | null
+  author_id: string | null
+  is_published: boolean
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Row shape returned by the `search_blog_posts` RPC. */
+export interface BlogSearchResult {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  hero_image_url: string | null
+  category: BlogCategory
+  series: string | null
+  tags: string[]
+  locale: BlogLocale
+  published_at: string | null
+  rank: number
+}
+
+/** Fields an admin can set when creating or editing a post. */
+export interface BlogPostInput {
+  slug: string
+  title: string
+  excerpt: string
+  content: string
+  heroImageUrl: string
+  category: BlogCategory
+  series: string
+  tags: string[]
+  locale: BlogLocale
+  translationGroupId: string | null
+  isPublished: boolean
+}
