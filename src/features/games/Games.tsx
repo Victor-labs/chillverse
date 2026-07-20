@@ -274,7 +274,7 @@ export default function Games() {
     }
 
     if (payload.streak >= 3) {
-      updateMissionProgress(userId, 'win_streak', payload.streak).catch(console.error)
+      updateMissionProgress(userId, 'win_streak', payload.streak, true).catch(console.error)
     }
 
     updateMissionProgress(userId, 'unique_games_played', 1).catch(console.error)
