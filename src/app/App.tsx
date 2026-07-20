@@ -58,6 +58,7 @@ const Leaderboards        = lazy(() => import('../features/leaderboards/Leaderbo
 const Blog                = lazy(() => import('../features/blog/Blog'))
 const BlogPostPage        = lazy(() => import('../features/blog/BlogPostPage'))
 const BlogSeriesPage      = lazy(() => import('../features/blog/BlogSeriesPage'))
+const UpdateLog           = lazy(() => import('../features/blog/UpdateLog'))
 const AdminBlog           = lazy(() => import('../features/blog/AdminBlog'))
 
 const Fallback = () => (
@@ -192,6 +193,7 @@ export default function App() {
           <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
           <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
           <Route path="/blog"             element={<Suspense fallback={<Fallback />}><Blog /></Suspense>} />
+          <Route path="/blog/updates"     element={<Suspense fallback={<Fallback />}><UpdateLog /></Suspense>} />
           <Route path="/blog/series/:series" element={<Suspense fallback={<Fallback />}><BlogSeriesPage /></Suspense>} />
           <Route path="/blog/admin"       element={<Suspense fallback={<Fallback />}><AdminBlog /></Suspense>} />
           <Route path="/blog/:slug"       element={<Suspense fallback={<Fallback />}><BlogPostPage /></Suspense>} />
