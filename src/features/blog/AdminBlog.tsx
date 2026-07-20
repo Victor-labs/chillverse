@@ -284,7 +284,16 @@ export default function AdminBlog() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="Series (optional — e.g. update-log)">
-                  <input value={form.series} onChange={(e) => setForm(f => ({ ...f, series: e.target.value }))} style={inputStyle} placeholder="update-log" />
+                  <input
+                    value={form.series}
+                    onChange={(e) => setForm(f => ({ ...f, series: e.target.value }))}
+                    style={inputStyle}
+                    placeholder="update-log"
+                    list="blog-series-suggestions"
+                  />
+                  <datalist id="blog-series-suggestions">
+                    <option value="update-log" />
+                  </datalist>
                 </Field>
                 <Field label="Tags (comma-separated)">
                   <input value={tagsInput} onChange={(e) => handleTagsChange(e.target.value)} style={inputStyle} placeholder="patch-notes, whot" />
