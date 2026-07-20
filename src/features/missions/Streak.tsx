@@ -50,9 +50,15 @@ const MOOD_META: Record<string, { label: string; sub: string; color: string }> =
 /* ═══════════════════════════════════════════════════
    FLAME COLOR TIERS — the mascot's flame shifts color
    as the streak grows, getting "hotter": red → blue →
-   green → purple. Thresholds line up with the existing
-   milestone breakpoints (7 / 30 / 100 days) so the color
-   change and the milestone track advance together.
+   green → purple.
+   Day ranges:
+     red    : day 1  – day 14  (< 14)
+     blue   : day 14 – day 40  (< 40)
+     green  : day 40 – day 160 (< 160)
+     purple : day 160+
+   These same tier colors are reused for the weekly M–S
+   dots and the milestone marker glow so everything on
+   the page "rhymes" with the current flame color.
 ═══════════════════════════════════════════════════ */
 type FlameTier = "red" | "blue" | "green" | "purple";
 
@@ -64,9 +70,9 @@ const FLAME_TIER_META: Record<FlameTier, { src: string; glow: string }> = {
 };
 
 function getFlameTier(streak: number): FlameTier {
-  if (streak < 7)   return "red";
-  if (streak < 30)  return "blue";
-  if (streak < 100) return "green";
+  if (streak < 14)  return "red";
+  if (streak < 40)  return "blue";
+  if (streak < 160) return "green";
   return "purple";
 }
 
@@ -138,8 +144,12 @@ function Mascot({ mood, streak }: { mood: string; streak: number }) {
 
   return (
     <div style={{ position:"relative", width:200, height:190, display:"flex", alignItems:"flex-end", justifyContent:"center", margin:"0 auto" }}>
-      {/* ambient pulsing glow behind the flame — tinted to the current flame tier */}
-      <div style={{ position:"absolute", bottom:16, width:150, height:150, borderRadius:"50%", background:`radial-gradient(circle, color-mix(in srgb, ${flame.glow} 45%, transparent) 0%, transparent 70%)`, filter:"blur(4px)", animation:"emberPulse 2.1s ease-in-out infinite", transition:"background 0.6s ease" }} />
+      {/* ambient pulsing glow behind the flame — tinted to the current flame tier.
+          Explicitly centered with left:50% + translateX(-50%) rather than relying
+          on flex static-position fallback, which browsers resolve inconsistently
+          (this was the source of the glow drifting off-center on larger/desktop
+          viewports). */}
+      <div style={{ position:"absolute", bottom:16, left:"50%", width:150, height:150, transform:"translateX(-50%)", borderRadius:"50%", background:`radial-gradient(circle, color-mix(in srgb, ${flame.glow} 45%, transparent) 0%, transparent 70%)`, filter:"blur(4px)", animation:"emberPulse 2.1s ease-in-out infinite", transition:"background 0.6s ease" }} />
 
       {/* rising embers — tinted to the current flame tier */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
@@ -188,7 +198,7 @@ function Mascot({ mood, streak }: { mood: string; streak: number }) {
 /* ═══════════════════════════════════════════════════
    WEEK ROW — M T W T F S S, lit per inferred check-in
 ═══════════════════════════════════════════════════ */
-function WeekRow({ streak, lastStreakDate }: { streak: number; lastStreakDate: string | null | undefined }) {
+function WeekRow({ streak, lastStreakDate, flameGlow }: { streak: number; lastStreakDate: string | null | undefined; flameGlow: string }) {
   const dots = getWeekDots(streak, lastStreakDate);
   return (
     <div style={{ display:"flex", justifyContent:"space-between", paddingTop:14, marginTop:6, borderTop:"1px solid rgba(255,255,255,0.06)", position:"relative", zIndex:2 }}>
@@ -199,10 +209,11 @@ function WeekRow({ streak, lastStreakDate }: { streak: number; lastStreakDate: s
             style={{
               width:18, height:18, borderRadius:"50%",
               border: d.lit ? "none" : "1.5px solid var(--surface3)",
-              background: d.lit ? "radial-gradient(circle at 35% 30%, var(--gold), var(--accent) 70%)" : "var(--surface2)",
-              boxShadow: d.lit ? "0 0 9px 1px color-mix(in srgb, var(--accent) 55%, transparent)" : "inset 2px 2px 5px var(--neu-dark)",
-              outline: d.isToday ? "2px solid var(--gold)" : "none",
+              background: d.lit ? `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${flameGlow} 70%, white), ${flameGlow} 70%)` : "var(--surface2)",
+              boxShadow: d.lit ? `0 0 9px 1px color-mix(in srgb, ${flameGlow} 55%, transparent)` : "inset 2px 2px 5px var(--neu-dark)",
+              outline: d.isToday ? `2px solid ${flameGlow}` : "none",
               outlineOffset: 2,
+              transition: "background 0.6s ease, box-shadow 0.6s ease, outline-color 0.6s ease",
               animation: d.isToday ? "todayPulse 1.8s ease-in-out infinite" : undefined,
             }}
           />
@@ -362,7 +373,7 @@ export default function Streak({ onBack }: StreakProps) {
               <div style={{ fontSize:12, color:"var(--text-dim)", marginTop:10, maxWidth:260, marginLeft:"auto", marginRight:"auto", lineHeight:1.5 }}>{meta.sub}</div>
             </div>
 
-            <WeekRow streak={streak} lastStreakDate={lastStreakDate} />
+            <WeekRow streak={streak} lastStreakDate={lastStreakDate} flameGlow={flameGlow} />
           </div>
 
           {/* ── Furnace milestone track ── */}
@@ -375,7 +386,7 @@ export default function Streak({ onBack }: StreakProps) {
             <div style={{ position:"relative", height:60, margin:"6px 8px 4px" }}>
               {/* track */}
               <div style={{ position:"absolute", top:"50%", left:0, right:0, height:6, transform:"translateY(-50%)", background:"var(--surface2)", borderRadius:6, overflow:"hidden", boxShadow:"var(--elev-inset)" }}>
-                <div style={{ position:"relative", left:0, top:0, bottom:0, height:"100%", width:`${trackPct}%`, borderRadius:6, background:"linear-gradient(90deg, var(--accent), var(--accent2) 55%, var(--gold))", boxShadow:"0 0 12px 1px color-mix(in srgb, var(--accent) 55%, transparent)", transition:"width 1s cubic-bezier(0.4,0,0.2,1)", overflow:"hidden" }}>
+                <div style={{ position:"relative", left:0, top:0, bottom:0, height:"100%", width:`${trackPct}%`, borderRadius:6, background:`linear-gradient(90deg, color-mix(in srgb, ${flameGlow} 65%, transparent), ${flameGlow} 80%)`, boxShadow:`0 0 12px 1px color-mix(in srgb, ${flameGlow} 55%, transparent)`, transition:"width 1s cubic-bezier(0.4,0,0.2,1), background 0.6s ease, box-shadow 0.6s ease", overflow:"hidden" }}>
                   <div style={{ position:"absolute", inset:0, width:"40%", background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)", animation:"trackSheen 2.6s ease-in-out infinite" }} />
                 </div>
               </div>
