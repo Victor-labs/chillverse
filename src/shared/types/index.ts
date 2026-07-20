@@ -41,6 +41,25 @@ export interface Profile {
   // ── Blog authorship ──
   can_author: boolean                    // eligible to appear in the blog admin's author picker
   is_founder: boolean                    // renders a "Founder" badge on the blog byline
+  // ── Settings: Social ──
+  age_restricted: boolean | null             // blocks 18+ content in DMs
+  show_game_progression: boolean | null      // status sharing: map completions / top-3 leaderboard alerts to followers; off also hides rank badge
+  show_online_activity: boolean | null       // status sharing: followers notified when user comes online
+  // ── Settings: Data & Privacy ──
+  profile_visibility: 'everyone' | 'followers' | null  // who sees bio/wishlist/stats
+  // ── Settings: Profile viewing ──
+  profile_view_alert: 'inside' | 'outside' | 'none' | null
+  // ── Settings: Notifications ──
+  notif_in_app: boolean | null
+  notif_system: boolean | null
+  notif_global_chat_message: boolean | null
+  notif_exploration: boolean | null
+  notif_gifts: boolean | null
+  notif_profile_likes: boolean | null
+  notif_session_reset: boolean | null
+  notif_follower_online: boolean | null
+  highlight_notif_scope: 'everyone' | 'followers' | null
+  live_activity_visibility: 'everyone' | 'followers' | 'none' | null
 }
 
 export interface SignupProfileInput {
