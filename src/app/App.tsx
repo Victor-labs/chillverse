@@ -24,6 +24,13 @@ const Chat               = lazy(() => import('../features/chat/Chat'))
 const Streak             = lazy(() => import('../features/missions/Streak'))
 const Settings           = lazy(() => import('../features/settings/Settings'))
 const AppTheme           = lazy(() => import('../features/settings/AppTheme'))
+const AccountSettings    = lazy(() => import('../features/settings/AccountSettings'))
+const SocialSettings     = lazy(() => import('../features/settings/SocialSettings'))
+const BlockedAccounts    = lazy(() => import('../features/settings/BlockedAccounts'))
+const PrivacySettings    = lazy(() => import('../features/settings/PrivacySettings'))
+const AppNotifications   = lazy(() => import('../features/settings/AppNotifications'))
+const OtherNotifications = lazy(() => import('../features/settings/OtherNotifications'))
+const SubscriptionSettings = lazy(() => import('../features/settings/SubscriptionSettings'))
 const Ranks              = lazy(() => import('../features/profile/Ranks'))
 const Watch              = lazy(() => import('../features/watch/Watch'))
 const Mall               = lazy(() => import('../features/economy/Mall'))
@@ -169,6 +176,14 @@ export default function App() {
           <Route path="/streak"           element={<Suspense fallback={<Fallback />}><Streak /></Suspense>} />
           <Route path="/settings"         element={<Suspense fallback={<Fallback />}><Settings /></Suspense>} />
           <Route path="/settings/theme"   element={<Suspense fallback={<Fallback />}><AppTheme /></Suspense>} />
+          <Route path="/settings/account" element={<Suspense fallback={<Fallback />}><AccountSettings /></Suspense>} />
+          <Route path="/settings/social"  element={<Suspense fallback={<Fallback />}><SocialSettings /></Suspense>} />
+          <Route path="/settings/social/blocked" element={<Suspense fallback={<Fallback />}><BlockedAccounts /></Suspense>} />
+          <Route path="/settings/privacy" element={<Suspense fallback={<Fallback />}><PrivacySettings /></Suspense>} />
+          <Route path="/settings/notifications" element={<Suspense fallback={<Fallback />}><AppNotifications /></Suspense>} />
+          <Route path="/settings/other-notifications" element={<Suspense fallback={<Fallback />}><OtherNotifications /></Suspense>} />
+          <Route path="/settings/other-notifications/:section" element={<Suspense fallback={<Fallback />}><OtherNotifications /></Suspense>} />
+          <Route path="/settings/subscription" element={<Suspense fallback={<Fallback />}><SubscriptionSettings /></Suspense>} />
           <Route path="/ranks"            element={<Suspense fallback={<Fallback />}><Ranks /></Suspense>} />
           <Route path="/achievements"     element={<Suspense fallback={<Fallback />}><Achievements /></Suspense>} />
           <Route path="/artifacts"        element={<Suspense fallback={<Fallback />}><Artifacts /></Suspense>} />
