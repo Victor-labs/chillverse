@@ -1,6 +1,6 @@
 // src/features/blog/api.ts
 import { supabase } from '../../shared/lib/supabase'
-import type { BlogCategory, BlogLocale, BlogPost, BlogPostInput, BlogSearchResult } from '../../shared/types'
+import type { BlogAuthor, BlogCategory, BlogLocale, BlogPost, BlogPostInput, BlogSearchResult } from '../../shared/types'
 
 export interface BlogPostsPage {
   posts: BlogPost[]
@@ -147,16 +147,17 @@ function inputToRow(input: BlogPostInput) {
     tags: input.tags,
     locale: input.locale,
     translation_group_id: input.translationGroupId,
+    author_id: input.authorId,
     is_published: input.isPublished,
     published_at: input.isPublished ? new Date().toISOString() : null,
   }
 }
 
-/** Creates a new post, attributed to the given (admin) author. */
-export async function createBlogPost(input: BlogPostInput, authorId: string): Promise<BlogPost> {
+/** Creates a new post. */
+export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
   const { data, error } = await supabase
     .from('blog_posts')
-    .insert({ ...inputToRow(input), author_id: authorId })
+    .insert(inputToRow(input))
     .select('*')
     .single()
 
@@ -189,4 +190,32 @@ export async function updateBlogPost(id: string, input: BlogPostInput, wasPublis
 export async function deleteBlogPost(id: string): Promise<void> {
   const { error } = await supabase.from('blog_posts').delete().eq('id', id)
   if (error) throw error
+}
+
+// ── Authors ──────────────────────────────────────────────────────────────
+
+const AUTHOR_COLUMNS = 'id, username, display_name, avatar, bio, is_founder'
+
+/** Profiles eligible to be picked as a post's author, for the admin editor. */
+export async function fetchAuthorCandidates(): Promise<BlogAuthor[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(AUTHOR_COLUMNS)
+    .eq('can_author', true)
+    .order('username', { ascending: true })
+
+  if (error) throw error
+  return (data as BlogAuthor[]) ?? []
+}
+
+/** A single author's byline info, for the post page. Null if the author was removed/unset. */
+export async function fetchAuthorById(authorId: string): Promise<BlogAuthor | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(AUTHOR_COLUMNS)
+    .eq('id', authorId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data as BlogAuthor | null) ?? null
 }

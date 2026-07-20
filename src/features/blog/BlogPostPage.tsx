@@ -1,18 +1,20 @@
 // src/features/blog/BlogPostPage.tsx
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ImageOff, Languages } from 'lucide-react'
+import { ChevronLeft, ImageOff, Languages, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
-import { fetchBlogPostBySlug, fetchRelatedPosts, fetchTranslationCounterpart } from './api'
+import { fetchAuthorById, fetchBlogPostBySlug, fetchRelatedPosts, fetchTranslationCounterpart } from './api'
 import { getBlogCategoryMeta, getSeriesLabel, BLOG_LOCALES, BLOG_LOCALE_STORAGE_KEY } from './constants'
 import BlogPostCard from './BlogPostCard'
-import type { BlogPost } from '../../shared/types'
+import Avatar from '../../shared/components/Avatar'
+import type { BlogAuthor, BlogPost } from '../../shared/types'
 
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
   const [post, setPost] = useState<BlogPost | null>(null)
+  const [author, setAuthor] = useState<BlogAuthor | null>(null)
   const [related, setRelated] = useState<BlogPost[]>([])
   const [translation, setTranslation] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,11 +43,13 @@ export default function BlogPostPage() {
               found.id
             )
           : Promise.resolve(null)
+        const authorPromise = found.author_id ? fetchAuthorById(found.author_id) : Promise.resolve(null)
 
-        const [relatedPosts, translationPost] = await Promise.all([relatedPromise, translationPromise])
+        const [relatedPosts, translationPost, authorProfile] = await Promise.all([relatedPromise, translationPromise, authorPromise])
         if (!active) return
         setRelated(relatedPosts)
         setTranslation(translationPost)
+        setAuthor(authorProfile)
       })
       .catch((err: Error) => {
         if (!active) return
@@ -135,6 +139,32 @@ export default function BlogPostPage() {
       </h1>
       {publishedLabel && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>{publishedLabel}</div>
+      )}
+
+      {author && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
+          <Avatar src={author.avatar} name={author.display_name ?? author.username} userId={author.id} size={36} radius={11} />
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                {author.display_name ?? author.username}
+              </span>
+              {author.is_founder && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase',
+                  color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                  borderRadius: 999, padding: '2px 8px',
+                }}>
+                  <BadgeCheck size={11} /> Founder
+                </span>
+              )}
+            </div>
+            {author.bio && (
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{author.bio}</div>
+            )}
+          </div>
+        </div>
       )}
 
       <div style={{

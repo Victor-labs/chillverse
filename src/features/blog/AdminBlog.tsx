@@ -1,13 +1,13 @@
 // src/features/blog/AdminBlog.tsx
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Plus, Pencil, Trash2, ShieldAlert, Link2, RefreshCw, X } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, ShieldAlert, Link2, RefreshCw, X, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { useModRole } from '../moderation/useModRole'
-import { fetchAllBlogPostsForAdmin, createBlogPost, updateBlogPost, deleteBlogPost } from './api'
+import { fetchAllBlogPostsForAdmin, fetchAuthorCandidates, createBlogPost, updateBlogPost, deleteBlogPost } from './api'
 import { BLOG_CATEGORIES, BLOG_LOCALES } from './constants'
-import type { BlogCategory, BlogLocale, BlogPost, BlogPostInput } from '../../shared/types'
+import type { BlogAuthor, BlogCategory, BlogLocale, BlogPost, BlogPostInput } from '../../shared/types'
 
 function slugify(input: string): string {
   return input
@@ -22,7 +22,7 @@ function slugify(input: string): string {
 const EMPTY_FORM: BlogPostInput = {
   slug: '', title: '', excerpt: '', content: '', heroImageUrl: '',
   category: 'chillverse-hq', series: '', tags: [], locale: 'en',
-  translationGroupId: null, isPublished: false,
+  translationGroupId: null, authorId: null, isPublished: false,
 }
 
 export default function AdminBlog() {
@@ -31,6 +31,7 @@ export default function AdminBlog() {
   const { isAdmin, loading: roleLoading } = useModRole()
 
   const [posts, setPosts] = useState<BlogPost[]>([])
+  const [authors, setAuthors] = useState<BlogAuthor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,6 +51,7 @@ export default function AdminBlog() {
       .then(rows => { setPosts(rows); setError(null) })
       .catch((err: Error) => setError(err.message || 'Could not load posts.'))
       .finally(() => setLoading(false))
+    fetchAuthorCandidates().then(setAuthors).catch(() => {})
   }
 
   useEffect(() => {
@@ -59,7 +61,9 @@ export default function AdminBlog() {
 
   function openCreate() {
     setEditingId(null)
-    setForm(EMPTY_FORM)
+    // Default to the current admin if they're a listed author — one fewer click for the common case.
+    const defaultAuthorId = authors.some(a => a.id === user?.id) ? (user?.id ?? null) : null
+    setForm({ ...EMPTY_FORM, authorId: defaultAuthorId })
     setTagsInput('')
     setSlugTouched(false)
     setSaveError(null)
@@ -79,6 +83,7 @@ export default function AdminBlog() {
       tags: post.tags,
       locale: post.locale,
       translationGroupId: post.translation_group_id,
+      authorId: post.author_id,
       isPublished: post.is_published,
     })
     setTagsInput(post.tags.join(', '))
@@ -114,7 +119,7 @@ export default function AdminBlog() {
       if (editingPost) {
         await updateBlogPost(editingPost.id, form, editingPost.is_published)
       } else {
-        await createBlogPost(form, user.id)
+        await createBlogPost(form)
       }
       setShowEditor(false)
       load()
@@ -216,9 +221,20 @@ export default function AdminBlog() {
                       <span title="Part of a translation pair"><Link2 size={12} color="var(--text-muted)" /></span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>
-                    /blog/{post.slug} · {category?.label ?? post.category} · {post.locale.toUpperCase()}
-                    {post.series && ` · ${post.series}`}
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    <span>
+                      /blog/{post.slug} · {category?.label ?? post.category} · {post.locale.toUpperCase()}
+                      {post.series && ` · ${post.series}`}
+                    </span>
+                    {post.author_id && (() => {
+                      const postAuthor = authors.find(a => a.id === post.author_id)
+                      return postAuthor ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                          · {postAuthor.display_name ?? postAuthor.username}
+                          {postAuthor.is_founder && <BadgeCheck size={11} color="var(--accent)" />}
+                        </span>
+                      ) : null
+                    })()}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -281,6 +297,26 @@ export default function AdminBlog() {
                   </select>
                 </Field>
               </div>
+
+              <Field label="Author">
+                <select
+                  value={form.authorId ?? ''}
+                  onChange={(e) => setForm(f => ({ ...f, authorId: e.target.value || null }))}
+                  style={inputStyle}
+                >
+                  <option value="">No byline shown</option>
+                  {authors.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {(a.display_name ?? a.username)}{a.is_founder ? ' — Founder' : ''}
+                    </option>
+                  ))}
+                </select>
+                {authors.length === 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    No accounts are flagged as authors yet — set can_author = true on a profile to add one here.
+                  </span>
+                )}
+              </Field>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="Series (optional — e.g. update-log)">
