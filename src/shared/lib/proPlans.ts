@@ -52,6 +52,8 @@ export interface ProTierInfo {
   glow: string
   monthlyDisplay: string   // what's shown next to the toggle price, always monthly-equivalent
   badge?: string
+  /** Card-header illustration (Discord-Nitro-card style), shown above the plan name/price. */
+  image: string
   features: string[]
 }
 
@@ -67,6 +69,7 @@ export const TIERS: ProTierInfo[] = [
     glow: 'rgba(79,142,247,0.35)',
     monthlyDisplay: '₦1,400',
     badge: 'POPULAR',
+    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam.png',
     features: [
       'Everything in Free',
       '19 sessions a day (up from 15 on Free)',
@@ -83,6 +86,7 @@ export const TIERS: ProTierInfo[] = [
     glow: 'rgba(155,109,255,0.4)',
     monthlyDisplay: '₦3,500',
     badge: 'BEST VALUE',
+    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam2.png',
     features: [
       'Everything in Free + Orbit',
       '25 sessions a day (up from 19 on Orbit)',
