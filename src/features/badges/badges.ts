@@ -15,6 +15,10 @@ export interface BadgeDef {
   // "Leaderboard Legend" → shows "Top 1 on the leaderboard" on tap).
   // Defaults to false for older rows that predate this column (title shown).
   tap_shows_task?: boolean
+  // Whether this badge can currently be earned (auto-awarded or manually
+  // granted). Set by staff from the Moderation panel's Badges tab; once
+  // false, nobody can newly acquire it — players who already have it keep it.
+  is_available: boolean
 }
 
 export interface PlayerBadge {
@@ -65,10 +69,24 @@ export async function checkAndAwardAutoBadges(userId: string): Promise<void> {
   await supabase.rpc('check_and_award_auto_badges', { p_user_id: userId })
 }
 
+// ── Translates the CV_MOD_* prefixed exception text raised by the badge
+//    RPCs into copy a moderator can read directly, mirroring the
+//    friendlyError() pattern in moderation.ts. Falls back to the raw
+//    Postgres message for anything unrecognized.
+function friendlyBadgeError(message: string): string {
+  if (message.includes('CV_MOD_FORBIDDEN')) return "You don't have permission to do that."
+  if (message.includes('CV_MOD_NOT_FOUND')) return 'That badge could not be found.'
+  if (message.includes('CV_MOD_BADGE_UNAVAILABLE')) return 'This badge has been marked unavailable and cannot be granted.'
+  if (message.includes('badge not found')) return 'That badge could not be found.'
+  if (message.includes('cannot be manually granted')) return 'This badge is automatic and cannot be granted manually.'
+  return message
+}
+
 // ── Staff-only: manually grant/revoke a manual-type badge (Tester, and
 //    any future Admin/Founder/Verified-style badge). ─────────────────────
 export async function grantManualBadge(targetUserId: string, badgeId: string) {
   const result = await supabase.rpc('grant_manual_badge', { p_target_user_id: targetUserId, p_badge_id: badgeId })
+  if (result.error) result.error.message = friendlyBadgeError(result.error.message)
 
   // Leaderboard Legend / Runner-Up Elite are the only two badges that also
   // post a Highlight — checkLeaderboardBadgeHighlight no-ops for every
@@ -82,4 +100,13 @@ export async function grantManualBadge(targetUserId: string, badgeId: string) {
 }
 export async function revokeManualBadge(targetUserId: string, badgeId: string) {
   return supabase.rpc('revoke_manual_badge', { p_target_user_id: targetUserId, p_badge_id: badgeId })
+}
+
+// ── Staff-only: flip whether a badge can currently be earned. Once
+//    unavailable, check_and_award_auto_badges and grant_manual_badge both
+//    refuse to hand it out server-side — this only toggles new awards,
+//    players who already hold the badge are unaffected. ──────────────────
+export async function setBadgeAvailability(badgeId: string, isAvailable: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('mod_set_badge_availability', { p_badge_id: badgeId, p_is_available: isAvailable })
+  return { error: error ? friendlyBadgeError(error.message) : null }
 }
