@@ -125,16 +125,26 @@ export async function createHighlight(input: {
 // Same insert_notification RPC contract used everywhere else (posts.ts,
 // achievements.ts) — shows as a live dropdown toast via Realtime and is
 // saved to the notifications table for later, per the 📷 icon spec.
+//
+// highlight_notif_scope on the author's profile controls the audience:
+//   'followers' (default before this change) — only followers, named.
+//   'everyone'                               — followers get the named
+//     version as before; everyone else gets an anonymized "Someone
+//     posted a highlight" so non-followers can't be identity-mapped to
+//     a specific author from a notification alone.
 async function notifyFollowersOfHighlight(authorId: string, highlightId: string) {
   const { data: author } = await supabase
-    .from('profiles').select('display_name, username').eq('id', authorId).single()
+    .from('profiles')
+    .select('display_name, username, highlight_notif_scope')
+    .eq('id', authorId)
+    .single()
   if (!author) return
   const name = author.display_name || author.username
 
   const { data: followers } = await supabase.from('follows').select('follower_id').eq('following_id', authorId)
-  if (!followers?.length) return
+  const followerIds = new Set((followers ?? []).map(f => f.follower_id))
 
-  for (const { follower_id } of followers) {
+  for (const follower_id of followerIds) {
     await supabase.rpc('insert_notification', {
       p_user_id: follower_id,
       p_type:    'highlight_posted',
@@ -142,6 +152,21 @@ async function notifyFollowersOfHighlight(authorId: string, highlightId: string)
       p_body:    'Tap to check it out.',
       p_icon:    'camera',
       p_meta:    { highlight_id: highlightId, author_id: authorId },
+    })
+  }
+
+  if (author.highlight_notif_scope !== 'everyone') return
+
+  const { data: everyone } = await supabase.from('profiles').select('id').neq('id', authorId)
+  for (const { id } of everyone ?? []) {
+    if (followerIds.has(id)) continue // already notified by name above
+    await supabase.rpc('insert_notification', {
+      p_user_id: id,
+      p_type:    'highlight_posted',
+      p_title:   'Someone posted a highlight',
+      p_body:    'Tap to check it out.',
+      p_icon:    'camera',
+      p_meta:    { highlight_id: highlightId },
     })
   }
 }
