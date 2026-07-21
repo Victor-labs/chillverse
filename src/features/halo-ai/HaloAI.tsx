@@ -1,4 +1,4 @@
-// src/pages/HaloAI.tsx
+// src/pages/HaloAI.tsx/moreUpcomingUpdates
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Send } from 'lucide-react'
