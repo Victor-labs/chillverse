@@ -7,6 +7,7 @@ import type {
   SupportArticleSearchResult,
   SupportTicket,
   NewSupportTicketInput,
+  SupportTicketReply,
 } from '../../shared/types'
 
 /** Fetches all support categories, ordered for display. */
@@ -191,4 +192,22 @@ export async function fetchMyTickets(userId: string): Promise<SupportTicket[]> {
 
   if (error) throw error
   return (data as SupportTicket[]) ?? []
+}
+
+/** Fetches the reply thread (both the user's own messages and staff replies) for one of the user's tickets. */
+export async function fetchTicketReplies(ticketId: string): Promise<SupportTicketReply[]> {
+  const { data, error } = await supabase
+    .from('support_ticket_replies')
+    .select('*, author:profiles!support_ticket_replies_author_id_fkey(username)')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return (data as SupportTicketReply[]) ?? []
+}
+
+/** Adds a follow-up message to the user's own ticket. Reopens the ticket if it was resolved/closed. */
+export async function submitTicketReply(ticketId: string, body: string): Promise<void> {
+  const { error } = await supabase.rpc('user_reply_ticket', { p_ticket_id: ticketId, p_body: body.trim() })
+  if (error) throw error
 }
