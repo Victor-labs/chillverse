@@ -38,9 +38,7 @@ export function useProfile(): UseProfileState {
     setLoading(true)
 
     supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
+      .rpc('get_own_profile')
       .single()
       .then(({ data, error: fetchError }) => {
         if (!active) return

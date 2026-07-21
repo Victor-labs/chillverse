@@ -80,9 +80,7 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
   // Load core profile fields (bio, presence, member-since — no XP/level/streak).
   useEffect(() => {
     setLoading(true)
-    supabase.from('profiles')
-      .select('id, username, original_username, display_name, bio, presence, staff_member_since, created_at')
-      .eq('id', userId).single()
+    supabase.rpc('get_public_profile', { p_user_id: userId }).single()
       .then(({ data }) => { setProfile(data as ModProfileData); setLoading(false) })
   }, [userId])
 

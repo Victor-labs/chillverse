@@ -271,8 +271,7 @@ function PlayerProfileInner() {
   useEffect(() => {
     if (!userId) return
     setLoading(true)
-    supabase.from('profiles').select('id, username, original_username, display_name, avatar, country, interests, xp, level, streak, bio, gender, play_time, info_tags, favorite_game, grid_cards, show_follow_counts, equipped_profile_effect_url')
-      .eq('id', userId).single()
+    supabase.rpc('get_public_profile', { p_user_id: userId }).single()
       .then(({ data }) => {
         setPlayer(data as PlayerData)
         setLoading(false)

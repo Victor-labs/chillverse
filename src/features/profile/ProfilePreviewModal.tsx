@@ -217,7 +217,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   useEffect(() => {
     let active = true
     setLoading(true)
-    supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+    supabase.rpc('get_public_profile', { p_user_id: userId }).single().then(({ data }) => {
       if (!active) return
       setProfile((data as PreviewProfile | null) ?? null)
       setLoading(false)
