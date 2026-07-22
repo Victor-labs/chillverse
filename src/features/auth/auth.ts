@@ -134,7 +134,17 @@ export async function updateStreak(userId: string): Promise<void> {
   // safe to skip on failure — this is a highlight, not core streak logic.
   const { data: profile } = await supabase.from('profiles').select('streak').eq('id', userId).maybeSingle<{ streak: number | null }>()
   if (typeof profile?.streak === 'number') {
-    const { checkStreakMilestoneHighlight } = await import('../highlights/highlightTriggers')
+    const { checkStreakMilestoneHighlight, STREAK_MILESTONES } = await import('../highlights/highlightTriggers')
     checkStreakMilestoneHighlight(userId, profile.streak).catch(console.error)
+
+    // Halo's voice on top of the same milestone moment (Halo Moments plan
+    // §4.4) — purely a flavor toast via the existing notification-toast
+    // pipeline, no reward/streak logic touched. Only fires on the exact
+    // milestone days (STREAK_MILESTONES), same gate as the highlight above,
+    // so it doesn't re-fire every day.
+    if (STREAK_MILESTONES.includes(profile.streak)) {
+      const { notifyStreakMilestoneHalo } = await import('../halo-moments/haloMoments')
+      notifyStreakMilestoneHalo(userId).catch(console.error)
+    }
   }
 }
