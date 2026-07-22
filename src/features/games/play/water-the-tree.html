@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Grove — Water the Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #EDE7D9;
+    --dim: #9AAE9C;
+    --gold: #E8C468;
+    --water: #7DB8D9;
+    --bark: #8B6B4A;
+    --panel: rgba(15, 27, 20, 0.72);
+    --panel-border: rgba(232, 196, 104, 0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Space Mono', monospace;
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+    background: radial-gradient(ellipse at 50% 0%, #1a2b1f 0%, #0c1510 55%, #070c09 100%);
+    transition: background 2s ease;
+    position:relative;
+  }
+  body.dawn{ background: radial-gradient(ellipse at 50% 10%, #3a3450 0%, #1c2233 45%, #0d1016 100%); }
+  body.day{ background: radial-gradient(ellipse at 50% 0%, #234a3a 0%, #12261e 55%, #0a150f 100%); }
+  body.dusk{ background: radial-gradient(ellipse at 50% 5%, #3a2440 0%, #201829 50%, #0d0b12 100%); }
+  body.night{ background: radial-gradient(ellipse at 50% 0%, #14202a 0%, #0a1014 55%, #05070a 100%); }
+
+  #fireflies{position:fixed;inset:0;pointer-events:none;z-index:1;}
+  .firefly{
+    position:absolute; width:3px; height:3px; border-radius:50%;
+    background:var(--gold); box-shadow:0 0 6px 2px rgba(232,196,104,0.7);
+    animation: drift 14s ease-in-out infinite, flicker 3s ease-in-out infinite;
+    opacity:0.6;
+  }
+  @keyframes drift{
+    0%,100%{ transform: translate(0,0); }
+    25%{ transform: translate(20px,-30px); }
+    50%{ transform: translate(-15px,-55px); }
+    75%{ transform: translate(-25px,-20px); }
+  }
+  @keyframes flicker{
+    0%,100%{opacity:0.15;} 50%{opacity:0.85;}
+  }
+
+  #app{
+    position:relative; z-index:2;
+    max-width:640px; margin:0 auto; padding:28px 20px 60px;
+  }
+  header{ text-align:center; margin-bottom:6px; }
+  h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:2.1rem;
+    margin:0; letter-spacing:0.01em;
+    background: linear-gradient(180deg, var(--ink), var(--dim));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .eyebrow{
+    font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase;
+    color:var(--gold); opacity:0.8; margin-bottom:6px;
+  }
+  .tagline{ color:var(--dim); font-size:0.8rem; margin-top:6px; }
+
+  .stage-canvas-wrap{
+    position:relative; margin:18px auto 8px; width:100%; max-width:420px;
+    aspect-ratio: 1/1;
+  }
+  canvas#tree{ width:100%; height:100%; display:block; }
+  .stage-label{
+    position:absolute; top:8px; left:50%; transform:translateX(-50%);
+    font-family:'Fraunces', serif; font-size:0.95rem; color:var(--gold);
+    text-align:center; text-shadow:0 0 12px rgba(232,196,104,0.4);
+  }
+  .stage-sub{
+    position:absolute; top:32px; left:50%; transform:translateX(-50%);
+    font-size:0.65rem; color:var(--dim); letter-spacing:0.05em;
+  }
+
+  .progress-wrap{ margin:14px 0 20px; }
+  .progress-labels{ display:flex; justify-content:space-between; font-size:0.65rem; color:var(--dim); margin-bottom:5px; }
+  .progress-bar{ height:6px; border-radius:3px; background:rgba(255,255,255,0.08); overflow:hidden; }
+  .progress-fill{ height:100%; background:linear-gradient(90deg, var(--water), var(--gold)); transition: width 0.6s ease; }
+
+  .water-zone{ display:flex; flex-direction:column; align-items:center; gap:10px; margin:22px 0; }
+  #waterBtn{
+    position:relative; width:132px; height:132px; border-radius:50%;
+    border:2px solid var(--panel-border); background:var(--panel);
+    color:var(--ink); font-family:'Fraunces', serif; font-size:1rem;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition: transform 0.15s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 0 0 rgba(125,184,217,0.0);
+  }
+  #waterBtn:hover{ transform:scale(1.04); box-shadow:0 0 24px 4px rgba(125,184,217,0.25); }
+  #waterBtn:active{ transform:scale(0.97); }
+  #waterBtn.resting{ cursor:pointer; opacity:0.55; }
+  #waterBtn svg.ring{ position:absolute; inset:0; transform:rotate(-90deg); }
+  #waterBtn .drop{ font-size:1.6rem; margin-bottom:2px; }
+  #cooldownText{ font-size:0.68rem; color:var(--dim); min-height:14px; text-align:center; }
+
+  .toast{
+    position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-20px);
+    background:var(--panel); border:1px solid var(--panel-border); backdrop-filter:blur(6px);
+    padding:10px 18px; border-radius:10px; font-size:0.78rem; color:var(--gold);
+    opacity:0; transition: all 0.4s ease; z-index:50; pointer-events:none;
+    text-align:center; max-width:80%;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .stats-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:20px 0;
+  }
+  .stat-card{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:10px;
+    padding:12px 8px; text-align:center;
+  }
+  .stat-num{ font-family:'Fraunces', serif; font-size:1.3rem; color:var(--gold); }
+  .stat-label{ font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-top:2px; }
+
+  section.panel{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:12px;
+    padding:16px 16px 14px; margin-top:16px;
+  }
+  section.panel h2{
+    font-family:'Fraunces', serif; font-weight:600; font-size:0.95rem; margin:0 0 10px;
+    color:var(--ink); display:flex; align-items:center; gap:6px;
+  }
+
+  .achievements{ display:flex; flex-wrap:wrap; gap:8px; }
+  .badge{
+    font-size:0.65rem; padding:6px 10px; border-radius:20px;
+    border:1px solid var(--panel-border); color:var(--dim);
+  }
+  .badge.unlocked{ color:#0c1510; background:var(--gold); border-color:var(--gold); }
+
+  .name-modal{
+    position:fixed; inset:0; background:rgba(5,8,6,0.85); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .name-box{
+    background:#111d15; border:1px solid var(--panel-border); border-radius:14px;
+    padding:26px 22px; max-width:340px; text-align:center;
+  }
+  .name-box h3{ font-family:'Fraunces', serif; margin:0 0 8px; font-size:1.2rem; }
+  .name-box p{ font-size:0.78rem; color:var(--dim); line-height:1.5; }
+  .name-box input{
+    width:100%; margin-top:14px; padding:10px 12px; border-radius:8px;
+    border:1px solid var(--panel-border); background:rgba(255,255,255,0.05); color:var(--ink);
+    font-family:'Space Mono', monospace; font-size:0.85rem;
+  }
+  .name-box button{
+    margin-top:12px; width:100%; padding:10px; border-radius:8px; border:none;
+    background:var(--gold); color:#14210f; font-family:'Fraunces', serif; font-weight:600;
+    font-size:0.9rem; cursor:pointer;
+  }
+  .name-box .skip{ margin-top:8px; background:none; color:var(--dim); font-size:0.7rem; text-decoration:underline; }
+
+  footer{ text-align:center; margin-top:24px; font-size:0.62rem; color:var(--dim); opacity:0.7; }
+  .loading{ text-align:center; color:var(--dim); font-size:0.8rem; padding:40px 0; }
+</style>
+</head>
+<body>
+<div id="fireflies"></div>
+<div id="app">
+  <div class="loading" id="loadingMsg">waking the grove…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_TOTAL = 'grove:total-growth';
+const STORAGE_COOLDOWN = 'grove:cooldown';
+const STORAGE_PROFILE = 'grove:profile';
+
+const STAGES = [
+  {min:0,   name:'Seed',           sub:'just planted', leaf:'#5b7a5e', flowers:false},
+  {min:15,  name:'Sprout',         sub:'first leaves',  leaf:'#5b8a5a', flowers:false},
+  {min:60,  name:'Sapling',        sub:'reaching up',   leaf:'#4f8a52', flowers:false},
+  {min:150, name:'Young Tree',     sub:'finding its shape', leaf:'#3f7a48', flowers:false},
+  {min:350, name:'Mature Tree',    sub:'deep roots',    leaf:'#38724a', flowers:true},
+  {min:700, name:'Ancient Elder',  sub:'the grove remembers', leaf:'#c9a24a', flowers:true},
+];
+
+const ACHIEVEMENTS = [
+  {id:'first',    label:'First Drop',     test:p => p.contributed >= 1},
+  {id:'green25',  label:'Green Thumb',    test:p => p.contributed >= 25},
+  {id:'century',  label:'Century Club',   test:p => p.contributed >= 100},
+  {id:'streak7',  label:'Loyal Keeper',   test:p => p.bestStreak >= 7},
+  {id:'streak30', label:'Grove Guardian', test:p => p.bestStreak >= 30},
+  {id:'rain5',    label:'Rain Whisperer', test:p => p.rainBonuses >= 5},
+];
+
+// The cooldown is shared by the whole grove (Discord-plant-bot style): one
+// watering locks the tree for EVERYONE until it expires. The bigger the
+// growth from a given watering (e.g. a rain bonus), the longer that lock
+// lasts — so a lucky big watering costs the grove more downtime.
+const COOLDOWN_BASE_SECONDS = 30;   // multiplied by the gain from that watering
+const COOLDOWN_MAX_SECONDS  = 300;  // safety cap (5 min)
+const SYNC_POLL_MS = 6000;          // how often we check if someone else watered
+
+let state = {
+  total: 0,
+  profile: null,
+  cooldownEnd: 0,
+  lastWateredBy: null,
+};
+
+let animPhase = 0;
+let canvas, ctx;
+let cooldownInterval = null;
+let syncInterval = null;
+
+function todayStr(d){
+  return d.toISOString().slice(0,10);
+}
+
+function getStage(growth){
+  let s = STAGES[0];
+  for(const st of STAGES){ if(growth >= st.min) s = st; }
+  return s;
+}
+function nextStage(growth){
+  for(const st of STAGES){ if(growth < st.min) return st; }
+  return null;
+}
+
+function mulberry32(seed){
+  let a = seed;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function drawTree(growth, swayOffset){
+  if(!ctx) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const stage = getStage(growth);
+  const rng = mulberry32(42);
+  const maxDepth = Math.min(3 + Math.floor(growth/45), 10);
+  const baseLen = Math.min(w*0.16 + growth*0.06, w*0.30);
+  const baseX = w/2, baseY = h*0.92;
+
+  function branch(x,y,len,angle,depth){
+    if(len < 4 || depth <= 0){
+      if(growth > 3){
+        ctx.beginPath();
+        ctx.fillStyle = stage.leaf;
+        ctx.globalAlpha = 0.9;
+        ctx.arc(x,y, 2.6 + rng()*2.2, 0, Math.PI*2);
+        ctx.fill();
+        if(stage.flowers && rng() < 0.35){
+          ctx.beginPath();
+          ctx.fillStyle = '#E8A0BF';
+          ctx.arc(x,y,1.8,0,Math.PI*2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    const sway = swayOffset * (depth <= 3 ? 1.6 : 0.5);
+    const x2 = x + Math.cos(angle+sway)*len;
+    const y2 = y + Math.sin(angle+sway)*len;
+    ctx.strokeStyle = depth > maxDepth-3 ? '#5a4028' : '#8B6B4A';
+    ctx.lineWidth = Math.max(1, depth*1.05);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+    const branchCount = rng() < 0.65 ? 2 : 3;
+    for(let i=0;i<branchCount;i++){
+      const spread = 0.45 + rng()*0.35;
+      const newAngle = angle + (i-(branchCount-1)/2)*spread + (rng()-0.5)*0.15;
+      branch(x2,y2, len*(0.70+rng()*0.09), newAngle, depth-1);
+    }
+  }
+
+  branch(baseX, baseY, baseLen, -Math.PI/2, maxDepth);
+}
+
+function animate(){
+  animPhase += 0.012;
+  const sway = Math.sin(animPhase) * 0.035;
+  drawTree(state.total, sway);
+  requestAnimationFrame(animate);
+}
+
+function setBodyTimeClass(){
+  const hr = new Date().getHours();
+  let cls = 'night';
+  if(hr >= 5 && hr < 8) cls = 'dawn';
+  else if(hr >= 8 && hr < 17) cls = 'day';
+  else if(hr >= 17 && hr < 20) cls = 'dusk';
+  document.body.className = cls;
+}
+
+function spawnFireflies(n){
+  const holder = document.getElementById('fireflies');
+  holder.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const f = document.createElement('div');
+    f.className = 'firefly';
+    f.style.left = (Math.random()*100) + 'vw';
+    f.style.top = (30 + Math.random()*65) + 'vh';
+    f.style.animationDelay = (Math.random()*8) + 's, ' + (Math.random()*3) + 's';
+    holder.appendChild(f);
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+function genId(){
+  return 'k' + Math.random().toString(36).slice(2,10);
+}
+
+// mm:ss for anything over a minute, otherwise just seconds
+function formatDuration(ms){
+  const totalSec = Math.max(0, Math.ceil(ms/1000));
+  if(totalSec < 60) return totalSec + 's';
+  const m = Math.floor(totalSec/60), s = totalSec % 60;
+  return m + 'm ' + (s < 10 ? '0'+s : s) + 's';
+}
+
+async function loadState(){
+  try{
+    const t = await window.storage.get(STORAGE_TOTAL, true);
+    state.total = t ? parseFloat(t.value) : 0;
+  }catch(e){ state.total = 0; }
+
+  try{
+    const cd = await window.storage.get(STORAGE_COOLDOWN, true);
+    const parsed = cd ? JSON.parse(cd.value) : null;
+    state.cooldownEnd = parsed ? (parsed.end || 0) : 0;
+    state.lastWateredBy = parsed ? (parsed.by || null) : null;
+  }catch(e){ state.cooldownEnd = 0; state.lastWateredBy = null; }
+
+  try{
+    const p = await window.storage.get(STORAGE_PROFILE, false);
+    state.profile = p ? JSON.parse(p.value) : null;
+  }catch(e){ state.profile = null; }
+}
+
+// Re-checks just the shared bits (total + cooldown) — used before deciding
+// whether a tap should count, and on the background poll, so we don't act
+// on a stale cooldown someone else already refreshed.
+async function refreshSharedState(){
+  try{
+    const t = await window.storage.get(STORAGE_TOTAL, true);
+    state.total = t ? parseFloat(t.value) : 0;
+  }catch(e){}
+  try{
+    const cd = await window.storage.get(STORAGE_COOLDOWN, true);
+    const parsed = cd ? JSON.parse(cd.value) : null;
+    state.cooldownEnd = parsed ? (parsed.end || 0) : 0;
+    state.lastWateredBy = parsed ? (parsed.by || null) : null;
+  }catch(e){}
+}
+
+async function saveTotal(){
+  try{ await window.storage.set(STORAGE_TOTAL, String(state.total), true); }catch(e){}
+}
+async function saveCooldown(){
+  try{
+    await window.storage.set(STORAGE_COOLDOWN, JSON.stringify({
+      end: state.cooldownEnd,
+      by: state.lastWateredBy,
+    }), true);
+  }catch(e){}
+}
+async function saveProfile(){
+  try{ await window.storage.set(STORAGE_PROFILE, JSON.stringify(state.profile), false); }catch(e){}
+}
+
+function ensureProfile(){
+  if(!state.profile){
+    state.profile = {
+      id: genId(),
+      name: '',
+      contributed: 0,
+      streak: 0,
+      bestStreak: 0,
+      lastDay: null,
+      lastWatered: 0,
+      rainBonuses: 0,
+      unlocked: [],
+    };
+    return true; // needs name prompt
+  }
+  return false;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const stage = getStage(state.total);
+  const nxt = nextStage(state.total);
+  const pct = nxt ? Math.min(100, ((state.total - stage.min) / (nxt.min - stage.min)) * 100) : 100;
+
+  const p = state.profile;
+  const now = Date.now();
+  const remainingMs = state.cooldownEnd - now;
+  const onCooldown = remainingMs > 0;
+  const wateredByYou = state.lastWateredBy && p && state.lastWateredBy === p.name;
+
+  app.innerHTML = `
+    <header>
+      <div class="eyebrow">a grove, grown together</div>
+      <h1>The Grove</h1>
+      <div class="tagline">Water it. Watch it grow. Everyone here shares the same tree — and the same cooldown.</div>
+    </header>
+
+    <div class="stage-canvas-wrap">
+      <div class="stage-label">${stage.name}</div>
+      <div class="stage-sub">${stage.sub}</div>
+      <canvas id="tree" width="420" height="420"></canvas>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span>${Math.floor(state.total)} growth</span>
+        <span>${nxt ? nxt.name+' at '+nxt.min : 'fully grown'}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+
+    <div class="water-zone">
+      <button id="waterBtn" class="${onCooldown ? 'resting' : ''}">
+        <svg class="ring" width="132" height="132">
+          <circle cx="66" cy="66" r="60" stroke="rgba(255,255,255,0.08)" stroke-width="4" fill="none"/>
+          <circle id="ringProgress" cx="66" cy="66" r="60" stroke="#7DB8D9" stroke-width="4" fill="none"
+            stroke-dasharray="${2*Math.PI*60}" stroke-dashoffset="${onCooldown ? 2*Math.PI*60*Math.min(1,remainingMs/(COOLDOWN_MAX_SECONDS*1000)) : 0}"
+            style="transition: stroke-dashoffset 1s linear;"/>
+        </svg>
+        <span class="drop">💧</span>
+        <span>${onCooldown ? 'Resting…' : 'Water'}</span>
+      </button>
+      <div id="cooldownText">${
+        onCooldown
+          ? (wateredByYou ? 'you watered it last · ' : 'watered by ' + (state.lastWateredBy || 'someone') + ' · ') + 'ready in ' + formatDuration(remainingMs)
+          : (p && p.streak>0 ? p.streak + '-day streak 🔥' : 'tap to water the grove')
+      }</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num">${p ? p.contributed : 0}</div><div class="stat-label">you watered</div></div>
+      <div class="stat-card"><div class="stat-num">${p ? p.streak : 0}</div><div class="stat-label">day streak</div></div>
+      <div class="stat-card"><div class="stat-num">${Math.floor(state.total)}</div><div class="stat-label">grove total</div></div>
+    </div>
+
+    <section class="panel">
+      <h2>🏅 Achievements</h2>
+      <div class="achievements">
+        ${ACHIEVEMENTS.map(a => `<span class="badge ${p && p.unlocked.includes(a.id) ? 'unlocked' : ''}">${a.label}</span>`).join('')}
+      </div>
+    </section>
+
+    <footer>your progress is saved just for you · the grove itself — and its cooldown — is shared with everyone here</footer>
+  `;
+
+  canvas = document.getElementById('tree');
+  ctx = canvas.getContext('2d');
+  drawTree(state.total, 0);
+
+  document.getElementById('waterBtn').addEventListener('click', onWater);
+
+  if(onCooldown){
+    startCooldownTicker();
+  }
+}
+
+function startCooldownTicker(){
+  clearInterval(cooldownInterval);
+  cooldownInterval = setInterval(() => {
+    const remaining = state.cooldownEnd - Date.now();
+    if(remaining <= 0){
+      clearInterval(cooldownInterval);
+      render();
+    } else {
+      const txt = document.getElementById('cooldownText');
+      const btn = document.getElementById('waterBtn');
+      const ring = document.getElementById('ringProgress');
+      const p = state.profile;
+      const wateredByYou = state.lastWateredBy && p && state.lastWateredBy === p.name;
+      if(txt) txt.textContent = (wateredByYou ? 'you watered it last · ' : 'watered by ' + (state.lastWateredBy || 'someone') + ' · ') + 'ready in ' + formatDuration(remaining);
+      if(ring) ring.setAttribute('stroke-dashoffset', 2*Math.PI*60*Math.min(1, remaining/(COOLDOWN_MAX_SECONDS*1000)));
+    }
+  }, 1000);
+}
+
+// Periodically checks whether someone else watered the tree while this tab
+// was open, so the shared cooldown/total stay in sync without a reload.
+function startSyncPoll(){
+  clearInterval(syncInterval);
+  syncInterval = setInterval(async () => {
+    const prevEnd = state.cooldownEnd;
+    const prevTotal = state.total;
+    await refreshSharedState();
+    if(state.cooldownEnd !== prevEnd || state.total !== prevTotal){
+      render();
+    }
+  }, SYNC_POLL_MS);
+}
+
+async function onWater(){
+  const p = state.profile;
+
+  // Re-check the shared cooldown right before acting — someone else may
+  // have watered (or the lock may have just expired) since our last sync.
+  await refreshSharedState();
+  const now = Date.now();
+  if(state.cooldownEnd > now){
+    const remaining = state.cooldownEnd - now;
+    const who = (state.lastWateredBy && state.lastWateredBy === p.name) ? 'you' : (state.lastWateredBy || 'someone');
+    showToast(`🌙 The tree was last watered by ${who}. Come back in ${formatDuration(remaining)}.`);
+    render();
+    return;
+  }
+
+  const today = todayStr(new Date());
+  if(p.lastDay){
+    const prev = new Date(p.lastDay);
+    const cur = new Date(today);
+    const diffDays = Math.round((cur - prev) / 86400000);
+    if(diffDays === 1) p.streak += 1;
+    else if(diffDays > 1) p.streak = 1;
+    // diffDays === 0 -> same day, streak unchanged
+  } else {
+    p.streak = 1;
+  }
+  p.lastDay = today;
+  p.bestStreak = Math.max(p.bestStreak, p.streak);
+
+  let gain = 1 + Math.floor(Math.random()*2); // 1-2 base
+  let rainBonus = false;
+  if(Math.random() < 0.1){
+    gain *= 3;
+    rainBonus = true;
+    p.rainBonuses = (p.rainBonuses||0) + 1;
+  }
+
+  state.total += gain;
+  p.contributed += 1;
+  p.lastWatered = now;
+
+  // The bigger the growth from this watering, the longer everyone waits.
+  const cooldownSec = Math.min(COOLDOWN_MAX_SECONDS, COOLDOWN_BASE_SECONDS * gain);
+  state.cooldownEnd = now + cooldownSec*1000;
+  state.lastWateredBy = p.name || 'a quiet gardener';
+
+  const newlyUnlocked = [];
+  for(const a of ACHIEVEMENTS){
+    if(!p.unlocked.includes(a.id) && a.test(p)){
+      p.unlocked.push(a.id);
+      newlyUnlocked.push(a.label);
+    }
+  }
+
+  await Promise.all([saveTotal(), saveCooldown(), saveProfile()]);
+
+  if(rainBonus){
+    showToast(`🌧️ Rain bonus! +${gain} growth · the grove rests for ${formatDuration(cooldownSec*1000)}`);
+  } else if(newlyUnlocked.length){
+    showToast('🏅 Achievement unlocked: ' + newlyUnlocked[0]);
+  } else {
+    showToast('+' + gain + ' growth · the grove thanks you');
+  }
+
+  render();
+}
+
+function showNamePrompt(){
+  const app = document.getElementById('app');
+  const modal = document.createElement('div');
+  modal.className = 'name-modal';
+  modal.innerHTML = `
+    <div class="name-box">
+      <h3>Welcome to the grove</h3>
+      <p>Everyone who visits waters the same tree, and shares the same cooldown. Pick a name so others know who watered it last — this stays on your device, no account needed.</p>
+      <input id="nameInput" maxlength="18" placeholder="e.g. Moss Warden" />
+      <button id="nameConfirm">Enter the grove</button>
+      <br/><button class="skip" id="nameSkip">stay anonymous</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('nameConfirm').addEventListener('click', async () => {
+    const val = document.getElementById('nameInput').value.trim();
+    state.profile.name = val || 'a quiet gardener';
+    await saveProfile();
+    modal.remove();
+    init2();
+  });
+  document.getElementById('nameSkip').addEventListener('click', async () => {
+    state.profile.name = 'a quiet gardener';
+    await saveProfile();
+    modal.remove();
+    init2();
+  });
+}
+
+function init2(){
+  setBodyTimeClass();
+  spawnFireflies(14);
+  render();
+  requestAnimationFrame(animate);
+  startSyncPoll();
+}
+
+async function init(){
+  await loadState();
+  const needsName = ensureProfile();
+  if(needsName){
+    document.getElementById('app').innerHTML = '';
+    showNamePrompt();
+    // render a minimal shell behind modal
+    init2();
+  } else {
+    init2();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

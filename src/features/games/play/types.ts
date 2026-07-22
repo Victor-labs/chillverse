@@ -15,6 +15,7 @@ export type GameId =
   | 'pattern-king'
   | 'uno'
   | 'tile-merge'
+  | 'chess'
 
 export type GameKey =
   | 'arrow_dash'
