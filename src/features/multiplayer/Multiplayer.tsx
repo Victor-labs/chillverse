@@ -1,18 +1,147 @@
 // src/pages/Multiplayer.tsx
-// Entry point for multiplayer: pick a game, then create or join a room for it.
-// Per-game multiplayer logic isn't wired up yet — this just gets players into
-// a real, live room (see Room.tsx) tagged with the game they picked.
-import { useState } from 'react'
+// Multiplayer hub, in three sections:
+//   1. Vs AI       — Chess, Ludo, Uno. Tapping opens a small pre-game sheet
+//                    (name/tagline/today's hub-XP status) before launching —
+//                    see HubPreGameModal.
+//   2. Community   — Water the Tree, same pre-game sheet pattern.
+//   3. Vs Players  — unchanged: pick any game, create/join a real room.
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, X, Plus, Users } from 'lucide-react'
+import { ArrowLeft, ChevronRight, X, Plus, Users, Crown, Dices, TreePine, Lock } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
-import { GAMES, type GameMeta } from '../games/games'
+import { useAuth } from '../auth/useAuth'
+import { GAMES, getGameMeta, type GameMeta } from '../games/games'
+import { getHubXpStatus, HUB_DAILY_XP_CAP } from '../games/play/hubXp'
 import { createRoom, joinRoomByCode } from './rooms'
 
 const LIVE_GAMES = new Set(['tac_zone', 'pattern_king'])
 
-// ─── Game picker card ───────────────────────────────────────────
+// ─── Vs AI / Community game entries ──────────────────────────────
+// These three don't go through the room/session flow below — Chess is a
+// standalone React game, Ludo and Water the Tree are self-contained HTML
+// games rendered in an iframe (see games/play/Ludo.tsx and
+// games/play/WaterTheTree.tsx). Each opens its own route after the
+// pre-game sheet is confirmed.
+interface HubGame {
+  name: string
+  tagline: string
+  accent: string
+  icon: typeof Crown
+  route: string
+  proOnly?: boolean
+}
+
+const UNO = getGameMeta('uno')!
+
+const VS_AI_GAMES: HubGame[] = [
+  { name: 'Chillverse Chess', tagline: 'Full rules, real AI — castling, en passant, the works.', accent: '#c9a24b', icon: Crown, route: '/play/chess' },
+  { name: 'Ludo', tagline: 'Roll, race, and knock the AI back to base.', accent: '#c79a3b', icon: Dices, route: '/play/ludo' },
+  { name: UNO.name, tagline: UNO.tagline, accent: UNO.accent, icon: UNO.icon, route: '/games', proOnly: true },
+]
+
+const COMMUNITY_GAMES: HubGame[] = [
+  { name: 'The Grove', tagline: 'Water the tree, watch it grow through the day.', accent: '#7DB8D9', icon: TreePine, route: '/play/water-the-tree' },
+]
+
+function HubGameCard({ game, onSelect }: { game: HubGame; onSelect: () => void }) {
+  const Icon = game.icon
+  return (
+    <div
+      className="neu-card ripple-wrap"
+      onClick={(e) => { ripple(e); onSelect() }}
+      style={{ padding: 16, cursor: 'pointer', position: 'relative', overflow: 'hidden', marginBottom: 10 }}
+    >
+      <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${game.accent}18`, filter: 'blur(20px)', pointerEvents: 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 13, background: `${game.accent}18`, border: `1px solid ${game.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 16px ${game.accent}20`, flexShrink: 0 }}>
+          <Icon size={20} style={{ color: game.accent }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{game.name}</p>
+            {game.proOnly && (
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#9b6dff', background: 'rgba(155,109,255,0.12)', border: '1px solid rgba(155,109,255,0.3)', borderRadius: 6, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pro</span>
+            )}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>{game.tagline}</p>
+        </div>
+        <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Fix 3: pre-game sheet for Vs AI / Community games ──────────
+// Shows what you're about to play and today's hub-XP status before
+// actually launching the game — tapping a card no longer goes straight in.
+function HubPreGameModal({ game, onClose }: { game: HubGame; onClose: () => void }) {
+  const navigate = useNavigate()
+  const { session } = useAuth()
+  const userId = session?.user?.id ?? null
+  const Icon = game.icon
+  const [status, setStatus] = useState<{ xpToday: number; capReached: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!userId) return
+    getHubXpStatus(userId).then(setStatus)
+  }, [userId])
+
+  function handlePlay() {
+    if (game.route === '/games') {
+      navigate('/games', { state: { openGame: 'uno' } })
+    } else {
+      navigate(game.route)
+    }
+  }
+
+  const capReached = !!status?.capReached
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 600, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
+      <div style={{ position: 'relative', width: '100%', maxWidth: 600, margin: '0 auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '18px 18px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: `${game.accent}18`, border: `1px solid ${game.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon size={20} style={{ color: game.accent }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{game.name}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>{game.tagline}</div>
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--surface)', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          {capReached
+            ? <Lock size={15} style={{ color: '#9b6dff', flexShrink: 0 }} />
+            : <span style={{ width: 6, height: 6, borderRadius: '50%', background: game.accent, flexShrink: 0 }} />}
+          <span style={{ fontSize: 12, color: capReached ? '#9b6dff' : 'var(--text-muted)' }}>
+            {status == null
+              ? '18 XP for a win'
+              : capReached
+                ? "You've hit today's XP cap — this game is locked until it resets tomorrow."
+                : `18 XP for a win — ${status.xpToday}/${HUB_DAILY_XP_CAP} earned today`}
+          </span>
+        </div>
+
+        <button
+          onClick={(e) => { if (!capReached) { ripple(e); handlePlay() } }}
+          disabled={capReached}
+          className="ripple-wrap"
+          style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: capReached ? 'var(--surface2)' : 'var(--accent)', color: capReached ? 'var(--text-muted)' : '#fff', fontWeight: 700, fontSize: 13.5, cursor: capReached ? 'not-allowed' : 'pointer' }}
+        >
+          {capReached ? 'Locked for today' : 'Play'}
+        </button>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// ─── Vs Players: existing room picker (unchanged behavior) ──────
 function GameCard({ game, onSelect }: { game: GameMeta; onSelect: () => void }) {
   const Icon = game.icon
   const isLive = LIVE_GAMES.has(game.dbKey)
@@ -40,7 +169,6 @@ function GameCard({ game, onSelect }: { game: GameMeta; onSelect: () => void }) 
   )
 }
 
-// ─── Create/join modal for a chosen game ─────────────────────────
 function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void }) {
   const navigate = useNavigate()
   const Icon = game.icon
@@ -98,7 +226,6 @@ function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void 
           <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12.5, marginBottom: 14 }}>{error}</div>
         )}
 
-        {/* Create room */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16, marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Create a room</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -129,7 +256,6 @@ function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void 
           </button>
         </div>
 
-        {/* Join by code */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Have a code?</div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -155,6 +281,11 @@ function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void 
 export default function Multiplayer() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<GameMeta | null>(null)
+  const [hubSelected, setHubSelected] = useState<HubGame | null>(null)
+
+  // Uno is now launched from the "Vs AI" section above, not as a Vs
+  // Players room — it has no live head-to-head implementation.
+  const ROOM_GAMES = GAMES.filter(g => g.id !== 'uno')
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 48px' }}>
@@ -165,12 +296,30 @@ export default function Multiplayer() {
         <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Multiplayer</div>
       </div>
 
+      {/* ─── Vs AI ─────────────────────────────────────────── */}
+      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>Vs AI</div>
+      {VS_AI_GAMES.map(game => (
+        <HubGameCard key={game.name} game={game} onSelect={() => setHubSelected(game)} />
+      ))}
+
+      <div style={{ marginBottom: 24 }} />
+
+      {/* ─── Community ─────────────────────────────────────── */}
+      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>Community</div>
+      {COMMUNITY_GAMES.map(game => (
+        <HubGameCard key={game.name} game={game} onSelect={() => setHubSelected(game)} />
+      ))}
+
+      <div style={{ marginBottom: 24 }} />
+
+      {/* ─── Vs Players ─────────────────────────────────────── */}
+      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Vs Players</div>
       <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16 }}>
         Pick a game to create or join a room. Playing live together is coming to games one by one.
       </p>
 
       <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 20 }}>
-        {GAMES.map(game => (
+        {ROOM_GAMES.map(game => (
           <GameCard key={game.id} game={game} onSelect={() => setSelected(game)} />
         ))}
       </div>
@@ -187,6 +336,7 @@ export default function Multiplayer() {
       </Link>
 
       {selected && <GameRoomModal game={selected} onClose={() => setSelected(null)} />}
+      {hubSelected && <HubPreGameModal game={hubSelected} onClose={() => setHubSelected(null)} />}
     </div>
   )
 }
