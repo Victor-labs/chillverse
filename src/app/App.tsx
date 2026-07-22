@@ -11,6 +11,7 @@ import Terms from '../features/marketing/Terms'
 import Dashboard from '../features/dashboard/Dashboard'
 import ComingSoon from '../features/marketing/ComingSoon'
 import AppLayout from '../layout/AppLayout'
+import BlogLayout from '../layout/BlogLayout'
 import ProtectedRoute from '../features/auth/ProtectedRoute'
 import { supabase, supabaseConfigError } from '../shared/lib/supabase'
 import { updateStreak } from '../features/auth/auth'
@@ -213,14 +214,20 @@ export default function App() {
           <Route path="/support/tickets/new"               element={<Suspense fallback={<Fallback />}><NewTicket /></Suspense>} />
           <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
           <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
-          <Route path="/blog"             element={<Suspense fallback={<Fallback />}><Blog /></Suspense>} />
-          <Route path="/blog/updates"     element={<Suspense fallback={<Fallback />}><UpdateLog /></Suspense>} />
-          <Route path="/blog/series/:series" element={<Suspense fallback={<Fallback />}><BlogSeriesPage /></Suspense>} />
-          <Route path="/blog/admin"       element={<Suspense fallback={<Fallback />}><AdminBlog /></Suspense>} />
-          <Route path="/blog/:slug"       element={<Suspense fallback={<Fallback />}><BlogPostPage /></Suspense>} />
           <Route path="/moderation"       element={<Suspense fallback={<Fallback />}><ModerationPanel /></Suspense>} />
           <Route path="/admin"            element={<Suspense fallback={<Fallback />}><AdminDashboard /></Suspense>} />
           <Route path="/admin/users/:userId" element={<Suspense fallback={<Fallback />}><AdminUserDetail /></Suspense>} />
+        </Route>
+
+        {/* Blog — a separate public surface (like discord.com/blog vs discord.com),
+            reachable and readable by anyone, signed in or not. NOT behind ProtectedRoute
+            or AppLayout. /blog/admin is still gated (staff-only) inside AdminBlog itself. */}
+        <Route element={<BlogLayout />}>
+          <Route path="/blog"                element={<Suspense fallback={<Fallback />}><Blog /></Suspense>} />
+          <Route path="/blog/updates"        element={<Suspense fallback={<Fallback />}><UpdateLog /></Suspense>} />
+          <Route path="/blog/series/:series" element={<Suspense fallback={<Fallback />}><BlogSeriesPage /></Suspense>} />
+          <Route path="/blog/admin"          element={<Suspense fallback={<Fallback />}><AdminBlog /></Suspense>} />
+          <Route path="/blog/:slug"          element={<Suspense fallback={<Fallback />}><BlogPostPage /></Suspense>} />
         </Route>
       </Routes>
     </>
