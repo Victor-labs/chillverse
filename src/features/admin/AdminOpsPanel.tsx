@@ -13,13 +13,15 @@ import { useEffect, useState } from 'react'
 import {
   Power, Megaphone, Download, Activity, AlertTriangle,
   Gamepad2, Map as MapIcon, Settings2, Clock, Send, X, MessageSquare,
+  Copy, Check, ChevronDown, ChevronUp, RefreshCw,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { Row, ToggleRow, SectionTitle } from '../settings/settingsShared'
 import {
   fetchAppConfig, setMaintenanceMode, broadcastNotification,
   fetchFeatureFlags, setFeatureFlag, exportUsersCsv, exportTransactionsCsv,
-  fetchSystemHealth, type FeatureFlag, type SystemHealth,
+  fetchSystemHealth, fetchRecentClientErrors,
+  type FeatureFlag, type SystemHealth, type ClientErrorLogRow,
 } from './adminOps'
 
 // ── Shared modal shell (mirrors Settings.tsx's Log out / Microphone popovers) ──
@@ -239,24 +241,185 @@ function HealthStat({ label, value, warn }: { label: string; value: string | num
   )
 }
 
+/** Best-effort clipboard copy — Clipboard API can throw in insecure or
+ *  permission-denied contexts, so callers get a boolean back instead of
+ *  a thrown error, and can decide what (if anything) to show. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function formatErrorRow(e: ClientErrorLogRow): string {
+  const lines = [
+    `[${formatTimestamp(e.created_at)}] ${e.message}`,
+    `User: ${e.username ?? 'anonymous'}`,
+    `Path: ${e.path ?? '—'}`,
+  ]
+  if (e.stack) lines.push('Stack:', e.stack)
+  return lines.join('\n')
+}
+
+function formatHealthReport(health: SystemHealth, errors: ClientErrorLogRow[]): string {
+  const lines = [
+    `Chillverse system health — generated ${new Date(health.generated_at).toLocaleString()}`,
+    '',
+    `Client errors (24h): ${health.client_errors.errors_24h}`,
+    `Client errors (7d): ${health.client_errors.errors_7d}`,
+    `Open reports: ${health.moderation_backlog.open_reports}`,
+    `Oldest open report: ${health.moderation_backlog.oldest_open_report_age_hours != null ? `${health.moderation_backlog.oldest_open_report_age_hours}h` : '—'}`,
+    `Mod actions (24h): ${health.moderation_backlog.actions_24h}`,
+    `Open support tickets: ${health.support_backlog.open_tickets}`,
+    `Oldest open ticket: ${health.support_backlog.oldest_open_ticket_age_hours != null ? `${health.support_backlog.oldest_open_ticket_age_hours}h` : '—'}`,
+    `Disabled flags: ${health.flags.disabled_count}`,
+    `Maintenance mode: ${health.flags.maintenance_enabled ? 'ON' : 'off'}`,
+  ]
+
+  if (health.client_errors.top_messages_7d.length > 0) {
+    lines.push('', 'Most common errors (7d):')
+    for (const m of health.client_errors.top_messages_7d) lines.push(`  ${m.occurrences}× — ${m.message}`)
+  }
+
+  if (errors.length > 0) {
+    lines.push('', `Recent errors (${errors.length}):`, '')
+    errors.forEach((e, i) => { lines.push(formatErrorRow(e)); if (i < errors.length - 1) lines.push('') })
+  }
+
+  return lines.join('\n')
+}
+
+function ErrorLogRow({ err, copiedId, onCopy }: {
+  err: ClientErrorLogRow
+  copiedId: string | null
+  onCopy: (id: string, text: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const hasDetail = !!(err.stack || err.path)
+
+  return (
+    <div style={{ borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div
+        onClick={() => hasDetail && setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', cursor: hasDetail ? 'pointer' : 'default' }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 11.5, color: 'var(--text)', margin: 0, wordBreak: 'break-word' }}>{err.message}</p>
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '3px 0 0' }}>
+            {formatTimestamp(err.created_at)} · {err.username ?? 'anonymous'}{err.path ? ` · ${err.path}` : ''}
+          </p>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onCopy(err.id, formatErrorRow(err)) }}
+          aria-label="Copy error"
+          style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', color: copiedId === err.id ? '#4fd18a' : 'var(--text-dim)', cursor: 'pointer' }}
+        >
+          {copiedId === err.id ? <Check size={11} /> : <Copy size={11} />}
+        </button>
+        {hasDetail && (
+          <div style={{ flexShrink: 0, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </div>
+        )}
+      </div>
+      {open && hasDetail && (
+        <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
+          {err.path && (
+            <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: '8px 0 0' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Path:</span> {err.path}
+            </p>
+          )}
+          {err.stack && (
+            <pre
+              className="font-mono"
+              style={{
+                fontSize: 10, lineHeight: 1.5, color: 'var(--text-dim)', margin: '8px 0 0',
+                padding: 8, borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)',
+                overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}
+            >
+              {err.stack}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SystemHealthModal({ onClose }: { onClose: () => void }) {
   const [health, setHealth] = useState<SystemHealth | null>(null)
+  const [errors, setErrors] = useState<ClientErrorLogRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorsLoading, setErrorsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedReport, setCopiedReport] = useState(false)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setErrorsLoading(true)
+    setError('')
     fetchSystemHealth().then(({ data, error }) => {
       if (error) setError(error)
       setHealth(data)
       setLoading(false)
     })
-  }, [])
+    fetchRecentClientErrors(40).then(({ data }) => {
+      setErrors(data)
+      setErrorsLoading(false)
+    })
+  }
+
+  useEffect(() => { load() }, [])
+
+  function handleCopyRow(id: string, text: string) {
+    copyText(text).then(ok => {
+      if (!ok) return
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(prev => (prev === id ? null : prev)), 1600)
+    })
+  }
+
+  function handleCopyReport() {
+    if (!health) return
+    copyText(formatHealthReport(health, errors)).then(ok => {
+      if (!ok) return
+      setCopiedReport(true)
+      setTimeout(() => setCopiedReport(false), 1600)
+    })
+  }
 
   return (
-    <Modal title="System health" onClose={onClose} width={440}>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 14px' }}>
+    <Modal title="System health" onClose={onClose} width={480}>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 12px' }}>
         Real signals only — client error volume and report/ticket backlog. No platform-level logs are available to this client.
       </p>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button
+          onClick={handleCopyReport}
+          disabled={!health}
+          className="btn-secondary"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 0', fontSize: 12, opacity: health ? 1 : 0.5 }}
+        >
+          {copiedReport ? <Check size={12} /> : <Copy size={12} />} {copiedReport ? 'Copied' : 'Copy full report'}
+        </button>
+        <button
+          onClick={load}
+          className="btn-secondary"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 14px', fontSize: 12 }}
+        >
+          <RefreshCw size={12} /> Refresh
+        </button>
+      </div>
+
       {loading ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Loading…</p>
       ) : error ? (
@@ -271,7 +434,12 @@ function SystemHealthModal({ onClose }: { onClose: () => void }) {
               label="Oldest open report"
               value={health.moderation_backlog.oldest_open_report_age_hours != null ? `${health.moderation_backlog.oldest_open_report_age_hours}h` : '—'}
             />
+            <HealthStat label="Mod actions (24h)" value={health.moderation_backlog.actions_24h} />
             <HealthStat label="Open tickets" value={health.support_backlog.open_tickets} />
+            <HealthStat
+              label="Oldest open ticket"
+              value={health.support_backlog.oldest_open_ticket_age_hours != null ? `${health.support_backlog.oldest_open_ticket_age_hours}h` : '—'}
+            />
             <HealthStat label="Disabled flags" value={health.flags.disabled_count} warn={health.flags.disabled_count > 0} />
           </div>
 
@@ -285,7 +453,7 @@ function SystemHealthModal({ onClose }: { onClose: () => void }) {
           {health.client_errors.top_messages_7d.length > 0 && (
             <>
               <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }}>Most common errors (7d)</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
                 {health.client_errors.top_messages_7d.map((m, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, padding: '6px 8px', borderRadius: 8, background: 'var(--surface2)' }}>
                     <span style={{ color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</span>
@@ -294,6 +462,21 @@ function SystemHealthModal({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             </>
+          )}
+
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }}>
+            Recent errors {errors.length > 0 ? `(${errors.length})` : ''}
+          </p>
+          {errorsLoading ? (
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '8px 0' }}>Loading…</p>
+          ) : errors.length === 0 ? (
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '8px 0' }}>No client errors logged recently.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {errors.map(e => (
+                <ErrorLogRow key={e.id} err={e} copiedId={copiedId} onCopy={handleCopyRow} />
+              ))}
+            </div>
           )}
         </>
       )}

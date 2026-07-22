@@ -140,3 +140,20 @@ export async function fetchSystemHealth(): Promise<{ data: SystemHealth | null; 
   if (error) return { data: null, error: friendlyAdminError(error.message) }
   return { data: data as SystemHealth, error: null }
 }
+
+/** A single client_error_logs row (migration 0062) — the detail view
+ *  behind admin_system_health's aggregated "top messages" list. */
+export interface ClientErrorLogRow {
+  id: string
+  message: string
+  stack: string | null
+  path: string | null
+  username: string | null
+  created_at: string
+}
+
+export async function fetchRecentClientErrors(limit = 40): Promise<{ data: ClientErrorLogRow[]; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_recent_client_errors', { p_limit: limit })
+  if (error) return { data: [], error: friendlyAdminError(error.message) }
+  return { data: (data ?? []) as ClientErrorLogRow[], error: null }
+}
