@@ -18,6 +18,7 @@
 // card with the icon, name, rarity, how to get it, and — for locked
 // badges — whether it's still obtainable at all.
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Lock } from 'lucide-react'
 import Avatar from '../../shared/components/Avatar'
 import { BadgeIcon } from './badgeIcons'
@@ -117,7 +118,7 @@ export default function BadgeQuickSheet({
     ? (notPro ? [ORBIT_MARKER, ...unlockPool.slice(0, 3)] : unlockPool)
     : []
 
-  return (
+  return createPortal(
     <>
       <div className="overlay-backdrop" onClick={close} style={{ zIndex: 20100 }} />
       <div className="sheet-or-modal" style={{ zIndex: 20105 }}>
@@ -215,7 +216,8 @@ export default function BadgeQuickSheet({
           onClose={() => setSelected(null)}
         />
       )}
-    </>
+    </>,
+    document.body,
   )
 }
 
