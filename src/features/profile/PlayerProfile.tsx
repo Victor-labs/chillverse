@@ -142,6 +142,10 @@ interface PlayerData {
   display_name_font: string | null
   display_name_color: string | null
   profile_theme_color: string | null
+  is_pro: boolean
+  pro_tier: 'orbit' | 'void' | null
+  pro_badge_color: string | null
+  pro_first_subscribed_at: string | null
 }
 interface AlbumPic { id: string; label: string; imageUrl: string; equippedAsBanner?: boolean }
 
@@ -572,6 +576,7 @@ function PlayerProfileInner() {
                 badges={playerBadges} defs={badgeDefs} originalUsername={player.original_username ?? player.username}
                 onOpenAll={() => setShowBadgesModal(true)}
                 avatarUrl={player?.avatar} displayName={displayName} isOwnProfile={false}
+                pro={player ? { isPro: player.is_pro, tier: player.pro_tier, color: player.pro_badge_color, memberSince: player.pro_first_subscribed_at } : null}
                 onViewYourBadges={() => navigate('/profile')}
               />
             </div>
@@ -848,7 +853,11 @@ function PlayerProfileInner() {
         />
       )}
       {showBadgesModal && (
-        <BadgesModal badges={playerBadges} allDefs={badgeDefs} originalUsername={player.original_username ?? player.username} onClose={() => setShowBadgesModal(false)} />
+        <BadgesModal
+          badges={playerBadges} allDefs={badgeDefs} originalUsername={player.original_username ?? player.username}
+          pro={{ isPro: player.is_pro, tier: player.pro_tier, color: player.pro_badge_color, memberSince: player.pro_first_subscribed_at }}
+          onClose={() => setShowBadgesModal(false)}
+        />
       )}
       {toast && <MiniToast msg={toast} onDone={() => setToast(null)} />}
 

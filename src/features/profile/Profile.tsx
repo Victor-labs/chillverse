@@ -1135,7 +1135,11 @@ export default function Profile() {
       )}
 
       {showBadgesModal && profile?.id && (
-        <BadgesModal badges={playerBadges} allDefs={badgeDefs} originalUsername={profile.original_username ?? profile.username} onClose={() => setShowBadgesModal(false)} />
+        <BadgesModal
+          badges={playerBadges} allDefs={badgeDefs} originalUsername={profile.original_username ?? profile.username}
+          pro={{ isPro, tier: profile.pro_tier ?? null, color: profile.pro_badge_color, memberSince: profile.pro_first_subscribed_at }}
+          onClose={() => setShowBadgesModal(false)}
+        />
       )}
       {showAchievements && (
         <AchievementsModal total={achievementCount} recent={recentAchievements} onClose={() => setShowAchievements(false)} />

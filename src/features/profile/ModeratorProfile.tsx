@@ -201,7 +201,12 @@ export default function ModeratorProfile({ userId }: { userId: string }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>@{profile.username}</div>
-              <BadgeRow badges={playerBadges} defs={badgeDefs} originalUsername={profile.original_username ?? profile.username} onOpenAll={() => setShowBadgesModal(true)} />
+              <BadgeRow
+                badges={playerBadges} defs={badgeDefs} originalUsername={profile.original_username ?? profile.username}
+                onOpenAll={() => setShowBadgesModal(true)}
+                avatarUrl={MOD_AVATAR_URL} displayName={displayName} isOwnProfile={false}
+                onViewYourBadges={() => navigate('/profile')}
+              />
             </div>
           </div>
         </div>

@@ -100,7 +100,11 @@ export default function ModeratorSelfProfile({ profile }: { profile: Profile }) 
             <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.4px', display: 'block', marginBottom: 4 }}>{displayName}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>@{profile.username}</div>
-              <BadgeRow badges={playerBadges} defs={badgeDefs} originalUsername={profile.original_username ?? profile.username} onOpenAll={() => setShowBadgesModal(true)} />
+              <BadgeRow
+                badges={playerBadges} defs={badgeDefs} originalUsername={profile.original_username ?? profile.username}
+                onOpenAll={() => setShowBadgesModal(true)}
+                avatarUrl={MOD_AVATAR_URL} displayName={displayName} isOwnProfile
+              />
             </div>
           </div>
         </div>
