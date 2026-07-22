@@ -4,6 +4,9 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Send } from 'lucide-react'
 import { useHaloAI, type HaloMessage } from './useHaloAI'
 import { useProfile } from '../profile/useProfile'
+import { useFeatureFlags } from '../../shared/lib/featureFlags'
+import { useModRole } from '../moderation/useModRole'
+import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
 
 const LOADING_WORDS = [
   'Musing',
@@ -45,6 +48,8 @@ function MiniOrb({ size }: { size: number }) {
 export default function HaloAI() {
   const navigate = useNavigate()
   const { profile } = useProfile()
+  const { isEnabled: isHaloFlagEnabled, loading: haloFlagLoading } = useFeatureFlags()
+  const { isStaff: haloIsStaff } = useModRole()
   const { messages, loading, error, messagesLeft, isIncreasedTier, sendMessage, clearError, addLocalMessage } =
     useHaloAI()
   const [input, setInput] = useState('')
@@ -102,6 +107,15 @@ export default function HaloAI() {
     : null
 
   const isEmpty = messages.length === 0
+
+  if (!haloFlagLoading && !isHaloFlagEnabled('system:halo_ai') && !haloIsStaff) {
+    return (
+      <FeatureGateScreen
+        title="Halo AI is temporarily unavailable"
+        message="An admin has paused the Halo AI assistant for maintenance. The rest of Chillverse is still open — check back soon."
+      />
+    )
+  }
 
   return (
     <div
