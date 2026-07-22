@@ -91,31 +91,40 @@ export default function BlogLayout() {
 
   return (
     <div style={scopeStyle}>
+      <style>{`
+        @media (max-width: 640px) {
+          .blog-header-link { display: none !important; }
+          .blog-header-badge-text { display: none !important; }
+          .blog-header-wordmark { display: none !important; }
+        }
+      `}</style>
       <header
         style={{
           position: 'sticky', top: 0, zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: 64, padding: '0 clamp(1rem, 4vw, 2.5rem)',
+          gap: 8, height: 64, padding: '0 clamp(1rem, 4vw, 2.5rem)',
           background: 'color-mix(in srgb, var(--bg) 88%, transparent)',
           backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border)',
         }}
       >
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', minWidth: 0 }}>
           <Logo size={30} />
-          <Wordmark size={17} animated={false} />
+          <span className="blog-header-wordmark">
+            <Wordmark size={17} animated={false} />
+          </span>
           <span style={{
             display: 'flex', alignItems: 'center', gap: 5,
             fontSize: 12, fontWeight: 800, color: 'var(--text-dim)',
             background: 'var(--surface2)', border: '1px solid var(--border)',
-            borderRadius: 999, padding: '4px 10px', marginLeft: 2,
+            borderRadius: 999, padding: '4px 10px', marginLeft: 2, flexShrink: 0,
           }}>
-            <Newspaper size={12} /> Blog
+            <Newspaper size={12} /> <span className="blog-header-badge-text">Blog</span>
           </span>
         </Link>
 
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <HeaderLink to="/blog">Latest</HeaderLink>
-          <HeaderLink to="/blog/updates">Update Log</HeaderLink>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span className="blog-header-link"><HeaderLink to="/blog">Latest</HeaderLink></span>
+          <span className="blog-header-link"><HeaderLink to="/blog/updates">Update Log</HeaderLink></span>
 
           <button
             type="button"
