@@ -31,6 +31,8 @@ import PollComposerModal from './PollComposerModal'
 import StarredMessagesPanel from './StarredMessagesPanel'
 import { starMessage, unstarMessage, fetchMyStarredMessageIds } from './starredMessages'
 import { useProfilePreview } from '../../context/ProfilePreview'
+import { useFeatureFlags } from '../../shared/lib/featureFlags'
+import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
 
 // ─── Types ──────────────────────────────────────────────────
 interface RoomMember {
@@ -440,6 +442,7 @@ export default function Chat() {
   const { openProfilePreview } = useProfilePreview()
   const myId = session?.user?.id ?? null
   const { isStaff, canCreatePoll } = useModRole()
+  const { isEnabled: isChatFlagEnabled, loading: chatFlagLoading } = useFeatureFlags()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -1742,6 +1745,15 @@ export default function Chat() {
 
   const showList = !isMobile || !showConv
   const showChat = !isMobile || showConv
+
+  if (!chatFlagLoading && !isChatFlagEnabled('system:chat') && !isStaff) {
+    return (
+      <FeatureGateScreen
+        title="Chat is temporarily unavailable"
+        message="An admin has paused Chat for maintenance. The rest of Chillverse is still open — check back soon."
+      />
+    )
+  }
 
   return (
     <div className="flex h-[calc(100dvh-60px)] overflow-hidden relative">
