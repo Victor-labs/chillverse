@@ -1,11 +1,11 @@
 // src/features/blog/AdminBlog.tsx
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Plus, Pencil, Trash2, ShieldAlert, Link2, RefreshCw, X, BadgeCheck } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, ShieldAlert, Link2, RefreshCw, X, BadgeCheck, ImagePlus, Loader2 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { useModRole } from '../moderation/useModRole'
-import { fetchAllBlogPostsForAdmin, fetchAuthorCandidates, createBlogPost, updateBlogPost, deleteBlogPost } from './api'
+import { fetchAllBlogPostsForAdmin, fetchAuthorCandidates, createBlogPost, updateBlogPost, deleteBlogPost, uploadBlogImage } from './api'
 import { BLOG_CATEGORIES, BLOG_LOCALES } from './constants'
 import type { BlogAuthor, BlogCategory, BlogLocale, BlogPost, BlogPostInput } from '../../shared/types'
 
@@ -28,7 +28,7 @@ const EMPTY_FORM: BlogPostInput = {
 export default function AdminBlog() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { isAdmin, loading: roleLoading } = useModRole()
+  const { isStaff, loading: roleLoading } = useModRole()
 
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [authors, setAuthors] = useState<BlogAuthor[]>([])
@@ -42,6 +42,8 @@ export default function AdminBlog() {
   const [slugTouched, setSlugTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const editingPost = useMemo(() => posts.find(p => p.id === editingId) ?? null, [posts, editingId])
 
@@ -55,9 +57,23 @@ export default function AdminBlog() {
   }
 
   useEffect(() => {
-    if (isAdmin) load()
+    if (isStaff) load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin])
+  }, [isStaff])
+
+  async function handleImageUpload(file: File) {
+    if (!user) return
+    setUploadingImage(true)
+    setUploadError(null)
+    try {
+      const url = await uploadBlogImage(user.id, file)
+      setForm(f => ({ ...f, heroImageUrl: url }))
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Could not upload image.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   function openCreate() {
     setEditingId(null)
@@ -144,12 +160,12 @@ export default function AdminBlog() {
     return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-dim)', fontSize: 13.5 }}>Loading…</div>
   }
 
-  if (!isAdmin) {
+  if (!isStaff) {
     return (
       <div style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>
         <ShieldAlert size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
-        <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Admins only</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>This page is for Chillverse admins.</p>
+        <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Staff only</h1>
+        <p style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>This page is for Chillverse staff, moderators, and admins.</p>
       </div>
     )
   }
@@ -336,8 +352,42 @@ export default function AdminBlog() {
                 </Field>
               </div>
 
-              <Field label="Hero image URL (optional)">
-                <input value={form.heroImageUrl} onChange={(e) => setForm(f => ({ ...f, heroImageUrl: e.target.value }))} style={inputStyle} placeholder="https://…" />
+              <Field label="Hero image (optional)">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {form.heroImageUrl && (
+                    <div style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: 10, overflow: 'hidden', background: 'var(--surface2)' }}>
+                      <img src={form.heroImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={form.heroImageUrl}
+                      onChange={(e) => setForm(f => ({ ...f, heroImageUrl: e.target.value }))}
+                      style={{ ...inputStyle, flex: 1 }}
+                      placeholder="https://… or upload a file"
+                    />
+                    <label
+                      className="ripple-wrap"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, cursor: uploadingImage ? 'default' : 'pointer',
+                        fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', whiteSpace: 'nowrap',
+                        background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '0 14px',
+                        opacity: uploadingImage ? 0.7 : 1,
+                      }}
+                    >
+                      {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+                      {uploadingImage ? 'Uploading…' : 'Upload'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImageUpload(file); e.target.value = '' }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                  {uploadError && <span style={{ fontSize: 11.5, color: '#ff8080' }}>{uploadError}</span>}
+                </div>
               </Field>
 
               <Field label="Excerpt (shown on cards)">

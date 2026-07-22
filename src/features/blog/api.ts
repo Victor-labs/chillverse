@@ -2,6 +2,40 @@
 import { supabase } from '../../shared/lib/supabase'
 import type { BlogAuthor, BlogCategory, BlogLocale, BlogPost, BlogPostInput, BlogSearchResult } from '../../shared/types'
 
+const BLOG_IMAGES_BUCKET = 'blog-images'
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
+
+function extensionForFile(file: File): string {
+  const fromName = file.name.split('.').pop()?.toLowerCase()
+  if (fromName && /^(jpg|jpeg|png|gif|webp)$/.test(fromName)) return fromName
+  if (file.type.includes('png')) return 'png'
+  if (file.type.includes('gif')) return 'gif'
+  if (file.type.includes('webp')) return 'webp'
+  return 'jpg'
+}
+
+/** Uploads a hero image for a blog post to the public `blog-images` bucket
+ *  and returns its public URL to store in `blog_posts.hero_image_url`.
+ *  Path convention `<author_id>/<uuid>.<ext>` matches the storage RLS
+ *  policy in migration 0053, which only allows staff to write here. */
+export async function uploadBlogImage(uploaderId: string, file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Only image files can be used for the hero image.')
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error('Image is too large — please use a file under 5MB.')
+  }
+
+  const path = `${uploaderId}/${crypto.randomUUID()}.${extensionForFile(file)}`
+  const { error } = await supabase.storage
+    .from(BLOG_IMAGES_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false })
+  if (error) throw new Error(`Failed to upload image: ${error.message}`)
+
+  const { data } = supabase.storage.from(BLOG_IMAGES_BUCKET).getPublicUrl(path)
+  return data.publicUrl
+}
+
 export interface BlogPostsPage {
   posts: BlogPost[]
   hasMore: boolean
