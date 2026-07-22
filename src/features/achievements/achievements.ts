@@ -94,6 +94,14 @@ export async function unlockAchievement(userId: string, achievementId: string): 
       icon: ach.icon,
       meta: { achievement_id: achievementId, xp_reward: ach.xp_reward },
     })
+
+    // "Halo Saw That" (Halo Moments plan §4.7) — low-frequency flavor
+    // reaction on top of a REAL unlock event (this line only runs once the
+    // insert above has succeeded, i.e. genuinely new). Fire-and-forget,
+    // same convention as triggerAchievementCheck — never blocks or fails
+    // the achievement unlock itself.
+    const { notifyHaloSawThat } = await import('../halo-moments/haloMoments')
+    notifyHaloSawThat(userId).catch(console.error)
   }
 
   return true
