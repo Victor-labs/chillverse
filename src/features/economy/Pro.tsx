@@ -213,7 +213,7 @@ export default function Pro() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
-                  {t.features.map((f, fi) => (
+                  {t.cardFeatures.map((f, fi) => (
                     <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <Check size={14} color={t.color} style={{ flexShrink: 0, marginTop: 2 }} />
                       <span style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.4 }}>{f}</span>
