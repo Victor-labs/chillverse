@@ -17,6 +17,9 @@ import { useWallet } from './useWallet'
 import type { MallItem, MallRarity } from '../../shared/types'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import ProfileEffectPreview from './ProfileEffectPreview'
+import { useFeatureFlags } from '../../shared/lib/featureFlags'
+import { useModRole } from '../moderation/useModRole'
+import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
 
 // Whether the viewing user has an active Pro (Orbit/Void) plan. Provided
 // once at the top of Mall() and read by SquareCard/RectCard/ItemModal so
@@ -913,6 +916,8 @@ export default function Mall() {
   const { profile } = useProfile()
   const isPro = isProActive(profile)
   const userXp = profile?.xp ?? 0
+  const { isEnabled: isMallFlagEnabled, loading: mallFlagLoading } = useFeatureFlags()
+  const { isStaff: mallIsStaff } = useModRole()
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
@@ -997,6 +1002,14 @@ export default function Mall() {
     return seeded.slice(0, 3)
   }, [items])
 
+  if (!mallFlagLoading && !isMallFlagEnabled('system:mall') && !mallIsStaff) {
+    return (
+      <FeatureGateScreen
+        title="Mall is temporarily unavailable"
+        message="An admin has paused the Mall for maintenance. The rest of Chillverse is still open — check back soon."
+      />
+    )
+  }
 
   return (
     <MallProContext.Provider value={isPro}>
