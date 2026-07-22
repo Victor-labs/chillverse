@@ -446,7 +446,7 @@ interface Props {
   sessionCost?: number
 }
 
-export default function ChillverseChess({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 2 }: Props) {
+export default function ChillverseChess({ rank: initialRank, onEnd, onBack }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'quit'>('info')
   const [playerColor, setPlayerColor] = useState<PColor>('w')
   useGamePresence(GAME_ID)
