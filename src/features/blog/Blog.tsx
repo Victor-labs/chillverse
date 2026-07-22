@@ -107,18 +107,29 @@ export default function Blog() {
       />
 
       {/* ── Hero ── */}
-      <div style={{ textAlign: 'center', maxWidth: 760, margin: '16px auto 56px' }}>
-        <h1 style={{ fontSize: 'clamp(36px, 6vw, 58px)', fontWeight: 900, color: 'var(--text)', margin: '0 0 18px', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+      <div style={{ textAlign: 'center', maxWidth: 760, margin: '8px auto 32px' }}>
+        <h1 style={{ fontSize: 'clamp(32px, 6vw, 52px)', fontWeight: 900, color: 'var(--text)', margin: 0, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
           Chillverse Blog
         </h1>
-        <p style={{ fontSize: 16.5, color: 'var(--text-dim)', lineHeight: 1.6, margin: 0 }}>
-          Patch notes, community spotlights, and dev diaries — straight from the team building Chillverse.
-        </p>
       </div>
 
-      {/* ── Controls row ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380 }}>
+      {/* Category tabs — hidden while searching */}
+      {!isSearching && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 20, paddingBottom: 4 }}>
+          <button type="button" onClick={(e) => { ripple(e); selectCategory(null) }} className="ripple-wrap" style={tabStyle(activeCategory === null)}>
+            All
+          </button>
+          {BLOG_CATEGORIES.map(cat => (
+            <button key={cat.slug} type="button" onClick={(e) => { ripple(e); selectCategory(cat.slug) }} className="ripple-wrap" style={tabStyle(activeCategory === cat.slug)}>
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Controls row (below tabs) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 260px' }}>
           <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }} />
           <input
             value={query}
@@ -178,20 +189,6 @@ export default function Blog() {
           </div>
         </div>
       </div>
-
-      {/* Category tabs — hidden while searching */}
-      {!isSearching && (
-        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginBottom: 44, paddingBottom: 4 }}>
-          <button type="button" onClick={(e) => { ripple(e); selectCategory(null) }} className="ripple-wrap" style={tabStyle(activeCategory === null)}>
-            All
-          </button>
-          {BLOG_CATEGORIES.map(cat => (
-            <button key={cat.slug} type="button" onClick={(e) => { ripple(e); selectCategory(cat.slug) }} className="ripple-wrap" style={tabStyle(activeCategory === cat.slug)}>
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {error && <div style={errorBoxStyle}>{error}</div>}
 
@@ -305,10 +302,10 @@ function EmptyState({ text }: { text: string }) {
 
 function tabStyle(active: boolean): React.CSSProperties {
   return {
-    flexShrink: 0, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer',
-    padding: '10px 18px', borderRadius: 999,
+    flexShrink: 0, fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer',
+    padding: '8px 14px', borderRadius: 999,
     color: active ? '#fff' : 'var(--text-dim)',
-    background: active ? 'var(--accent)' : 'var(--surface2)',
+    background: active ? 'var(--accent)' : 'transparent',
     border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
   }
 }
