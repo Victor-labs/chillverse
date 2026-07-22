@@ -36,6 +36,7 @@ import { BADGE_RARITY_COLOR, BADGE_RARITY_RANK, badgeDisplayTitle, type BadgeDef
 import BadgeToast from '../badges/BadgeToast'
 import ProBadge from '../badges/ProBadge'
 import BadgesModal from '../badges/BadgesModal'
+import BadgeQuickSheet from '../badges/BadgeQuickSheet'
 import { AchIcon, RARITY_COLOR as ACH_RARITY_COLOR } from '../achievements/Achievements'
 import AchievementMiniToast from '../achievements/AchievementMiniToast'
 import { getGameById, getGameMeta } from '../games/games'
@@ -165,6 +166,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   const [isModerator, setIsModerator] = useState(false)
   const [badgeToast, setBadgeToast] = useState<BadgeDef | null>(null)
   const [showBadgesModal, setShowBadgesModal] = useState(false)
+  const [showBadgeQuickSheet, setShowBadgeQuickSheet] = useState(false)
   const [bestAchievements, setBestAchievements] = useState<PreviewAchievement[]>([])
   const [achToast, setAchToast] = useState<PreviewAchievement | null>(null)
   const [activity, setActivity] = useState<LiveActivity>({ movie: false, game: null, gameSince: null, exploring: false })
@@ -567,7 +569,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
     height: sheetHeight,
     borderRadius: '20px 20px 0 0',
     marginTop: 'auto',
-    transform: entered && !closing && !showBadgesModal ? 'translateY(0)' : 'translateY(100%)',
+    transform: entered && !closing && !showBadgesModal && !showBadgeQuickSheet ? 'translateY(0)' : 'translateY(100%)',
     transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
   }
 
@@ -1011,12 +1013,12 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                     <span style={{ fontSize: 12.5, fontWeight: 800, color: rank?.color ?? 'var(--text)' }}>{profile.xp.toLocaleString()}</span>
                   </div>
 
-                  {/* View badges — opens the full badges modal; the preview
-                      sheet falls away while it's open. */}
+                  {/* View badges — opens the quick sheet (best 3 + unlock
+                      teasers); the preview sheet falls away while it's open. */}
                   {!isModerator && defs.length > 0 && (
                     <button
                       type="button" className="pv-btn"
-                      onClick={() => setShowBadgesModal(true)}
+                      onClick={() => setShowBadgeQuickSheet(true)}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -1167,6 +1169,23 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
           customIcon={<span style={{ fontSize: 14 }}>{rank.emoji}</span>}
           onDone={() => setShowRankToast(false)}
         />
+      )}
+
+      {showBadgeQuickSheet && profile && (
+        <div onClick={e => e.stopPropagation()}>
+          <BadgeQuickSheet
+            badges={badges}
+            allDefs={defs}
+            originalUsername={profile.original_username ?? profile.username}
+            avatarUrl={profile.avatar}
+            displayName={displayName}
+            isOwnProfile={isMe}
+            pro={proInfo}
+            onOpenAll={() => { setShowBadgeQuickSheet(false); setShowBadgesModal(true) }}
+            onViewYourBadges={() => { setShowBadgeQuickSheet(false); close(); navigate('/profile') }}
+            onClose={() => setShowBadgeQuickSheet(false)}
+          />
+        </div>
       )}
 
       {showBadgesModal && profile && (
