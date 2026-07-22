@@ -43,10 +43,23 @@ export interface ProInfo {
   memberSince: string | null
 }
 
+// Distinctive role badges — never shown as "available to unlock" teasers,
+// since players can't actually earn these by playing (staff-assigned only).
+const STAFF_BADGE_TITLES = new Set(['admin', 'developer', 'staff', 'moderator'])
+
 // Marker object used for the Orbit tile so it can flow through the same
 // "selected" detail state as a real BadgeDef, without needing a matching
 // row in the `badges` table.
 const ORBIT_MARKER = '__orbit__'
+
+// Matches ProfilePreviewModal's sheet exactly: same fixed height (as a
+// percentage of viewport, so it's consistent regardless of zoom) and the
+// same width breakpoint (full-bleed on phone, narrow centered card from
+// 640px up). Keep these in sync with ProfilePreviewModal.tsx if that ever
+// changes — this sheet is deliberately reusing its dimensions, not its
+// own independent sizing.
+const SHEET_HEIGHT_VH = 85
+const WIDE_BREAKPOINT = 640
 
 export default function BadgeQuickSheet({
   badges, allDefs, originalUsername, avatarUrl, displayName, isOwnProfile,
@@ -67,8 +80,14 @@ export default function BadgeQuickSheet({
 }) {
   const [visible, setVisible] = useState(false)
   const [selected, setSelected] = useState<BadgeDef | typeof ORBIT_MARKER | null>(null)
+  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= WIDE_BREAKPOINT)
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+  useEffect(() => {
+    function onResize() { setIsWide(window.innerWidth >= WIDE_BREAKPOINT) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   function close() { setVisible(false); setTimeout(onClose, 260) }
 
   const defById = useMemo(() => new Map(allDefs.map(d => [d.id, d])), [allDefs])
@@ -84,7 +103,7 @@ export default function BadgeQuickSheet({
   // reshuffled on every re-render.
   const [unlockPool] = useState(() => {
     const ownedIds = new Set(badges.map(b => b.badge_id))
-    const candidates = allDefs.filter(d => !ownedIds.has(d.id) && d.is_available !== false && !subscriberBadgeTier(d.id))
+    const candidates = allDefs.filter(d => !ownedIds.has(d.id) && d.is_available !== false && !subscriberBadgeTier(d.id) && !STAFF_BADGE_TITLES.has(d.title.trim().toLowerCase()))
     const shuffled = [...candidates].sort(() => Math.random() - 0.5)
     return shuffled.slice(0, 4)
   })
@@ -105,7 +124,14 @@ export default function BadgeQuickSheet({
         <div
           className="sheet-or-modal-inner"
           onClick={e => e.stopPropagation()}
-          style={{ maxHeight: '78vh', overflowY: 'auto', background: 'var(--surface2)', padding: '20px 20px 30px', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}
+          style={{
+            width: isWide ? 'min(92vw, 460px)' : '100%',
+            height: `${SHEET_HEIGHT_VH}vh`,
+            overflowY: 'auto',
+            background: 'var(--surface2)',
+            padding: '20px 20px 30px',
+            transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -245,45 +271,77 @@ function AvailabilityCard({ available }: { available: boolean }) {
 }
 
 function BadgeDetail({ def, owned, originalUsername, pro, onClose }: { def: BadgeDef; owned: boolean; originalUsername: string; pro?: ProInfo | null; onClose: () => void }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+  function close() { setVisible(false); setTimeout(onClose, 180) }
+
   const color = BADGE_RARITY_COLOR[def.rarity] ?? '#888899'
   const isSubscriberBadge = !!subscriberBadgeTier(def.id)
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 20200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg)', borderRadius: 22, padding: '22px 20px', boxShadow: 'var(--elev-popover)' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <X size={14} color="var(--text-dim)" />
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: -6 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: owned ? color + '1c' : 'var(--surface2)' }}>
-            {isSubscriberBadge
-              ? <img src={proBadgeSrc(owned ? pro?.color : 'blue')} alt={def.title} width={26} height={26} style={{ display: 'block', filter: owned ? 'none' : 'grayscale(1)', opacity: owned ? 1 : 0.6 }} />
-              : owned ? <BadgeIcon iconKey={def.icon} size={26} color={color} /> : <Lock size={20} color="var(--text-muted)" />}
+    <>
+      <div
+        className="overlay-backdrop"
+        onClick={close}
+        style={{
+          zIndex: 20200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: visible ? 1 : 0, transition: 'opacity 0.18s ease-out',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: 'min(90vw, 340px)',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            borderRadius: 20,
+            background: 'var(--bg)',
+            padding: '20px 20px 24px',
+            boxShadow: '0 20px 60px -12px rgba(0,0,0,0.5)',
+            transform: visible ? 'scale(1)' : 'scale(0.92)',
+            opacity: visible ? 1 : 0,
+            transition: 'transform 0.18s cubic-bezier(0.32,0.72,0,1), opacity 0.18s ease-out',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={close} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={14} color="var(--text-dim)" />
+            </button>
           </div>
-          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
-            {owned ? badgeDisplayTitle(def, originalUsername) : def.title}
-          </p>
-          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color, background: color + '18', border: `1px solid ${color}44`, borderRadius: 999, padding: '3px 10px' }}>
-            {def.rarity}
-          </span>
-          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, marginTop: 2 }}>{def.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: -6 }}>
+            <div style={{ width: 76, height: 76, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', background: owned ? color + '1c' : 'var(--surface2)' }}>
+              {isSubscriberBadge
+                ? <img src={proBadgeSrc(owned ? pro?.color : 'blue')} alt={def.title} width={38} height={38} style={{ display: 'block', filter: owned ? 'none' : 'grayscale(1)', opacity: owned ? 1 : 0.6 }} />
+                : owned ? <BadgeIcon iconKey={def.icon} size={36} color={color} /> : <Lock size={26} color="var(--text-muted)" />}
+            </div>
+            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>
+              {owned ? badgeDisplayTitle(def, originalUsername) : def.title}
+            </p>
+            <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color, background: color + '18', border: `1px solid ${color}44`, borderRadius: 999, padding: '3px 10px' }}>
+              {def.rarity}
+            </span>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, marginTop: 2 }}>{def.description}</p>
 
-          {!owned && def.grant_type === 'auto' && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>Think you already meet this? Reach out to Support.</p>
-          )}
-          {!owned && def.grant_type === 'manual' && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>This badge is assigned by the Chillverse team.</p>
-          )}
+            {!owned && def.grant_type === 'auto' && (
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>Think you already meet this? Reach out to Support.</p>
+            )}
+            {!owned && def.grant_type === 'manual' && (
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>This badge is assigned by the Chillverse team.</p>
+            )}
 
-          {!owned && <AvailabilityCard available={def.is_available !== false} />}
+            {!owned && <AvailabilityCard available={def.is_available !== false} />}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
 function OrbitDetail({ pro, def, onClose }: { pro: ProInfo | null; def?: BadgeDef | null; onClose: () => void }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+  function close() { setVisible(false); setTimeout(onClose, 180) }
+
   const currentRank = pro?.isPro ? PRO_TIERS.findIndex(t => t.key === (pro.color as ProBadgeColor)) : -1
   const rarityColor = def ? (BADGE_RARITY_COLOR[def.rarity] ?? '#4f8ef7') : '#4f8ef7'
   const title = def?.title ?? 'Orbit Member'
@@ -294,39 +352,63 @@ function OrbitDetail({ pro, def, onClose }: { pro: ProInfo | null; def?: BadgeDe
   const available = def?.is_available ?? true
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 20200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 360, background: 'var(--bg)', borderRadius: 22, padding: '22px 20px', boxShadow: 'var(--elev-popover)' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <X size={14} color="var(--text-dim)" />
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: -6 }}>
-          <img src={proBadgeSrc(pro?.isPro ? (pro.color as ProBadgeColor) : 'blue')} alt={title} width={56} height={56} style={{ display: 'block', filter: pro?.isPro ? 'none' : 'grayscale(1)', opacity: pro?.isPro ? 1 : 0.6 }} />
-          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>{title}</p>
-          {def && (
-            <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: rarityColor, background: rarityColor + '18', border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '3px 10px' }}>
-              {def.rarity}
-            </span>
-          )}
-          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5 }}>{description}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, width: '100%', marginTop: 8 }}>
-            {PRO_TIERS.map((t, i) => {
-              const unlocked = currentRank >= 0 && i <= currentRank
-              return (
-                <div key={t.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 4px', borderRadius: 12, background: 'var(--surface)', border: `1px solid ${unlocked ? t.color + '55' : 'var(--border-strong)'}` }}>
-                  <img src={proBadgeSrc(t.key)} alt={t.label} width={22} height={22} style={{ filter: unlocked ? 'none' : 'grayscale(1)', opacity: unlocked ? 1 : 0.4 }} />
-                  <span style={{ fontSize: 9.5, fontWeight: 800, color: unlocked ? t.color : 'var(--text-muted)' }}>{t.label}</span>
-                  {!unlocked && <Lock size={9} color="var(--text-muted)" />}
-                </div>
-              )
-            })}
+    <>
+      <div
+        className="overlay-backdrop"
+        onClick={close}
+        style={{
+          zIndex: 20200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: visible ? 1 : 0, transition: 'opacity 0.18s ease-out',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: 'min(90vw, 340px)',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            borderRadius: 20,
+            background: 'var(--bg)',
+            padding: '20px 20px 24px',
+            boxShadow: '0 20px 60px -12px rgba(0,0,0,0.5)',
+            transform: visible ? 'scale(1)' : 'scale(0.92)',
+            opacity: visible ? 1 : 0,
+            transition: 'transform 0.18s cubic-bezier(0.32,0.72,0,1), opacity 0.18s ease-out',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={close} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={14} color="var(--text-dim)" />
+            </button>
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: -6 }}>
+            <img src={proBadgeSrc(pro?.isPro ? (pro.color as ProBadgeColor) : 'blue')} alt={title} width={76} height={76} style={{ display: 'block', filter: pro?.isPro ? 'none' : 'grayscale(1)', opacity: pro?.isPro ? 1 : 0.6 }} />
+            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', textAlign: 'center' }}>{title}</p>
+            {def && (
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: rarityColor, background: rarityColor + '18', border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '3px 10px' }}>
+                {def.rarity}
+              </span>
+            )}
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5 }}>{description}</p>
 
-          {!pro?.isPro && <AvailabilityCard available={available} />}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, width: '100%', marginTop: 8 }}>
+              {PRO_TIERS.map((t, i) => {
+                const unlocked = currentRank >= 0 && i <= currentRank
+                return (
+                  <div key={t.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 4px', borderRadius: 12, background: 'var(--surface)', border: `1px solid ${unlocked ? t.color + '55' : 'var(--border-strong)'}` }}>
+                    <img src={proBadgeSrc(t.key)} alt={t.label} width={30} height={30} style={{ filter: unlocked ? 'none' : 'grayscale(1)', opacity: unlocked ? 1 : 0.4 }} />
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: unlocked ? t.color : 'var(--text-muted)' }}>{t.label}</span>
+                    {!unlocked && <Lock size={9} color="var(--text-muted)" />}
+                  </div>
+                )
+              })}
+            </div>
+
+            {!pro?.isPro && <AvailabilityCard available={available} />}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
