@@ -8,6 +8,7 @@ import { useProfile } from '../profile/useProfile'
 import { useFeatureFlags } from '../../shared/lib/featureFlags'
 import { useModRole } from '../moderation/useModRole'
 import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
+import haloMascotImg from '../../assets/halo-mascot.png'
 
 const LOADING_WORDS = [
   'Musing',
@@ -25,9 +26,6 @@ const SUGGESTED_PROMPTS = [
   'What games give the most XP?',
   'What does version 3.0 unlock?',
 ]
-
-const MASCOT_URL =
-  'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/feed-images/Halo/halo-mascot.png'
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -77,54 +75,51 @@ function UserBubbleAccent({ gradientId }: { gradientId: string }) {
   )
 }
 
-// Background mascot: crisp near the top (face), softly blurred toward the
-// bottom. Sits behind everything at low opacity so it reads as a subtle
-// watermark once the conversation gets going, but shows clearly (top half)
-// on the empty/welcome state.
-function HaloMascotBackdrop({ active, visible }: { active: boolean; visible: boolean }) {
-  if (!visible) return null
+// Background mascot, Discord-style: the character stands large at the
+// bottom-left of the screen, like it's part of the page itself, with a soft
+// colored glow behind it for depth. On the empty/welcome state it's shown
+// clearly and close to full size; once the conversation gets going it eases
+// back — lower opacity, a touch of blur, a small settle downward — so it
+// reads as a subtle presence behind the chat bubbles rather than competing
+// with them.
+function HaloMascotBackdrop({ active }: { active: boolean }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
 
-  const containerStyle: CSSProperties = {
+  const wrapperStyle: CSSProperties = {
     position: 'absolute',
-    top: 64,
-    left: -40,
-    width: 'clamp(170px, 46vw, 260px)',
-    height: 'clamp(300px, 72vh, 520px)',
+    bottom: 0,
+    left: -28,
+    width: 'clamp(230px, 64vw, 400px)',
     zIndex: 0,
     pointerEvents: 'none',
-    opacity: active ? 1 : 0.3,
-    transform: active ? 'translateY(0) scale(1)' : 'translateY(-2%) scale(1.045)',
-    transition: 'opacity 1100ms cubic-bezier(0.22,1,0.36,1), transform 1100ms cubic-bezier(0.22,1,0.36,1)',
+    opacity: active ? 1 : 0.22,
+    filter: active ? 'blur(0px)' : 'blur(1.5px)',
+    transform: active ? 'translateY(0) scale(1)' : 'translateY(3%) scale(1.03)',
+    transition:
+      'opacity 1100ms cubic-bezier(0.22,1,0.36,1), transform 1100ms cubic-bezier(0.22,1,0.36,1), filter 1100ms ease',
   }
 
-  const sharedImgStyle: CSSProperties = {
+  const glowStyle: CSSProperties = {
     position: 'absolute',
-    inset: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-    objectPosition: 'top left',
-  }
-
-  const sharpStyle: CSSProperties = {
-    ...sharedImgStyle,
-    WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 42%, transparent 78%)',
-    maskImage: 'linear-gradient(to bottom, black 0%, black 42%, transparent 78%)',
-  }
-
-  const blurStyle: CSSProperties = {
-    ...sharedImgStyle,
-    filter: 'blur(14px)',
-    WebkitMaskImage: 'linear-gradient(to bottom, transparent 30%, black 55%, black 100%)',
-    maskImage: 'linear-gradient(to bottom, transparent 30%, black 55%, black 100%)',
+    bottom: '8%',
+    left: '18%',
+    width: '70%',
+    height: '42%',
+    background: 'radial-gradient(circle, rgba(155,109,255,0.35), transparent 72%)',
+    filter: 'blur(36px)',
+    zIndex: -1,
   }
 
   return (
-    <div style={containerStyle} aria-hidden="true">
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <img src={MASCOT_URL} alt="" style={sharpStyle} />
-        <img src={MASCOT_URL} alt="" style={blurStyle} />
-      </div>
+    <div style={wrapperStyle} aria-hidden="true">
+      <div style={glowStyle} />
+      <img
+        src={haloMascotImg}
+        alt=""
+        onError={() => setFailed(true)}
+        style={{ display: 'block', width: '100%', height: 'auto', objectFit: 'contain' }}
+      />
     </div>
   )
 }
@@ -138,7 +133,6 @@ export default function HaloAI() {
     useHaloAI()
   const [input, setInput] = useState('')
   const [loadingWord, setLoadingWord] = useState(LOADING_WORDS[0])
-  const [mascotFailed, setMascotFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const welcomedRef = useRef(false)
 
@@ -172,14 +166,6 @@ export default function HaloAI() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
-
-  // Preload the mascot once; if the asset 404s or fails, we quietly drop the
-  // background layer instead of leaving a broken-image icon on screen.
-  useEffect(() => {
-    const img = new Image()
-    img.onerror = () => setMascotFailed(true)
-    img.src = MASCOT_URL
-  }, [])
 
   const handleSend = (textOverride?: string) => {
     const text = (textOverride ?? input).trim()
@@ -225,7 +211,7 @@ export default function HaloAI() {
         @keyframes dotPulse { 0%,80%,100% { opacity:0.2 } 40% { opacity:1 } }
       `}</style>
 
-      <HaloMascotBackdrop active={isEmpty} visible={!mascotFailed} />
+      <HaloMascotBackdrop active={isEmpty} />
 
       {/* Header */}
       <div
