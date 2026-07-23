@@ -8,9 +8,9 @@ import BadgeEarnedModal from '../features/badges/BadgeEarnedModal'
 import NotificationToastRenderer from '../features/notifications/NotificationToastRenderer'
 import PromoOverlay from '../features/notifications/PromoOverlay'
 import { useReferralPromoAd } from '../features/referral/useReferralPromoAd'
-import { useDailyFortune } from '../features/halo-moments/useDailyFortune'
+import { useDailyCheckIn } from '../features/halo-moments/useDailyCheckIn'
 import { useRandomSurprise } from '../features/halo-moments/useRandomSurprise'
-import DailyFortuneSheet from '../features/halo-moments/DailyFortuneSheet'
+import DailyCheckInSheet from '../features/halo-moments/DailyCheckInSheet'
 import { useProfile } from '../features/profile/useProfile'
 import { useAuth } from '../features/auth/useAuth'
 import { getUserRankTier } from '../features/profile/ranks'
@@ -75,7 +75,7 @@ export default function AppLayout() {
   const { user, session } = useAuth()
   const myId = session?.user?.id ?? null
   const { active: referralAd, dismiss: dismissReferralAd } = useReferralPromoAd(myId)
-  const { fortune: dailyFortune, dismiss: dismissDailyFortune } = useDailyFortune(myId)
+  const dailyCheckIn = useDailyCheckIn(myId)
   useRandomSurprise(myId)
   const { isStaff, loading: roleLoading } = useModRole()
   const [maintenance, setMaintenance] = useState<{ enabled: boolean; message: string } | null>(null)
@@ -173,7 +173,14 @@ export default function AppLayout() {
         <BadgeEarnedModal />
         <NotificationToastRenderer />
         {referralAd && <PromoOverlay notification={referralAd} onDismiss={dismissReferralAd} />}
-        <DailyFortuneSheet fortune={dailyFortune} onDismiss={dismissDailyFortune} />
+        {dailyCheckIn.shouldShow && (
+          <DailyCheckInSheet
+            data={dailyCheckIn}
+            onOpenBox={dailyCheckIn.openBox}
+            onClaimChallenge={dailyCheckIn.claimChallenge}
+            onDismiss={dailyCheckIn.dismiss}
+          />
+        )}
 
         <main
           className={`relative z-10 transition-all duration-300 ${pathname === '/chat' ? 'pt-[60px] pb-0' : 'pt-[68px] pb-12'}`}
