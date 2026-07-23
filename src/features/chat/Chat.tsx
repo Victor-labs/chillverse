@@ -11,7 +11,7 @@ import {
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { nameStyleFor } from '../../shared/lib/displayNameStyle'
-import { updateMissionProgress } from '../missions/weeklyMissions'
+import { updateMissionProgress, trackWeeklyUniqueValue } from '../missions/weeklyMissions'
 import { notifyMessage, notifyRankTag } from '../achievements/achievements'
 import { useAuth } from '../auth/useAuth'
 import PageOnboarding from '../onboarding/PageOnboarding'
@@ -1459,11 +1459,17 @@ export default function Chat() {
       if (!error && inserted) {
         // Weekly mission: messages_sent
         if (myId) updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
+        // Weekly mission: chat in N different rooms this week
+        if (myId) trackWeeklyUniqueValue(myId, 'unique_rooms_chatted', activeRoom.id).catch(console.error)
+        // Weekly mission: reply to N messages this week
+        if (myId && replyTo) updateMissionProgress(myId, 'replies_sent', 1).catch(console.error)
         // Notify the other person in a DM (skip global chat to avoid spamming everyone)
         if (myId && activeRoom.type === 'dm') {
-          activeRoom.members
-            .filter(mb => mb.user_id !== myId)
-            .forEach(mb => notifyMessage(myId, mb.user_id, inserted.content).catch(console.error))
+          const recipients = activeRoom.members.filter(mb => mb.user_id !== myId)
+          recipients.forEach(mb => notifyMessage(myId, mb.user_id, inserted.content).catch(console.error))
+          // Weekly missions: dm_sent (every DM) + dm_unique (distinct recipients this week)
+          updateMissionProgress(myId, 'dm_sent', 1).catch(console.error)
+          recipients.forEach(mb => trackWeeklyUniqueValue(myId, 'dm_unique', mb.user_id).catch(console.error))
         }
         // Rank tag: fan out to every user currently in that rank group
         if (myId && rankTag) {
@@ -1533,10 +1539,14 @@ export default function Chat() {
     }
 
     if (myId && activeRoom.type === 'dm') {
-      activeRoom.members.filter(mb => mb.user_id !== myId)
-        .forEach(mb => notifyMessage(myId, mb.user_id, '🎙️ Voice message').catch(console.error))
+      const recipients = activeRoom.members.filter(mb => mb.user_id !== myId)
+      recipients.forEach(mb => notifyMessage(myId, mb.user_id, '🎙️ Voice message').catch(console.error))
+      updateMissionProgress(myId, 'dm_sent', 1).catch(console.error)
+      recipients.forEach(mb => trackWeeklyUniqueValue(myId, 'dm_unique', mb.user_id).catch(console.error))
     }
     updateMissionProgress(myId, 'messages_sent', 1).catch(console.error)
+    trackWeeklyUniqueValue(myId, 'unique_rooms_chatted', activeRoom.id).catch(console.error)
+    if (replyTo) updateMissionProgress(myId, 'replies_sent', 1).catch(console.error)
 
     const myMember = activeRoom.members.find(mb => mb.user_id === myId)
     const senderName = myMember ? (myMember.profile.display_name || myMember.profile.username) : 'Me'
