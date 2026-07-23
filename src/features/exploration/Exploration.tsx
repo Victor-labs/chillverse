@@ -10,6 +10,7 @@ import StoryCheckpointOverlay from './story/StoryCheckpointOverlay'
 import { STORY_CONTENT } from './story/content'
 import type { CheckpointStage, StoryChoiceOption } from './story/types'
 import { useFeatureFlags } from '../../shared/lib/featureFlags'
+import { updateMissionProgress, trackWeeklyUniqueValue, trackWeeklyActiveDay } from '../missions/weeklyMissions'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Chamber {
@@ -787,6 +788,12 @@ function MapView({
       }
 
       setChamberStates(s => ({ ...s, [chamber.id]: { ...s[chamber.id], status: 'done', artifactFound } }))
+
+      // Weekly missions
+      updateMissionProgress(userId, 'chambers_completed', 1).catch(console.error)
+      trackWeeklyUniqueValue(userId, 'unique_maps_explored', String(map.id)).catch(console.error)
+      trackWeeklyActiveDay(userId, 'exploration_days').catch(console.error)
+      if (artifactFound) updateMissionProgress(userId, 'artifacts_found', 1).catch(console.error)
     }
 
     claimingRef.current.delete(chamber.id)
