@@ -4,6 +4,7 @@ import { Film, Baby, Users, Clock, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import PageOnboarding from '../onboarding/PageOnboarding'
+import { updateMissionProgress, trackWeeklyActiveDay } from '../missions/weeklyMissions'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Category = 'kids' | 'adult'
@@ -294,6 +295,8 @@ function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { categor
       }).then(({ error }) => {
         if (error) console.error('[Watch] movie_watches insert failed:', error)
       })
+      updateMissionProgress(userId, 'movies_watched', 1).catch(console.error)
+      trackWeeklyActiveDay(userId, 'movie_watch_days').catch(console.error)
     }
     setShowAd(true)
     setIdx(i => i + 1)
