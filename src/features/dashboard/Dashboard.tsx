@@ -18,6 +18,7 @@ import Avatar from '../../shared/components/Avatar'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import MysteryBoxCard from '../halo-moments/MysteryBoxCard'
 import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
+import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
 
 interface QuickAction {
   label: string
@@ -439,6 +440,7 @@ export default function Dashboard() {
       <section className="su" style={{ animationDelay: '0.32s' }}>
         <p className="section-label">Halo Moments</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <LuckyUserBanner userId={userId || null} />
           <MysteryBoxCard userId={userId || null} />
           <HaloChallengeCard userId={userId || null} />
         </div>
