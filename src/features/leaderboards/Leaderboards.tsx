@@ -6,6 +6,7 @@ import { GAMES, type GameMeta } from '../games/games'
 import { ripple } from '../../shared/lib/ripple'
 import Avatar from '../../shared/components/Avatar'
 import { fetchGlobalLeaderboard, fetchPersonalGameStats, type LeaderboardEntry, type PersonalGameStats } from './leaderboardData'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 
 const EMPTY_STATS: PersonalGameStats = {
   sessionsPlayed: 0,
@@ -57,6 +58,15 @@ export default function Leaderboards() {
         if (!active) return
         setStats(personalStats)
         setLeaders(globalRows)
+
+        // Weekly missions: viewing the board + rank-tier checks
+        updateMissionProgress(userId, 'leaderboard_views', 1).catch(console.error)
+        const myIndex = globalRows.findIndex(entry => entry.userId === userId)
+        if (myIndex !== -1) {
+          const myRank = myIndex + 1
+          if (myRank <= 50) updateMissionProgress(userId, 'leaderboard_rank50_check', 1, true).catch(console.error)
+          if (myRank <= 10) updateMissionProgress(userId, 'leaderboard_rank10_check', 1, true).catch(console.error)
+        }
       } catch (err) {
         if (!active) return
         console.error('leaderboards load error:', err)
