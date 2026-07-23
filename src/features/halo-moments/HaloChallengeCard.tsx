@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { Target, Check } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { getOrCreateHaloChallenge, claimHaloChallenge, type HaloChallengeState } from './haloMoments'
+import haloMascot from '../../assets/halo-mascot.png'
 
 const CHALLENGE_LABEL: Record<string, string> = {
   xp_earned: 'Earn {target} XP today',
@@ -58,9 +59,12 @@ export default function HaloChallengeCard({ userId }: { userId: string | null })
       </div>
 
       {challenge.introText && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', margin: '0 0 12px' }}>
-          "{challenge.introText}"
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 0 12px' }}>
+          <img src={haloMascot} alt="Halo" style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', margin: 0, lineHeight: 1.4 }}>
+            "{challenge.introText}"
+          </p>
+        </div>
       )}
 
       <div style={{ height: 6, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden', marginBottom: 10 }}>

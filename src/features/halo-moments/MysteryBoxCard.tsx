@@ -7,10 +7,10 @@
 // openMysteryBox().
 
 import { useEffect, useState } from 'react'
-import { Gift } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { getOrCreateDailyMysteryBox, type MysteryBoxState, type MysteryBoxResult } from './haloMoments'
 import MysteryBoxModal from './MysteryBoxModal'
+import mysteryBoxImg from '../../assets/halo-mystery-box.png'
 
 export default function MysteryBoxCard({ userId }: { userId: string | null }) {
   const [box, setBox] = useState<MysteryBoxState | null>(null)
@@ -46,12 +46,14 @@ export default function MysteryBoxCard({ userId }: { userId: string | null }) {
         }}
       >
         <div style={{
-          width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-          background: 'linear-gradient(135deg,#f5c542,#ff9f4d)',
-          boxShadow: '0 4px 14px rgba(245,197,66,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+          width: 52, height: 52, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Gift size={22} />
+          <img
+            src={mysteryBoxImg}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain', filter: opened ? 'grayscale(0.6)' : 'none' }}
+          />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Daily Mystery Box</div>

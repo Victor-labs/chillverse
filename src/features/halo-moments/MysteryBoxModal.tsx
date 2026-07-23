@@ -9,9 +9,11 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Gift, Gem, Star, Shirt, Frown } from 'lucide-react'
+import { Gem, Star, Shirt, Frown } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { openMysteryBox, type MysteryBoxResult } from './haloMoments'
+import mysteryBoxImg from '../../assets/halo-mystery-box.png'
+import haloMascot from '../../assets/halo-mascot.png'
 
 const REWARD_ICON = { diamonds: Gem, xp: Star, avatar_item: Shirt, nothing: Frown } as const
 
@@ -63,7 +65,7 @@ export default function MysteryBoxModal({
 
   if (!isOpen) return null
 
-  const Icon = result ? REWARD_ICON[result.rewardType] : Gift
+  const RewardIcon = result ? REWARD_ICON[result.rewardType] : null
   const rewardLabel = result
     ? result.rewardType === 'diamonds' ? `+${result.rewardAmount} diamonds`
     : result.rewardType === 'xp' ? `+${result.rewardAmount} XP`
@@ -84,17 +86,36 @@ export default function MysteryBoxModal({
         onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 340, padding: '30px 24px', textAlign: 'center', borderRadius: 24 }}
       >
-        <div
-          style={{
-            width: 68, height: 68, borderRadius: '50%', margin: '0 auto 18px',
-            background: 'linear-gradient(135deg,#f5c542,#ff9f4d)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-            boxShadow: '0 0 28px rgba(245,197,66,0.4)',
-            animation: phase === 'opening' ? 'mbxShake 0.5s ease-in-out infinite' : 'mbxPop 0.4s ease-out',
-          }}
-        >
-          <Icon size={30} />
-        </div>
+        {phase === 'opening' && (
+          <div style={{
+            width: 110, height: 110, margin: '0 auto 18px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'mbxShake 0.5s ease-in-out infinite',
+          }}>
+            <img src={mysteryBoxImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
+
+        {phase !== 'opening' && (
+          <div style={{
+            position: 'relative', width: 110, height: 110, margin: '0 auto 18px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'mbxPop 0.4s ease-out',
+          }}>
+            <img src={haloMascot} alt="Halo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            {RewardIcon && (
+              <div style={{
+                position: 'absolute', bottom: -4, right: -4,
+                width: 34, height: 34, borderRadius: '50%',
+                background: 'linear-gradient(135deg,#f5c542,#ff9f4d)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                border: '2px solid var(--surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              }}>
+                <RewardIcon size={16} />
+              </div>
+            )}
+          </div>
+        )}
 
         {phase === 'opening' && (
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Opening…</p>

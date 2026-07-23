@@ -13,6 +13,7 @@
 
 import { createPortal } from 'react-dom'
 import type { DailyFortune } from './haloMoments'
+import haloMascot from '../../assets/halo-mascot.png'
 
 export default function DailyFortuneSheet({
   fortune,
@@ -43,13 +44,12 @@ export default function DailyFortuneSheet({
       >
         <div
           style={{
-            width: 52, height: 52, borderRadius: '50%', margin: '0 auto 14px',
-            background: 'conic-gradient(#9b6dff, #4f8ef7, #3ecf8e, #9b6dff)',
+            width: 72, height: 72, margin: '0 auto 12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 24px rgba(155,109,255,0.4)',
+            filter: 'drop-shadow(0 0 20px rgba(155,109,255,0.4))',
           }}
         >
-          <span style={{ fontSize: 22 }}>🔮</span>
+          <img src={haloMascot} alt="Halo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
 
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>
