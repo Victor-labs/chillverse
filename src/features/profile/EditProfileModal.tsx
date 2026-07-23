@@ -9,6 +9,7 @@ import {
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
 import { GAMES } from '../games/games'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import type { Profile } from '../../shared/types'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -463,6 +464,19 @@ export default function EditProfileModal({
 
     setSaving(false)
     if (err) { setError(err.message); return }
+
+    // Weekly missions
+    const trimmedName = displayName.trim() || profile.username
+    const trimmedBio = bio.trim()
+    if (trimmedName !== (profile.display_name || profile.username)) {
+      updateMissionProgress(profile.id, 'display_name_changed', 1).catch(console.error)
+    }
+    if (trimmedBio && !(profile.bio || '').trim()) {
+      updateMissionProgress(profile.id, 'bio_added', 1).catch(console.error)
+    }
+    if (trimmedBio && gender && playTime && favoriteGame) {
+      updateMissionProgress(profile.id, 'profile_complete', 1, true).catch(console.error)
+    }
 
     onSaved({
       display_name: displayName.trim() || profile.username,
