@@ -5,6 +5,7 @@ import { ArrowLeft, Camera } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { fetchHighlights } from './highlights'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import HighlightCard from './HighlightCard'
 import type { Highlight } from './types'
 
@@ -18,6 +19,7 @@ export default function HighlightsPage() {
     fetchHighlights(user?.id ?? null).then(rows => {
       setHighlights(rows)
       setLoading(false)
+      if (user) updateMissionProgress(user.id, 'highlights_viewed', 1).catch(console.error)
     })
   }, [user?.id])
 

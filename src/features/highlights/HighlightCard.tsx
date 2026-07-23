@@ -5,6 +5,7 @@ import { Heart, Share2, Check } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { toggleHighlightLike } from './highlights'
 import { shareHighlight } from './shareHighlight'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import { HIGHLIGHT_ILLUSTRATIONS, BOUNCING_ILLUSTRATION_KINDS } from './highlightAssets'
 import { BadgeIcon } from '../badges/badgeIcons'
 import { getGameMeta } from '../games/games'
@@ -38,6 +39,7 @@ export default function HighlightCard({ highlight }: { highlight: Highlight }) {
     setShared(true)
     try {
       await shareHighlight(highlight, authorName)
+      if (user && isOwn) updateMissionProgress(user.id, 'highlights_shared', 1).catch(console.error)
     } finally {
       setTimeout(() => setShared(false), 1600)
     }
