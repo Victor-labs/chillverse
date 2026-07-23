@@ -20,6 +20,7 @@ import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { BadgeIcon } from './badgeIcons'
 import { BADGE_RARITY_COLOR, type BadgeDef } from './badges'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 
 const HERO_IMAGE_URL =
   'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/ff178ea65f5ba64cc52d5b6ae36081ad.jpg'
@@ -113,6 +114,7 @@ export default function BadgeEarnedModal() {
           const { data: badge } = await supabase.from('badges').select('*').eq('id', badgeId).single()
           if (!badge) return
           setQueue(q => [...q, badge as BadgeDef])
+          updateMissionProgress(userId, 'badges_earned', 1).catch(console.error)
         },
       )
       .subscribe()
