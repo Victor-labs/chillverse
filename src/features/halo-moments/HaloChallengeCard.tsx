@@ -10,14 +10,8 @@
 import { useEffect, useState } from 'react'
 import { Target, Check } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
-import { getOrCreateHaloChallenge, claimHaloChallenge, type HaloChallengeState } from './haloMoments'
+import { getOrCreateHaloChallenge, claimHaloChallenge, HALO_CHALLENGE_LABELS, type HaloChallengeState } from './haloMoments'
 import haloMascot from '../../assets/halo-mascot.png'
-
-const CHALLENGE_LABEL: Record<string, string> = {
-  xp_earned: 'Earn {target} XP today',
-  games_today: 'Play {target} games today',
-  games_won: 'Win {target} games today',
-}
 
 export default function HaloChallengeCard({ userId }: { userId: string | null }) {
   const [challenge, setChallenge] = useState<HaloChallengeState | null>(null)
@@ -38,7 +32,7 @@ export default function HaloChallengeCard({ userId }: { userId: string | null })
 
   if (!challenge) return null
 
-  const label = (CHALLENGE_LABEL[challenge.challengeKey] ?? 'Complete today\u2019s challenge')
+  const label = (HALO_CHALLENGE_LABELS[challenge.challengeKey] ?? 'Complete today\u2019s challenge')
     .replace('{target}', String(challenge.targetValue))
   const pct = Math.min(100, Math.round((challenge.progress / Math.max(1, challenge.targetValue)) * 100))
 

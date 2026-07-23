@@ -193,6 +193,14 @@ export async function openMysteryBox(): Promise<{ result: MysteryBoxResult | nul
 
 // ── Halo's Daily Challenge (plan §4.2) ─────────────────────────────────────
 
+/** Shared with DailyCheckInSheet.tsx so the two challenge-progress displays
+ *  (dashboard card + check-in sheet step) never drift out of sync. */
+export const HALO_CHALLENGE_LABELS: Record<string, string> = {
+  xp_earned: 'Earn {target} XP today',
+  games_today: 'Play {target} games today',
+  games_won: 'Win {target} games today',
+}
+
 export interface HaloChallengeState {
   challengeKey: string
   targetValue: number
@@ -264,4 +272,47 @@ export async function claimRandomSurprise(): Promise<
     rewardType: row.reward_type ?? 'nothing',
     rewardAmount: row.reward_amount ?? 0,
   }
+}
+
+// ── Lucky User of the Day (plan §4.5) ──────────────────────────────────────
+// Winner is picked server-side on a schedule (pick_lucky_user(), migration
+// 0075) — the client never rolls or announces a winner. get_daily_lucky_user()
+// only ever returns a row to the winner themselves (private by default per
+// the plan), so an empty result here just means "not you today," not an error.
+
+export interface LuckyUserState {
+  xpReward: number
+  diamondReward: number
+  claimed: boolean
+  lineText: string | null
+}
+
+/** Returns null for everyone except today's winner. */
+export async function getDailyLuckyUser(): Promise<LuckyUserState | null> {
+  const { data, error } = await supabase.rpc('get_daily_lucky_user')
+  if (error) {
+    console.error('[haloMoments] getDailyLuckyUser error:', error.message)
+    return null
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { xp_reward?: number; diamond_reward?: number; claimed?: boolean; line_text?: string }
+    | null
+  if (!row) return null
+  return {
+    xpReward: row.xp_reward ?? 0,
+    diamondReward: row.diamond_reward ?? 0,
+    claimed: !!row.claimed,
+    lineText: row.line_text ?? null,
+  }
+}
+
+export async function claimLuckyUserReward(): Promise<{ xpReward: number; diamondReward: number } | null> {
+  const { data, error } = await supabase.rpc('claim_lucky_user_reward')
+  if (error) {
+    console.error('[haloMoments] claimLuckyUserReward error:', error.message)
+    return null
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as { xp_reward?: number; diamond_reward?: number } | null
+  if (!row) return null
+  return { xpReward: row.xp_reward ?? 0, diamondReward: row.diamond_reward ?? 0 }
 }
