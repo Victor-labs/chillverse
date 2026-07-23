@@ -3,16 +3,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ImageOff, Languages, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
+import { useAuth } from '../auth/useAuth'
 import { fetchAuthorById, fetchBlogPostBySlug, fetchRelatedPosts, fetchTranslationCounterpart } from './api'
 import { getBlogCategoryMeta, getSeriesLabel, BLOG_LOCALES, BLOG_LOCALE_STORAGE_KEY } from './constants'
 import { renderLiteMarkdown } from '../../shared/lib/markdownLite'
 import BlogPostCard from './BlogPostCard'
 import Avatar from '../../shared/components/Avatar'
+import { trackWeeklyUniqueValue } from '../missions/weeklyMissions'
 import type { BlogAuthor, BlogPost } from '../../shared/types'
 
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [post, setPost] = useState<BlogPost | null>(null)
   const [author, setAuthor] = useState<BlogAuthor | null>(null)
@@ -35,6 +38,9 @@ export default function BlogPostPage() {
           return
         }
         setPost(found)
+        // Weekly mission: blog_posts_read — unique posts this week, so
+        // re-reading the same article doesn't inflate progress.
+        if (user) trackWeeklyUniqueValue(user.id, 'blog_posts_read', found.id).catch(console.error)
 
         const relatedPromise = fetchRelatedPosts(found, 3)
         const translationPromise = found.translation_group_id
@@ -59,7 +65,7 @@ export default function BlogPostPage() {
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [slug])
+  }, [slug, user])
 
   function goToTranslation() {
     if (!translation) return
