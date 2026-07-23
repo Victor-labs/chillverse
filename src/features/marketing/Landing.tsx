@@ -61,6 +61,42 @@ const FEATURES = [
   },
 ]
 
+// Decorative drift assets — hosted on Supabase storage.
+const DRIFT = {
+  willam: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam2.png',
+  flyer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Flyer.png',
+  feed: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Feed.png',
+  controller: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Controller.png',
+  chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
+}
+
+// Reusable drifting decorative image. `frame` gives it a glass card
+// treatment (good for screenshots/flyers); set frame={false} for
+// transparent-bg character cutouts that should float bare.
+function DriftImg({
+  src,
+  alt,
+  wrapperClassName,
+  imgClassName = 'w-full h-auto',
+  motion = 'drift-a',
+  frame = true,
+}: {
+  src: string
+  alt: string
+  wrapperClassName: string
+  imgClassName?: string
+  motion?: 'drift-a' | 'drift-b' | 'drift-c'
+  frame?: boolean
+}) {
+  return (
+    <div className={`drift-item ${motion} ${wrapperClassName}`}>
+      <div className={frame ? 'drift-frame' : 'drift-bare'}>
+        <img src={src} alt={alt} className={imgClassName} loading="lazy" />
+      </div>
+    </div>
+  )
+}
+
 const ACCENT_MAP: Record<string, { icon: string; border: string; shadow: string; pill: string }> = {
   violet: { icon: 'bg-chill-violet/15', border: 'hover:border-chill-violet/50', shadow: 'hover:shadow-[0_20px_60px_rgba(108,80,255,0.2)]', pill: 'bg-chill-violet/15 text-chill-violetSoft' },
   amber:  { icon: 'bg-chill-amber/12', border: 'hover:border-chill-amber/35', shadow: 'hover:shadow-[0_20px_60px_rgba(255,184,0,0.12)]', pill: 'bg-chill-amber/10 text-chill-amber' },
@@ -104,6 +140,14 @@ export default function Landing() {
       <div ref={heroContainerRef} className="relative h-[150vh] sm:h-[180vh] md:h-[200vh] lg:h-[220vh]">
         <section className="sticky top-0 min-h-screen h-screen relative flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
           <CubeScene />
+
+          <DriftImg
+            src={DRIFT.willam}
+            alt="Chillverse player character"
+            wrapperClassName="left-[1%] sm:left-[3%] bottom-[6%] sm:bottom-[10%] w-28 sm:w-40 md:w-52 z-[5]"
+            motion="drift-a"
+            frame={false}
+          />
 
           {/* pointer-events-none so drag/tilt on the controller works right
              through this wrapper; the two links below opt back in. */}
@@ -150,7 +194,7 @@ export default function Landing() {
       </div>
 
       {/* ── STATS ── */}
-      <div className="bg-chill-surface border-y border-chill-border px-6 md:px-16 py-9 flex items-center justify-center gap-12 md:gap-20 flex-wrap">
+      <div className="glass-strip px-6 md:px-16 py-9 flex items-center justify-center gap-12 md:gap-20 flex-wrap">
         {[
           ['120K+', 'Players Online'],
           ['5M+', 'Games Played'],
@@ -165,7 +209,19 @@ export default function Landing() {
       </div>
 
       {/* ── FEATURES ── */}
-      <section id="features" className="px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
+      <section id="features" className="relative px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
+        <DriftImg
+          src={DRIFT.feed}
+          alt="Chillverse feed preview"
+          wrapperClassName="hidden md:block right-[1%] top-[2%] w-40 lg:w-48 z-[1]"
+          motion="drift-b"
+        />
+        <DriftImg
+          src={DRIFT.chat}
+          alt="Chillverse chat preview"
+          wrapperClassName="hidden md:block left-[0%] bottom-[4%] w-36 lg:w-44 z-[1]"
+          motion="drift-c"
+        />
         <div className="reveal">
           <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
           <h2 className="text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight mb-3.5">Built for players.</h2>
@@ -196,7 +252,13 @@ export default function Landing() {
       </section>
 
       {/* ── LEADERBOARD SCENE ── */}
-      <section id="leaderboard" className="px-6 md:px-16 py-20 bg-gradient-to-b from-chill-bg via-chill-bg2 to-chill-bg">
+      <section id="leaderboard" className="relative px-6 md:px-16 py-20 bg-gradient-to-b from-chill-bg via-chill-bg2 to-chill-bg overflow-hidden">
+        <DriftImg
+          src={DRIFT.controller}
+          alt="Chillverse controller"
+          wrapperClassName="hidden lg:block left-[2%] top-[6%] w-32 z-[1]"
+          motion="drift-c"
+        />
         <div className="max-w-[1300px] mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="reveal">
             <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// climb the ranks</div>
@@ -270,7 +332,7 @@ export default function Landing() {
             { n: '02', title: 'Jump into a game', desc: 'Browse active lobbies, challenge friends, or drop into a quick match. Your first win is seconds away.' },
             { n: '03', title: 'Climb & dominate', desc: 'Earn XP, protect your streak, and climb the leaderboard. Every session pushes you higher.' },
           ].map((step, i) => (
-            <div key={step.n} className="reveal text-center" style={{ transitionDelay: `${i * 0.12}s` }}>
+            <div key={step.n} className="reveal glass-step text-center p-7 transition-all duration-300 hover:-translate-y-1" style={{ transitionDelay: `${i * 0.12}s` }}>
               <div className="w-[68px] h-[68px] rounded-full border-[1.5px] border-chill-borderBright bg-chill-surface flex items-center justify-center text-xl font-bold font-mono mx-auto mb-[18px] text-chill-violetSoft hover:bg-chill-violet/15 hover:border-chill-violet transition-all">
                 {step.n}
               </div>
@@ -282,7 +344,13 @@ export default function Landing() {
       </section>
 
       {/* ── COMMUNITY ── */}
-      <section id="community" className="py-20 bg-chill-bg2 border-y border-chill-border overflow-hidden">
+      <section id="community" className="relative py-20 bg-chill-bg2 border-y border-chill-border overflow-hidden">
+        <DriftImg
+          src={DRIFT.flyer}
+          alt="Chillverse promo flyer"
+          wrapperClassName="hidden md:block right-[3%] top-[10%] w-36 lg:w-44 z-[1]"
+          motion="drift-a"
+        />
         <div className="max-w-[1300px] mx-auto px-6 md:px-16 pb-10">
           <div className="reveal font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// the verse speaks</div>
           <h2 className="reveal text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight">Players love it here.</h2>
