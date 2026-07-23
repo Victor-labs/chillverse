@@ -9,13 +9,13 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Gem, Star, Shirt, Frown } from 'lucide-react'
+import { Star, Shirt, Frown } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { openMysteryBox, type MysteryBoxResult } from './haloMoments'
 import mysteryBoxImg from '../../assets/halo-mystery-box.png'
 import haloMascot from '../../assets/halo-mascot.png'
 
-const REWARD_ICON = { diamonds: Gem, xp: Star, avatar_item: Shirt, nothing: Frown } as const
+const REWARD_ICON = { xp: Star, avatar_item: Shirt, nothing: Frown } as const
 
 export default function MysteryBoxModal({
   isOpen,
@@ -67,8 +67,7 @@ export default function MysteryBoxModal({
 
   const RewardIcon = result ? REWARD_ICON[result.rewardType] : null
   const rewardLabel = result
-    ? result.rewardType === 'diamonds' ? `+${result.rewardAmount} diamonds`
-    : result.rewardType === 'xp' ? `+${result.rewardAmount} XP`
+    ? result.rewardType === 'xp' ? `+${result.rewardAmount} XP`
     : result.rewardType === 'avatar_item' ? `New item: ${itemName ?? '…'}`
     : 'Nothing this time'
     : ''

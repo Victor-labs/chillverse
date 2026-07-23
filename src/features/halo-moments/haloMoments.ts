@@ -135,7 +135,7 @@ export async function notifyHaloSawThat(userId: string, chance = 0.25): Promise<
 export interface MysteryBoxState {
   boxDate: string
   opened: boolean
-  rewardType: 'diamonds' | 'xp' | 'avatar_item' | 'nothing' | null
+  rewardType: 'xp' | 'avatar_item' | 'nothing' | null
   rewardAmount: number | null
   rewardRef: string | null
 }
@@ -161,7 +161,7 @@ export async function getOrCreateDailyMysteryBox(): Promise<MysteryBoxState | nu
 }
 
 export interface MysteryBoxResult {
-  rewardType: 'diamonds' | 'xp' | 'avatar_item' | 'nothing'
+  rewardType: 'xp' | 'avatar_item' | 'nothing'
   rewardAmount: number
   rewardRef: string | null
   lineText: string | null
@@ -200,7 +200,6 @@ export interface HaloChallengeState {
   completed: boolean
   claimed: boolean
   xpReward: number
-  diamondReward: number
   introText: string | null
 }
 
@@ -215,7 +214,7 @@ export async function getOrCreateHaloChallenge(): Promise<HaloChallengeState | n
   const row = (Array.isArray(data) ? data[0] : data) as
     | {
         challenge_key?: string; target_value?: number; progress?: number; completed?: boolean
-        claimed?: boolean; xp_reward?: number; diamond_reward?: number; intro_text?: string
+        claimed?: boolean; xp_reward?: number; intro_text?: string
       }
     | null
   if (!row?.challenge_key) return null
@@ -226,20 +225,19 @@ export async function getOrCreateHaloChallenge(): Promise<HaloChallengeState | n
     completed: !!row.completed,
     claimed: !!row.claimed,
     xpReward: row.xp_reward ?? 0,
-    diamondReward: row.diamond_reward ?? 0,
     introText: row.intro_text ?? null,
   }
 }
 
-export async function claimHaloChallenge(): Promise<{ xpReward: number; diamondReward: number } | null> {
+export async function claimHaloChallenge(): Promise<{ xpReward: number } | null> {
   const { data, error } = await supabase.rpc('claim_halo_challenge')
   if (error) {
     console.error('[haloMoments] claimHaloChallenge error:', error.message)
     return null
   }
-  const row = (Array.isArray(data) ? data[0] : data) as { xp_reward?: number; diamond_reward?: number } | null
+  const row = (Array.isArray(data) ? data[0] : data) as { xp_reward?: number } | null
   if (!row) return null
-  return { xpReward: row.xp_reward ?? 0, diamondReward: row.diamond_reward ?? 0 }
+  return { xpReward: row.xp_reward ?? 0 }
 }
 
 // ── Random Surprise Popup (plan §4.6) ──────────────────────────────────────
@@ -249,13 +247,21 @@ export async function claimHaloChallenge(): Promise<{ xpReward: number; diamondR
 // today's grant was already used up, so useRandomSurprise.ts knows whether
 // to keep the session-level timer running.
 
-export async function claimRandomSurprise(): Promise<{ alreadyClaimed: boolean; diamondAmount: number } | null> {
+export async function claimRandomSurprise(): Promise<
+  { alreadyClaimed: boolean; rewardType: 'diamonds' | 'xp' | 'nothing'; rewardAmount: number } | null
+> {
   const { data, error } = await supabase.rpc('claim_random_surprise')
   if (error) {
     console.error('[haloMoments] claimRandomSurprise error:', error.message)
     return null
   }
-  const row = (Array.isArray(data) ? data[0] : data) as { already_claimed?: boolean; diamond_amount?: number } | null
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { already_claimed?: boolean; reward_type?: 'diamonds' | 'xp' | 'nothing'; reward_amount?: number }
+    | null
   if (!row) return null
-  return { alreadyClaimed: !!row.already_claimed, diamondAmount: row.diamond_amount ?? 0 }
+  return {
+    alreadyClaimed: !!row.already_claimed,
+    rewardType: row.reward_type ?? 'nothing',
+    rewardAmount: row.reward_amount ?? 0,
+  }
 }

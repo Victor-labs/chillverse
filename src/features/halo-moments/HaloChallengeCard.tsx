@@ -77,7 +77,6 @@ export default function HaloChallengeCard({ userId }: { userId: string | null })
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
           {challenge.progress}/{challenge.targetValue} · {challenge.xpReward} XP
-          {challenge.diamondReward > 0 ? ` + ${challenge.diamondReward} \uD83D\uDC8E` : ''}
         </span>
 
         {challenge.claimed ? (
