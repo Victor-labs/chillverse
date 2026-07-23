@@ -8,6 +8,7 @@ import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useProfile } from '../profile/useProfile'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import type { MallItem, MallRarity } from '../../shared/types'
 
 /* ══════════════════════════════════════════════════
@@ -383,6 +384,14 @@ export default function Inventory() {
       await supabase.from('profiles').update({ banner_url: item.image_url }).eq('id', userId)
     }
     // consumables: no profile change — timer handled separately
+
+    // Weekly missions
+    if (item.category === 'avatar_skin') {
+      updateMissionProgress(userId, 'avatar_equipped', 1).catch(console.error)
+    } else if (item.category === 'profile_pic' && item.sub_category !== 'album') {
+      updateMissionProgress(userId, 'profile_pic_changed', 1).catch(console.error)
+    }
+
     refetchProfile()
   }, [inventory, setInventory, userId, refetchProfile])
 

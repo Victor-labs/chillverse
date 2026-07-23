@@ -7,6 +7,7 @@ import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useWallet } from './useWallet'
 import { checkAndAwardAutoBadges } from '../badges/badges'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 
 // ─── Types ────────────────────────────────────────────────────
 declare global {
@@ -604,6 +605,7 @@ export default function BuyDiamonds() {
             if (error) throw error
             setActivePack(pack)
             checkAndAwardAutoBadges(user.id)
+            updateMissionProgress(user.id, 'diamond_packs_bought', 1).catch(console.error)
             setModal('success')
           } catch (err) {
             console.error('credit-diamonds error:', err)

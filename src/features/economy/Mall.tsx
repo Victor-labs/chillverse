@@ -431,6 +431,17 @@ function ItemModal({
         }
       }
 
+      // Weekly missions: generic purchase counter + per-category tiers
+      updateMissionProgress(userId, 'items_purchased', 1).catch(console.error)
+      const categoryMetric: Partial<Record<MallItem['category'], string>> = {
+        avatar_skin: 'avatar_skins_bought',
+        chat_theme: 'chat_themes_bought',
+        profile_pic: 'profile_pics_bought',
+        xp_booster: 'xp_boosters_bought',
+      }
+      const catMetric = categoryMetric[item.category]
+      if (catMetric) updateMissionProgress(userId, catMetric, 1).catch(console.error)
+
       onPurchased(item)
       onClose()
     } catch (err) {

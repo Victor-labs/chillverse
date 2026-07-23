@@ -16,6 +16,7 @@ import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useWallet } from './useWallet'
 import { triggerAchievementCheck } from '../achievements/triggerAchievements'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import Logo from '../../layout/Logo'
 import SharedAvatar from '../../shared/components/Avatar'
 import type { MallRarity } from '../../shared/types'
@@ -176,6 +177,7 @@ export default function SendGiftModal({
 
     refetchWallet()
     if (user) triggerAchievementCheck(user.id).catch(console.error)
+    if (user) updateMissionProgress(user.id, 'gifts_sent', 1).catch(console.error)
     onClose()
     onSent('success', recipientName)
   }
