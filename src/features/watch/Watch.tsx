@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Film, Baby, Users, Clock, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { useProfile } from '../profile/useProfile'
+import { isProActive } from '../../shared/lib/proPlans'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import { updateMissionProgress, trackWeeklyActiveDay } from '../missions/weeklyMissions'
 
@@ -49,7 +51,10 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function isMovieOpen(): boolean {
+// Void perk: the movie page never closes, so the 5AM–midnight window is
+// bypassed entirely for active Void subscribers.
+function isMovieOpen(neverCloses: boolean): boolean {
+  if (neverCloses) return true
   const h = new Date().getHours()
   return h >= OPEN_HOUR && h < CLOSE_HOUR
 }
@@ -160,7 +165,7 @@ function RefreshScreen({ onDone }: { onDone: () => void }) {
 }
 
 // ── Category picker ──────────────────────────────────────────────────────────
-function CategoryPicker({ onPick, onExit, secsLeft }: { onPick: (cat: Category) => void; onExit: () => void; secsLeft: number }) {
+function CategoryPicker({ onPick, onExit, secsLeft, neverCloses }: { onPick: (cat: Category) => void; onExit: () => void; secsLeft: number; neverCloses?: boolean }) {
   return (
     <div style={S.root}>
       <Bubbles />
@@ -197,7 +202,7 @@ function CategoryPicker({ onPick, onExit, secsLeft }: { onPick: (cat: Category) 
         </div>
       </div>
 
-      <Ticker secsLeft={secsLeft} />
+      <Ticker secsLeft={secsLeft} neverCloses={neverCloses} />
     </div>
   )
 }
@@ -275,7 +280,7 @@ function AdPlayer({ onDone }: { onDone: () => void }) {
 }
 
 // ── Player screen ─────────────────────────────────────────────────────────────
-function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { category: Category; sources: MovieSource[]; onBack: () => void; secsLeft: number; userId: string | null }) {
+function PlayerScreen({ category, sources, onBack, secsLeft, userId, neverCloses }: { category: Category; sources: MovieSource[]; onBack: () => void; secsLeft: number; userId: string | null; neverCloses?: boolean }) {
   const [idx, setIdx] = useState(0)
   const [showAd, setShowAd] = useState(true) // show ad before first video + between videos
   const shuffled = useRef(shuffle(sources)).current
@@ -389,20 +394,31 @@ function PlayerScreen({ category, sources, onBack, secsLeft, userId }: { categor
         )}
       </div>
 
-      <Ticker secsLeft={secsLeft} />
+      <Ticker secsLeft={secsLeft} neverCloses={neverCloses} />
       <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
     </div>
   )
 }
 
 // ── Ticker ────────────────────────────────────────────────────────────────────
-function Ticker({ secsLeft: initialSecs }: { secsLeft: number }) {
+function Ticker({ secsLeft: initialSecs, neverCloses }: { secsLeft: number; neverCloses?: boolean }) {
   const [secs, setSecs] = useState(initialSecs)
   useEffect(() => {
+    if (neverCloses) return
     setSecs(getSecondsUntilClose())
     const t = setInterval(() => setSecs(getSecondsUntilClose()), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [neverCloses])
+
+  if (neverCloses) {
+    return (
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 20, padding: '10px 16px 16px', background: 'linear-gradient(0deg,rgba(17,17,19,1) 60%,transparent)' }}>
+        <div style={{ background: 'rgba(155,109,255,0.08)', border: '1px solid rgba(155,109,255,0.35)', borderRadius: 12, padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--purple)', fontWeight: 800, fontSize: 12 }}>✦ Void perk · Movie page never closes</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ position: 'sticky', bottom: 0, zIndex: 20, padding: '10px 16px 16px', background: 'linear-gradient(0deg,rgba(17,17,19,1) 60%,transparent)' }}>
@@ -451,7 +467,9 @@ export default function Watch() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const myId = session?.user?.id ?? null
-  const [open, setOpen] = useState(isMovieOpen())
+  const { profile } = useProfile()
+  const isVoid = isProActive(profile) && profile?.pro_tier === 'void'
+  const [open, setOpen] = useState(() => isMovieOpen(isVoid))
   const [screen, setScreen] = useState<Screen>('category')
   const [category, setCategory] = useState<Category | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -513,11 +531,14 @@ export default function Watch() {
     })()
   }, [])
 
-  // Check open/close every 30s
+  // Check open/close every 30s — also re-run whenever isVoid changes (e.g.
+  // profile finishes loading after mount, or plan is upgraded/downgraded
+  // mid-session) so Void's "never closes" perk applies immediately.
   useEffect(() => {
-    const t = setInterval(() => setOpen(isMovieOpen()), 30000)
+    setOpen(isMovieOpen(isVoid))
+    const t = setInterval(() => setOpen(isMovieOpen(isVoid)), 30000)
     return () => clearInterval(t)
-  }, [])
+  }, [isVoid])
 
   // 5-hour refresh cycle
   useEffect(() => {
@@ -550,6 +571,7 @@ export default function Watch() {
           onBack={() => setScreen('category')}
           secsLeft={getSecondsUntilClose()}
           userId={myId}
+          neverCloses={isVoid}
         />
       </>
     )
@@ -557,7 +579,7 @@ export default function Watch() {
   return (
     <>
       <PageOnboarding pageKey="watch" />
-      <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} />
+      <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} neverCloses={isVoid} />
     </>
   )
 }
