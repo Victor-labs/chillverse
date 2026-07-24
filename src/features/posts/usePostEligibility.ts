@@ -34,11 +34,10 @@ export function usePostEligibility(active: boolean): UsePostEligibilityState {
   return { eligibility, loading }
 }
 
-/** Short, concise reason string for the locked state — e.g. "Gold Rank · 50 games · Profile pic" */
+/** Short, concise reason string for the locked state — e.g. "Void plan · Profile pic" */
 export function lockedReasonText(e: PostingEligibility): string {
   const missing: string[] = []
-  if (!e.is_gold_rank) missing.push('Gold Rank')
-  if (e.games_completed < e.games_required) missing.push(`${e.games_required} games`)
+  if (!e.is_void_plan) missing.push('Void plan')
   if (!e.has_profile_pic) missing.push('Profile pic')
   return missing.length ? `Locked · ${missing.join(' · ')}` : 'Locked'
 }

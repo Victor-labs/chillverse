@@ -1,6 +1,7 @@
 // src/features/posts/Composer.tsx
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { X, Sparkles } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { supabase } from '../../shared/lib/supabase'
@@ -33,6 +34,7 @@ const TEXTAREA_BOX_STYLE = {
 
 export default function Composer({ open, onClose, onPosted, initialTag }: ComposerProps) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { eligibility, loading: checkingEligibility } = usePostEligibility(open)
 
   const [body, setBody] = useState('')
@@ -150,8 +152,20 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
               {lockedReasonText(eligibility)}
             </p>
             <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
-              Reach Gold Rank, complete {eligibility.games_required} games, and set a profile picture to unlock posting.
+              {!eligibility.is_void_plan
+                ? 'Feed posting is a Void plan perk. Upgrade to Void to unlock it.'
+                : 'Set a profile picture to unlock posting.'}
             </p>
+            {!eligibility.is_void_plan && (
+              <button
+                type="button"
+                onClick={(e) => { ripple(e); close(); navigate('/pro') }}
+                className="ripple-wrap"
+                style={{ marginTop: 12, padding: '9px 20px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}
+              >
+                Take me there
+              </button>
+            )}
           </div>
         ) : (
           <>
