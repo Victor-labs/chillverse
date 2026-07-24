@@ -1,7 +1,7 @@
 // src/features/highlights/HighlightCard.tsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Share2, Check } from 'lucide-react'
+import { Heart, Share2, Check, Clover } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { toggleHighlightLike } from './highlights'
 import { shareHighlight } from './shareHighlight'
@@ -121,6 +121,17 @@ function HighlightArt({ highlight, authorName }: { highlight: Highlight; authorN
     return (
       <div style={{ flexShrink: 0 }}>
         <Avatar src={highlight.author?.avatar} name={authorName} userId={highlight.author_id} size={size} radius={size * 0.3} />
+      </div>
+    )
+  }
+
+  if (highlight.kind === 'lucky_user') {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', background: '#f5c5421f',
+      }}>
+        <Clover size={size * 0.5} color="#f5c542" />
       </div>
     )
   }

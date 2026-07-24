@@ -10,6 +10,7 @@ export type HighlightKind =
   | 'leaderboard_rank'  // entered top 3 on a game's leaderboard — custom PNG
   | 'map_complete'      // fully cleared every chamber in an exploration map — author's own profile pic
   | 'leaderboard_badge' // granted the Leaderboard Legend / Runner-Up Elite badge — the badge's own icon
+  | 'lucky_user'        // picked as Halo's Lucky User of the Day (server-side pick, migration 0076) — Clover icon
 
 export interface Highlight {
   id: string
