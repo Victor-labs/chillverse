@@ -11,6 +11,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, X, Plus, Users, Crown, Dices, TreePine, Lock } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
+import { useProfile } from '../profile/useProfile'
+import { isProActive } from '../../shared/lib/proPlans'
 import { GAMES, getGameMeta, type GameMeta } from '../games/games'
 import { getHubXpStatus, HUB_DAILY_XP_CAP } from '../games/play/hubXp'
 import { createRoom, joinRoomByCode } from './rooms'
@@ -277,15 +279,74 @@ function GameRoomModal({ game, onClose }: { game: GameMeta; onClose: () => void 
   )
 }
 
+const MULTIPLAYER_AD_IMG = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Pics/file_000000000f2c71f4b5f22c29bcd8508b.png'
+
+// ─── Subscription-required sheet ─────────────────────────────────
+// Shown instead of the hub for anyone without an active Orbit/Void plan.
+function MultiplayerAdSheet({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate()
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+      <div style={{ position: 'relative', width: '100%', maxWidth: 600, margin: '0 auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '18px 18px 28px' }}>
+        <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+          <img src={MULTIPLAYER_AD_IMG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </div>
+
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.4, margin: '0 0 18px' }}>
+          You need to be on an active subscription to access multiplayer.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={(e) => { ripple(e); onClose() }}
+            className="ripple-wrap"
+            style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-dim)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}
+          >
+            Close
+          </button>
+          <button
+            onClick={(e) => { ripple(e); navigate('/pro') }}
+            className="ripple-wrap"
+            style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}
+          >
+            Take me there
+          </button>
+        </div>
+
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px' }}>
+          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
+            In Multiplayer you get access to other interesting games, and the ability to invite players, battle with AI, and other community-related games.
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────
 export default function Multiplayer() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<GameMeta | null>(null)
   const [hubSelected, setHubSelected] = useState<HubGame | null>(null)
+  const { profile, loading: profileLoading } = useProfile()
+  const isPro = isProActive(profile)
 
   // Uno is now launched from the "Vs AI" section above, not as a Vs
   // Players room — it has no live head-to-head implementation.
   const ROOM_GAMES = GAMES.filter(g => g.id !== 'uno')
+
+  // Gate: Multiplayer now requires an active Orbit or Void plan. Free
+  // users get the ad sheet instead of the hub; "Close" sends them back
+  // to where they came from, "Take me there" routes to /pro.
+  if (profileLoading) {
+    return <div style={{ minHeight: '40vh' }} />
+  }
+  if (!isPro) {
+    return <MultiplayerAdSheet onClose={() => navigate(-1)} />
+  }
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 48px' }}>
