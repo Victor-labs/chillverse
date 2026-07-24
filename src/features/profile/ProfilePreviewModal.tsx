@@ -94,6 +94,25 @@ interface PreviewProfile {
   display_name_color: string | null
   profile_theme_color: string | null
   pro_expires_at: string | null
+  equipped_profile_effect_url: string | null
+}
+
+// ── Profile card effect cooldown ────────────────────────────────────────
+// Own profile gets a short cooldown (you might reopen it often); viewers
+// get a longer one so repeat visits from the same browser stay quiet.
+const OWN_EFFECT_COOLDOWN_MS = 3 * 60 * 1000
+const VIEWER_EFFECT_COOLDOWN_MS = 30 * 60 * 1000
+function shouldPlayCardEffect(profileId: string, isOwn: boolean): boolean {
+  try {
+    const key = `cv_profile_effect_cd_${isOwn ? 'own' : 'viewer'}_${profileId}`
+    const cooldown = isOwn ? OWN_EFFECT_COOLDOWN_MS : VIEWER_EFFECT_COOLDOWN_MS
+    const last = Number(localStorage.getItem(key) || 0)
+    if (Date.now() - last < cooldown) return false
+    localStorage.setItem(key, String(Date.now()))
+    return true
+  } catch {
+    return true
+  }
 }
 
 const GENDER_LABELS: Record<string, string> = { male: 'MALE', female: 'FEMALE', other: 'OTHER' }
@@ -202,6 +221,8 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   const [equippedArtifactImage, setEquippedArtifactImage] = useState<string | null>(null)
   const [favoriteGameRank, setFavoriteGameRank] = useState<string | null>(null)
   const [showEdit, setShowEdit] = useState(false)
+  const [showLiveEffect, setShowLiveEffect] = useState(false)
+  const [effectDebug, setEffectDebug] = useState<string | null>(null)
   // (editAlbumPics state removed along with the banner-picker fetch above)
   const menuRef = useRef<HTMLDivElement>(null)
   const justSavedRef = useRef(false)
@@ -247,10 +268,20 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   useEffect(() => {
     let active = true
     setLoading(true)
-    supabase.rpc('get_public_profile', { p_user_id: userId }).single().then(({ data }) => {
+    supabase.rpc('get_public_profile', { p_user_id: userId }).single().then(({ data, error }) => {
       if (!active) return
-      setProfile((data as PreviewProfile | null) ?? null)
+      const p = (data as PreviewProfile | null) ?? null
+      setProfile(p)
       setLoading(false)
+      if (error) {
+        setEffectDebug(`RPC error: ${error.message}`)
+      } else if (p?.equipped_profile_effect_url) {
+        const allowed = shouldPlayCardEffect(userId, isMe)
+        setEffectDebug(`URL found: ...${p.equipped_profile_effect_url.slice(-40)} | isMe: ${isMe} | cooldown allowed: ${allowed}`)
+        if (allowed) setShowLiveEffect(true)
+      } else {
+        setEffectDebug('No equipped_profile_effect_url on this profile row.')
+      }
     })
     supabase.from('user_moderation').select('role').eq('user_id', userId).maybeSingle().then(({ data }) => {
       if (active) setIsModerator(data?.role === 'moderator')
@@ -599,7 +630,30 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
           {profile?.banner_url && (
             <img src={profile.banner_url} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
           )}
+          {showLiveEffect && profile?.equipped_profile_effect_url && (
+            // Purely decorative — pointer-events: none means it never blocks
+            // taps on the close/menu buttons or anything else in the card.
+            <video
+              src={profile.equipped_profile_effect_url}
+              autoPlay muted playsInline
+              onEnded={() => setShowLiveEffect(false)}
+              onError={(e) => {
+                const err = e.currentTarget.error
+                setEffectDebug(`Video failed to load/play — code ${err?.code ?? '?'}: ${err?.message || 'unknown media error'}`)
+              }}
+              onPlaying={() => setEffectDebug((d) => d ? `${d} | ▶ playing` : '▶ playing')}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: 'screen', pointerEvents: 'none', zIndex: 1 }}
+            />
+          )}
         </div>
+        {effectDebug && (
+          <div
+            onClick={() => setEffectDebug(null)}
+            style={{ position: 'fixed', bottom: 90, left: 12, right: 12, zIndex: 99999, background: 'rgba(20,20,24,0.97)', border: '1px solid rgba(255,196,66,0.5)', borderRadius: 12, padding: '10px 14px', fontSize: 11.5, fontFamily: 'monospace', color: '#ffd88a', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', wordBreak: 'break-word' }}
+          >
+            🐛 effect debug (tap to dismiss): {effectDebug}
+          </div>
+        )}
 
         {/* Close + menu buttons live outside the banner's overflow:hidden
             box now, so the dropdown floats over the card instead of being
