@@ -193,7 +193,7 @@ export async function openMysteryBox(): Promise<{ result: MysteryBoxResult | nul
 
 // ── Halo's Daily Challenge (plan §4.2) ─────────────────────────────────────
 
-/** Shared with DailyCheckInSheet.tsx so the two challenge-progress displays
+/** Shared with HaloChallengeModal.tsx so the two challenge-progress displays
  *  (dashboard card + check-in sheet step) never drift out of sync. */
 export const HALO_CHALLENGE_LABELS: Record<string, string> = {
   xp_earned: 'Earn {target} XP today',
@@ -209,6 +209,10 @@ export interface HaloChallengeState {
   claimed: boolean
   xpReward: number
   introText: string | null
+  /** 'offered' = shown in HaloChallengeModal, awaiting a response.
+   *  'accepted' = tracked toward completion, visible on the dashboard card.
+   *  'declined' = user passed — hidden everywhere for the rest of the day. */
+  status: 'offered' | 'accepted' | 'declined'
 }
 
 /** Idempotent per user/UTC-day — the intro line is picked once and stored,
@@ -222,7 +226,7 @@ export async function getOrCreateHaloChallenge(): Promise<HaloChallengeState | n
   const row = (Array.isArray(data) ? data[0] : data) as
     | {
         challenge_key?: string; target_value?: number; progress?: number; completed?: boolean
-        claimed?: boolean; xp_reward?: number; intro_text?: string
+        claimed?: boolean; xp_reward?: number; intro_text?: string; status?: string
       }
     | null
   if (!row?.challenge_key) return null
@@ -234,7 +238,19 @@ export async function getOrCreateHaloChallenge(): Promise<HaloChallengeState | n
     claimed: !!row.claimed,
     xpReward: row.xp_reward ?? 0,
     introText: row.intro_text ?? null,
+    status: (row.status as HaloChallengeState['status']) ?? 'offered',
   }
+}
+
+/** Accept or decline today's challenge — only takes effect the first time
+ *  (a challenge already responded to is left alone). */
+export async function respondToHaloChallenge(accept: boolean): Promise<boolean> {
+  const { error } = await supabase.rpc('respond_halo_challenge', { p_accept: accept })
+  if (error) {
+    console.error('[haloMoments] respondToHaloChallenge error:', error.message)
+    return false
+  }
+  return true
 }
 
 export async function claimHaloChallenge(): Promise<{ xpReward: number } | null> {

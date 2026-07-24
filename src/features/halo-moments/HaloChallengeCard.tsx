@@ -30,7 +30,7 @@ export default function HaloChallengeCard({ userId }: { userId: string | null })
     if (reward) setChallenge(prev => prev ? { ...prev, claimed: true } : prev)
   }
 
-  if (!challenge) return null
+  if (!challenge || challenge.status !== 'accepted') return null
 
   const label = (HALO_CHALLENGE_LABELS[challenge.challengeKey] ?? 'Complete today\u2019s challenge')
     .replace('{target}', String(challenge.targetValue))
