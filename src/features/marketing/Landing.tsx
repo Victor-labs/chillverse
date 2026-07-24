@@ -98,18 +98,16 @@ function useScrollParallax(speed: number) {
   return ref
 }
 
-// Reusable drifting decorative image. `frame` gives it a glass card
-// treatment (good for screenshots/flyers); set frame={false} for
-// transparent-bg character cutouts that should float bare. `speed`
-// controls how much it parallaxes against scroll (0 = static, ~0.1–0.2
-// reads as a gentle Discord-style layered drift downward).
+// Reusable drifting decorative image — floats bare with just a soft
+// drop-shadow, no card/frame around it. `speed` controls how much it
+// parallaxes against scroll (0 = static; ~0.2–0.35 reads as an obvious
+// Discord-style layered drift as the page scrolls).
 function DriftImg({
   src,
   alt,
   wrapperClassName,
   imgClassName = 'w-full h-auto',
   motion = 'drift-a',
-  frame = true,
   speed = 0.1,
 }: {
   src: string
@@ -117,16 +115,13 @@ function DriftImg({
   wrapperClassName: string
   imgClassName?: string
   motion?: 'drift-a' | 'drift-b' | 'drift-c'
-  frame?: boolean
   speed?: number
 }) {
   const parallaxRef = useScrollParallax(speed)
   return (
     <div ref={parallaxRef} className={`drift-outer ${wrapperClassName}`}>
       <div className={`drift-item ${motion}`}>
-        <div className={frame ? 'drift-frame' : 'drift-bare'}>
-          <img src={src} alt={alt} className={imgClassName} loading="lazy" />
-        </div>
+        <img src={src} alt={alt} className={imgClassName} loading="lazy" />
       </div>
     </div>
   )
@@ -175,15 +170,6 @@ export default function Landing() {
       <div ref={heroContainerRef} className="relative h-[150vh] sm:h-[180vh] md:h-[200vh] lg:h-[220vh]">
         <section className="sticky top-0 min-h-screen h-screen relative flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
           <CubeScene />
-
-          <DriftImg
-            src={DRIFT.willam}
-            alt="Chillverse player character"
-            wrapperClassName="left-[1%] sm:left-[3%] bottom-[6%] sm:bottom-[10%] w-28 sm:w-40 md:w-52 z-[5]"
-            motion="drift-a"
-            frame={false}
-            speed={0.05}
-          />
 
           {/* pointer-events-none so drag/tilt on the controller works right
              through this wrapper; the two links below opt back in. */}
@@ -236,14 +222,21 @@ export default function Landing() {
           alt="Chillverse feed preview"
           wrapperClassName="hidden md:block right-[1%] top-[2%] w-40 lg:w-48 z-[1]"
           motion="drift-b"
-          speed={0.18}
+          speed={0.3}
         />
         <DriftImg
           src={DRIFT.chat}
           alt="Chillverse chat preview"
           wrapperClassName="hidden md:block left-[0%] bottom-[4%] w-36 lg:w-44 z-[1]"
           motion="drift-c"
-          speed={0.11}
+          speed={0.2}
+        />
+        <DriftImg
+          src={DRIFT.willam}
+          alt="Chillverse player character"
+          wrapperClassName="hidden lg:block right-[6%] bottom-[3%] w-28 xl:w-32 z-[1]"
+          motion="drift-a"
+          speed={0.24}
         />
         <div className="reveal">
           <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
@@ -281,7 +274,7 @@ export default function Landing() {
           alt="Chillverse controller"
           wrapperClassName="hidden lg:block left-[2%] top-[6%] w-32 z-[1]"
           motion="drift-c"
-          speed={0.14}
+          speed={0.28}
         />
         <div className="max-w-[1300px] mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="reveal">
@@ -374,7 +367,7 @@ export default function Landing() {
           alt="Chillverse promo flyer"
           wrapperClassName="hidden md:block right-[3%] top-[10%] w-36 lg:w-44 z-[1]"
           motion="drift-a"
-          speed={0.09}
+          speed={0.22}
         />
         <div className="max-w-[1300px] mx-auto px-6 md:px-16 pb-10">
           <div className="reveal font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// the verse speaks</div>
