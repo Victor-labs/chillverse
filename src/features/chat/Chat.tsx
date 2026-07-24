@@ -441,7 +441,7 @@ export default function Chat() {
   const { session } = useAuth()
   const { openProfilePreview } = useProfilePreview()
   const myId = session?.user?.id ?? null
-  const { isStaff, canCreatePoll } = useModRole()
+  const { isStaff, canCreatePoll: canCreatePollByRole } = useModRole()
   const { isEnabled: isChatFlagEnabled, loading: chatFlagLoading } = useFeatureFlags()
   const navigate = useNavigate()
   const location = useLocation()
@@ -474,6 +474,9 @@ export default function Chat() {
     return () => { cancelled = true }
   }, [myId])
   const myIsPro = isProActive(myProfile)
+  // Polls: Staff/Moderator/Admin and Verified always had this; Orbit and
+  // Void plans now unlock it too (see proPlans.ts).
+  const canCreatePoll = canCreatePollByRole || myIsPro
 
   // Users I've blocked — used to hide their content everywhere in this view (most
   // importantly Global Chat, where the server can't reject their messages the way
