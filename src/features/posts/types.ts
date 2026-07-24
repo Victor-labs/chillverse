@@ -70,9 +70,7 @@ export interface Comment {
 
 export interface PostingEligibility {
   eligible: boolean
-  is_gold_rank: boolean
-  games_completed: number
-  games_required: number
+  is_void_plan: boolean
   has_profile_pic: boolean
 }
 
