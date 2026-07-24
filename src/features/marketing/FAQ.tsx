@@ -27,7 +27,7 @@ const JSON_LD = [
 
 export default function FAQ() {
   return (
-    <div>
+    <div data-theme="midnight">
       <Seo
         title="Frequently Asked Questions"
         description="Answers to common Chillverse questions — games, XP and streaks, Diamonds, Chillverse Pro, referrals, privacy, and Halo AI."

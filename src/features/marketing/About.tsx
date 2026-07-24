@@ -54,7 +54,7 @@ const JSON_LD = [
 
 export default function About() {
   return (
-    <div>
+    <div data-theme="midnight">
       <Seo
         title="About Chillverse"
         description="Chillverse is a free, mobile-first Nigerian social gaming platform. Learn about our mission, features, progression system, and community."

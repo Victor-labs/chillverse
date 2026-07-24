@@ -70,9 +70,39 @@ const DRIFT = {
   chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
 }
 
+// Tracks scroll position imperatively (no re-renders) and applies a
+// translateY to the returned ref's element, scaled by `speed`. Positive
+// speed = drifts further down as the page scrolls, matching the layered
+// parallax feel of Discord's marketing page. Kept separate from the
+// ambient drift-a/b/c keyframes below so both motions compose cleanly
+// (scroll transform on the outer wrapper, idle drift on the inner one).
+function useScrollParallax(speed: number) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let ticking = false
+    const apply = () => {
+      if (ref.current) ref.current.style.transform = `translateY(${window.scrollY * speed}px)`
+      ticking = false
+    }
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(apply)
+      }
+    }
+    apply()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [speed])
+  return ref
+}
+
 // Reusable drifting decorative image. `frame` gives it a glass card
 // treatment (good for screenshots/flyers); set frame={false} for
-// transparent-bg character cutouts that should float bare.
+// transparent-bg character cutouts that should float bare. `speed`
+// controls how much it parallaxes against scroll (0 = static, ~0.1–0.2
+// reads as a gentle Discord-style layered drift downward).
 function DriftImg({
   src,
   alt,
@@ -80,6 +110,7 @@ function DriftImg({
   imgClassName = 'w-full h-auto',
   motion = 'drift-a',
   frame = true,
+  speed = 0.1,
 }: {
   src: string
   alt: string
@@ -87,11 +118,15 @@ function DriftImg({
   imgClassName?: string
   motion?: 'drift-a' | 'drift-b' | 'drift-c'
   frame?: boolean
+  speed?: number
 }) {
+  const parallaxRef = useScrollParallax(speed)
   return (
-    <div className={`drift-item ${motion} ${wrapperClassName}`}>
-      <div className={frame ? 'drift-frame' : 'drift-bare'}>
-        <img src={src} alt={alt} className={imgClassName} loading="lazy" />
+    <div ref={parallaxRef} className={`drift-outer ${wrapperClassName}`}>
+      <div className={`drift-item ${motion}`}>
+        <div className={frame ? 'drift-frame' : 'drift-bare'}>
+          <img src={src} alt={alt} className={imgClassName} loading="lazy" />
+        </div>
       </div>
     </div>
   )
@@ -124,7 +159,7 @@ export default function Landing() {
   }, [loading, session, navigate])
 
   return (
-    <>
+    <div data-theme="midnight" className="contents">
       <Seo
         title="Chillverse — Play. Connect. Dominate."
         description="Play fast-paced games, build streaks, climb the leaderboard, and chat with your crew — all in one social gaming universe. Join Chillverse free."
@@ -147,6 +182,7 @@ export default function Landing() {
             wrapperClassName="left-[1%] sm:left-[3%] bottom-[6%] sm:bottom-[10%] w-28 sm:w-40 md:w-52 z-[5]"
             motion="drift-a"
             frame={false}
+            speed={0.05}
           />
 
           {/* pointer-events-none so drag/tilt on the controller works right
@@ -193,21 +229,6 @@ export default function Landing() {
         </section>
       </div>
 
-      {/* ── STATS ── */}
-      <div className="glass-strip px-6 md:px-16 py-9 flex items-center justify-center gap-12 md:gap-20 flex-wrap">
-        {[
-          ['120K+', 'Players Online'],
-          ['5M+', 'Games Played'],
-          ['850K', 'Streaks Active'],
-          ['#1', 'Social Gaming'],
-        ].map(([num, label], i) => (
-          <div key={i} className="reveal text-center" style={{ transitionDelay: `${i * 0.1}s` }}>
-            <div className="text-4xl font-bold font-mono text-gradient-2 leading-none">{num}</div>
-            <div className="text-xs text-chill-textMuted mt-1.5 tracking-[1.2px] uppercase">{label}</div>
-          </div>
-        ))}
-      </div>
-
       {/* ── FEATURES ── */}
       <section id="features" className="relative px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
         <DriftImg
@@ -215,12 +236,14 @@ export default function Landing() {
           alt="Chillverse feed preview"
           wrapperClassName="hidden md:block right-[1%] top-[2%] w-40 lg:w-48 z-[1]"
           motion="drift-b"
+          speed={0.18}
         />
         <DriftImg
           src={DRIFT.chat}
           alt="Chillverse chat preview"
           wrapperClassName="hidden md:block left-[0%] bottom-[4%] w-36 lg:w-44 z-[1]"
           motion="drift-c"
+          speed={0.11}
         />
         <div className="reveal">
           <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
@@ -258,6 +281,7 @@ export default function Landing() {
           alt="Chillverse controller"
           wrapperClassName="hidden lg:block left-[2%] top-[6%] w-32 z-[1]"
           motion="drift-c"
+          speed={0.14}
         />
         <div className="max-w-[1300px] mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="reveal">
@@ -350,6 +374,7 @@ export default function Landing() {
           alt="Chillverse promo flyer"
           wrapperClassName="hidden md:block right-[3%] top-[10%] w-36 lg:w-44 z-[1]"
           motion="drift-a"
+          speed={0.09}
         />
         <div className="max-w-[1300px] mx-auto px-6 md:px-16 pb-10">
           <div className="reveal font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// the verse speaks</div>
@@ -448,6 +473,6 @@ export default function Landing() {
       </section>
 
       <Footer />
-    </>
+    </div>
   )
 }
