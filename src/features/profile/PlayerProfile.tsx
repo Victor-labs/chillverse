@@ -24,6 +24,7 @@ import BadgeRow from '../badges/BadgeRow'
 import BadgesStatRow from '../badges/BadgesStatRow'
 import BadgesModal from '../badges/BadgesModal'
 import Avatar from '../../shared/components/Avatar'
+import FollowListSheet from './FollowListSheet'
 import SendGiftModal, { giftResultMessage, type GiftSendResult } from '../economy/SendGiftModal'
 
 function getRank(xp: number): RankTier { return getUserRankTier(xp) }
@@ -232,6 +233,7 @@ function PlayerProfileInner() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const myId = session?.user?.id ?? null
+  const [followListOpen, setFollowListOpen] = useState<'followers' | 'following' | null>(null)
 
   const [player, setPlayer] = useState<PlayerData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -313,7 +315,7 @@ function PlayerProfileInner() {
     if (!myId || !userId) return
     const check = async () => {
       const { data: followRow } = await supabase.from('follows')
-        .select('id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
+        .select('follower_id').eq('follower_id', myId).eq('following_id', userId).maybeSingle()
       if (followRow) { setFollowStatus('following'); return }
       const { data: blockRow } = await supabase.from('blocks')
         .select('id').eq('blocker_id', myId).eq('blocked_id', userId).maybeSingle()
@@ -671,14 +673,20 @@ function PlayerProfileInner() {
 
           {/* Followers / Following — hidden if owner turned this off */}
           <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
+            <div
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)', cursor: player.show_follow_counts ? 'pointer' : 'default' }}
+              onClick={() => player.show_follow_counts && setFollowListOpen('followers')}
+            >
               <Users size={15} style={{ color: '#4f8ef7' }} />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{player.show_follow_counts ? followers.toLocaleString() : '—'}</div>
                 <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Followers</div>
               </div>
             </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
+            <div
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)', cursor: player.show_follow_counts ? 'pointer' : 'default' }}
+              onClick={() => player.show_follow_counts && setFollowListOpen('following')}
+            >
               <Users size={15} style={{ color: '#9b6dff' }} />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{player.show_follow_counts ? following.toLocaleString() : '—'}</div>
@@ -686,6 +694,10 @@ function PlayerProfileInner() {
               </div>
             </div>
           </div>
+
+          {followListOpen && myId && userId && (
+            <FollowListSheet profileId={userId} myId={myId} mode={followListOpen} onClose={() => setFollowListOpen(null)} />
+          )}
 
           {/* Wishlist — always visible to viewers */}
           <button type="button" onClick={() => setShowWishlist(true)}

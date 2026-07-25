@@ -21,6 +21,7 @@ import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import SharedAvatar from '../../shared/components/Avatar'
+import FollowListSheet from './FollowListSheet'
 import { usePlayerBadges } from '../badges/usePlayerBadges'
 import { checkAndAwardAutoBadges } from '../badges/badges'
 import BadgeRow from '../badges/BadgeRow'
@@ -263,80 +264,9 @@ function AddFriendSheet({ myId, onClose, onFollowed }: {
 }
 
 // ── Follow List Sheet ─────────────────────────────────────────
+// Moved to ./FollowListSheet.tsx so PlayerProfile.tsx (viewing someone
+// else) can reuse the exact same list instead of a second implementation.
 type ListMode = 'followers' | 'following'
-
-function FollowListSheet({ profileId, mode, onClose }: {
-  profileId: string
-  mode: ListMode
-  onClose: () => void
-}) {
-  const navigate = useNavigate()
-  const [visible, setVisible] = useState(false)
-  const [list, setList] = useState<FollowEntry[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
-  function close() { setVisible(false); setTimeout(onClose, 320) }
-
-  useEffect(() => {
-    setLoading(true)
-    const fetch = async () => {
-      if (mode === 'followers') {
-        const { data } = await supabase.from('follows')
-          .select('profiles!follower_id(id, username, display_name, xp, avatar)').eq('following_id', profileId)
-        setList((data ?? []).map((r: Record<string, unknown>) => r.profiles as FollowEntry).filter(Boolean))
-      } else {
-        const { data } = await supabase.from('follows')
-          .select('profiles!following_id(id, username, display_name, xp, avatar)').eq('follower_id', profileId)
-        setList((data ?? []).map((r: Record<string, unknown>) => r.profiles as FollowEntry).filter(Boolean))
-      }
-      setLoading(false)
-    }
-    fetch()
-  }, [profileId, mode])
-
-  return (
-    <>
-      <div className="overlay-backdrop" onClick={close} style={{ zIndex: 355 }} />
-      <div className="sheet-or-modal" style={{ zIndex: 360 }}>
-        <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '24px 20px 36px', maxHeight: '75vh', display: 'flex', flexDirection: 'column', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{mode === 'followers' ? 'Followers' : 'Following'}</p>
-            <button type="button" onClick={close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 36 }}>
-                <span style={{ width: 26, height: 26, borderRadius: '50%', border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', display: 'block', animation: 'spin 0.8s linear infinite' }} />
-              </div>
-            ) : list.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <Users size={32} style={{ color: 'var(--text-muted)', display: 'block', margin: '0 auto 10px' }} />
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No {mode} yet</p>
-              </div>
-            ) : list.map(p => {
-              const rank = getRank(p.xp)
-              return (
-                <button key={p.id} type="button" onClick={() => { close(); navigate(`/profile/${p.id}`) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid var(--border)', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 10 }}>
-                  <MiniAvatar name={p.display_name || p.username} avatar={p.avatar} size={44} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{p.display_name || p.username}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 11 }}>{rank.emoji}</span>
-                      <span style={{ color: rank.color }}>{rank.name}</span>
-                      <span>· @{p.username}</span>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
 
 // ── Wishlist Sheet ────────────────────────────────────────────
 function WishlistSheet({ profileId, onClose }: { profileId: string; onClose: () => void }) {
@@ -1181,7 +1111,7 @@ export default function Profile() {
         <AddFriendSheet myId={profile.id} onClose={() => setShowAddFriend(false)} onFollowed={loadCounts} />
       )}
       {followListMode && profile?.id && (
-        <FollowListSheet profileId={profile.id} mode={followListMode} onClose={() => setFollowListMode(null)} />
+        <FollowListSheet profileId={profile.id} myId={profile.id} mode={followListMode} onClose={() => setFollowListMode(null)} />
       )}
       {showWishlist && profile?.id && (
         <WishlistSheet profileId={profile.id} onClose={() => setShowWishlist(false)} />
