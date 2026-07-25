@@ -25,6 +25,7 @@ import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/p
 import { isProActive } from '../../shared/lib/proPlans'
 import HiddenContentNotice from '../moderation/HiddenContentNotice'
 import { useModRole } from '../moderation/useModRole'
+import { useOnlineUserIds } from '../../context/OnlinePresence'
 import { RANK_GROUPS, type RankGroupId } from '../profile/ranks'
 import PollMessage from './PollMessage'
 import PollComposerModal from './PollComposerModal'
@@ -577,7 +578,7 @@ export default function Chat() {
   const [dmBlockState, setDmBlockState] = useState<DmBlockState>('none')
 
   // ── Presence: who's online app-wide, who's typing in THIS room ──
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
+  const onlineUserIds = useOnlineUserIds()
   const [typingUserIds, setTypingUserIds] = useState<Set<string>>(new Set())
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -604,33 +605,11 @@ export default function Chat() {
     return () => window.removeEventListener('resize', handler)
   }, [])
 
-  // ── App-wide online presence — every signed-in user tracks themselves on a
-  //    shared channel so DM headers and the room list can show a live green dot.
-  //    Best-effort last_seen_at write on the way out covers the "offline" case.
-  useEffect(() => {
-    if (!myId) return
-    const channel = supabase.channel('chat-online-presence', { config: { presence: { key: myId } } })
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        setOnlineUserIds(new Set(Object.keys(channel.presenceState())))
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await channel.track({ online: true })
-      })
-    return () => {
-      // removeChannel() must run synchronously so the 'chat-online-presence'
-      // topic is freed from the client's registry immediately. If it were
-      // gated behind untrack()'s promise instead, a fast remount (e.g.
-      // navigating straight to a profile page) could re-request this same
-      // topic before cleanup finished — supabase-js would then hand back
-      // the still-registered, already-subscribed channel, and the new
-      // effect's .on('presence', ...) call would throw "cannot add
-      // presence callbacks ... after subscribe()", crashing the app.
-      channel.untrack()
-      supabase.removeChannel(channel)
-      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', myId)
-    }
-  }, [myId])
+  // ── App-wide online presence is now tracked once at the app root (see
+  //    OnlinePresenceProvider in AppLayout) and read here via context —
+  //    this used to open its own 'chat-online-presence' channel just for
+  //    this screen, which meant presence only reflected "has Chat open",
+  //    not "is anywhere in the app". See src/context/OnlinePresence.tsx.
 
   // ── Per-room typing presence — separate channel scoped to the open conversation ──
   useEffect(() => {
