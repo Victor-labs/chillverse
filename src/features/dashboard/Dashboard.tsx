@@ -18,6 +18,7 @@ import Avatar from '../../shared/components/Avatar'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
 import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
+import FriendsOnlineWidget from './FriendsOnlineWidget'
 
 interface QuickAction {
   label: string
@@ -441,6 +442,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <LuckyUserBanner userId={userId || null} />
           <HaloChallengeCard userId={userId || null} />
+          <FriendsOnlineWidget userId={userId || null} />
         </div>
       </section>
 
