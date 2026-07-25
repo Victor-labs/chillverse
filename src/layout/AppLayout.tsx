@@ -20,6 +20,7 @@ import { checkSessionResetNotification, checkMoviesOpenNotification } from '../f
 import { getSessionLimits } from '../shared/lib/proPlans'
 import CallProvider from '../features/chat/calling/CallContext'
 import { ProfilePreviewProvider } from '../context/ProfilePreview'
+import { OnlinePresenceProvider } from '../context/OnlinePresence'
 import { useModRole } from '../features/moderation/useModRole'
 import { fetchAppConfig } from '../features/admin/adminOps'
 
@@ -145,6 +146,7 @@ export default function AppLayout() {
 
   return (
     <CallProvider myId={myId}>
+      <OnlinePresenceProvider myId={myId}>
       <ProfilePreviewProvider>
       <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
         {/* Ambient bubbles */}
@@ -202,6 +204,7 @@ export default function AppLayout() {
         </main>
       </div>
       </ProfilePreviewProvider>
+      </OnlinePresenceProvider>
     </CallProvider>
   )
 }
