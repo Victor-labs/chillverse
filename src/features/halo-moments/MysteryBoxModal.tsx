@@ -13,6 +13,7 @@ import { Star, Shirt, Frown } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { openMysteryBox, type MysteryBoxResult } from './haloMoments'
 import mysteryBoxImg from '../../assets/halo-mystery-box.png'
+import mysteryBoxOpenImg from '../../assets/halo-mystery-box-open.png'
 import haloMascot from '../../assets/halo-mascot.png'
 
 const REWARD_ICON = { xp: Star, avatar_item: Shirt, nothing: Frown } as const
@@ -95,13 +96,13 @@ export default function MysteryBoxModal({
           </div>
         )}
 
-        {phase !== 'opening' && (
+        {phase === 'result' && (
           <div style={{
             position: 'relative', width: 110, height: 110, margin: '0 auto 18px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             animation: 'mbxPop 0.4s ease-out',
           }}>
-            <img src={haloMascot} alt="Halo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src={mysteryBoxOpenImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             {RewardIcon && (
               <div style={{
                 position: 'absolute', bottom: -4, right: -4,
@@ -113,6 +114,16 @@ export default function MysteryBoxModal({
                 <RewardIcon size={16} />
               </div>
             )}
+          </div>
+        )}
+
+        {phase === 'error' && (
+          <div style={{
+            width: 110, height: 110, margin: '0 auto 18px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'mbxPop 0.4s ease-out',
+          }}>
+            <img src={haloMascot} alt="Halo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         )}
 
