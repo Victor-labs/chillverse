@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
-import { getNotifications, markNotificationsRead } from '../achievements/achievements'
+import { getNotifications, markNotificationsRead, notifyFollow } from '../achievements/achievements'
 import type React from 'react'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,6 +92,41 @@ function timeAgo(iso: string) {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
   return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' })
+}
+
+/** Inline "Follow back" action shown on a 'follow' notification, when the
+ *  follow isn't already mutual. Hides itself once you already follow them
+ *  (nothing to do) or once you've just followed back (optimistic). */
+function FollowBackButton({ myId, followerId }: { myId: string; followerId: string }) {
+  const [state, setState] = useState<'checking' | 'show' | 'hidden' | 'busy'>('checking')
+
+  useEffect(() => {
+    let active = true
+    supabase.from('follows').select('follower_id')
+      .eq('follower_id', myId).eq('following_id', followerId).maybeSingle()
+      .then(({ data }) => { if (active) setState(data ? 'hidden' : 'show') })
+    return () => { active = false }
+  }, [myId, followerId])
+
+  if (state === 'checking' || state === 'hidden') return null
+
+  async function handleClick() {
+    setState('busy')
+    await supabase.from('follows').insert({ follower_id: myId, following_id: followerId })
+    await notifyFollow(myId, followerId)
+    setState('hidden')
+  }
+
+  return (
+    <button type="button" onClick={handleClick} disabled={state === 'busy'}
+      style={{
+        marginTop: 8, padding: '6px 14px', borderRadius: 10, border: 'none',
+        background: 'var(--accent)', color: '#fff', fontSize: 11.5, fontWeight: 700,
+        cursor: state === 'busy' ? 'default' : 'pointer', opacity: state === 'busy' ? 0.6 : 1,
+      }}>
+      {state === 'busy' ? 'Following…' : 'Follow back'}
+    </button>
+  )
 }
 
 const FILTERS = ['All', 'Achievement', 'Social', 'Message', 'Level Up', 'Rank', 'Streak']
@@ -216,6 +251,9 @@ export default function Notifications() {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: 4 }}>{n.body}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{timeAgo(n.created_at)}</div>
+                  {n.type === 'follow' && userId && typeof n.meta.follower_id === 'string' && (
+                    <FollowBackButton myId={userId} followerId={n.meta.follower_id} />
+                  )}
                 </div>
 
                 {/* Unread dot */}
