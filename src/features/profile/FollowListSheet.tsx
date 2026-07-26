@@ -66,8 +66,8 @@ export default function FollowListSheet({ profileId, myId, mode, onClose }: {
 
   return (
     <>
-      <div className="overlay-backdrop" onClick={close} style={{ zIndex: 355 }} />
-      <div className="sheet-or-modal" style={{ zIndex: 360 }}>
+      <div className="overlay-backdrop" onClick={close} style={{ zIndex: 505 }} />
+      <div className="sheet-or-modal" style={{ zIndex: 510 }}>
         <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '24px 20px 36px', maxHeight: '75vh', display: 'flex', flexDirection: 'column', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{mode === 'followers' ? 'Followers' : 'Following'}</p>
