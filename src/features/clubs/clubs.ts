@@ -13,7 +13,7 @@ export interface ClubSummary {
   id: string
   name: string
   member_count: number
-  icon_mall_item_id: string | null
+  icon_key: string | null
   created_at: string
 }
 
@@ -23,7 +23,7 @@ export interface ClubRoom {
   created_by: string
   is_private: boolean
   max_members: number
-  icon_mall_item_id: string | null
+  icon_key: string | null
   join_code: string | null
   archived_at: string | null
   grace_started_at: string | null
@@ -45,13 +45,6 @@ export interface ClubMemberRow {
   display_name: string | null
   avatar: string
   presence: string | null
-}
-
-export interface ClubIconItem {
-  id: string
-  name: string
-  image_url: string | null
-  price_gems: number | null
 }
 
 // Errors raised by the RPCs come through as e.message straight from
@@ -78,7 +71,7 @@ export async function listPublicClubs(): Promise<ClubSummary[]> {
 export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_mall_item_id,join_code,archived_at,grace_started_at,created_at,pinned_message_id)')
+    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id)')
     .eq('user_id', userId)
     .eq('chat_rooms.type', 'club')
   if (error) throw new Error(error.message)
@@ -108,7 +101,7 @@ export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
 export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id,name,created_by,is_private,max_members,icon_mall_item_id,join_code,archived_at,grace_started_at,created_at,pinned_message_id')
+    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id')
     .eq('id', roomId)
     .eq('type', 'club')
     .maybeSingle()
@@ -139,22 +132,10 @@ export async function fetchClubMembers(roomId: string): Promise<ClubMemberRow[]>
     .sort((a, b) => roleOrder[a.role] - roleOrder[b.role])
 }
 
-export async function fetchClubIcons(): Promise<ClubIconItem[]> {
-  const { data, error } = await supabase
-    .from('mall_items')
-    .select('id, name, image_url, price_gems')
-    .eq('category', 'club_icon')
-    .eq('is_active', true)
-    .order('price_gems', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as ClubIconItem[]
-}
-
-export async function createClub(opts: { name: string; isPrivate: boolean; iconMallItemId?: string | null }): Promise<string> {
+export async function createClub(opts: { name: string; isPrivate: boolean }): Promise<string> {
   const { data, error } = await supabase.rpc('create_club', {
     p_name: opts.name,
     p_is_private: opts.isPrivate,
-    p_icon_mall_item_id: opts.iconMallItemId ?? null,
   })
   if (error) throw friendlyError(error)
   return data as string
@@ -189,12 +170,11 @@ export async function removeClubMember(roomId: string, userId: string): Promise<
   if (error) throw friendlyError(error)
 }
 
-export async function updateClubSettings(roomId: string, opts: { name?: string; isPrivate?: boolean; iconMallItemId?: string | null }): Promise<void> {
+export async function updateClubSettings(roomId: string, opts: { name?: string; isPrivate?: boolean }): Promise<void> {
   const { error } = await supabase.rpc('update_club_settings', {
     p_room_id: roomId,
     p_name: opts.name ?? null,
     p_is_private: opts.isPrivate ?? null,
-    p_icon_mall_item_id: opts.iconMallItemId ?? null,
   })
   if (error) throw friendlyError(error)
 }

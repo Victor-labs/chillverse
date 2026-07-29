@@ -20,6 +20,7 @@ import {
 } from './clubs'
 import ClubMembersPanel from './ClubMembersPanel'
 import ClubSettingsModal from './ClubSettingsModal'
+import ClubIcon from './clubIcons'
 
 const MAX_MESSAGE_LENGTH = 2000 // matches the `messages.content` check constraint in the DB
 
@@ -210,6 +211,13 @@ export default function ClubChat() {
         <button onClick={() => navigate('/clubs')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
           <ArrowLeft size={15} />
         </button>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+        }}>
+          <ClubIcon iconKey={club.icon_key} size={18} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{members.length} member{members.length === 1 ? '' : 's'}</div>
@@ -256,7 +264,6 @@ export default function ClubChat() {
         {messages.length === 0 ? (
           <div style={{ margin: 'auto', fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>No messages yet. Say hi!</div>
         ) : messages.map(m => {
-          const isMine = m.sender_id === myId
           const canDelete = !m.deleted && canModerate
           return (
             <div key={m.id} style={{ display: 'flex', gap: 9, padding: '2px 14px', alignItems: 'flex-start' }}>

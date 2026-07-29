@@ -6,21 +6,18 @@ import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { listPublicClubs, fetchMyClubs, joinClub, type ClubSummary, type MyClub } from './clubs'
+import ClubIcon from './clubIcons'
 import CreateClubModal from './CreateClubModal'
 
-function ClubBadge({ name, iconUrl, size = 34 }: { name: string; iconUrl?: string | null; size?: number }) {
-  const initial = (name.trim()[0] || '?').toUpperCase()
-  if (iconUrl) {
-    return <img src={iconUrl} alt="" style={{ width: size, height: size, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-  }
+function ClubBadge({ iconKey, size = 34 }: { iconKey: string | null; size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 10, flexShrink: 0,
       background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 800, fontSize: Math.round(size * 0.42), color: '#fff',
+      color: '#fff',
     }}>
-      {initial}
+      <ClubIcon iconKey={iconKey} size={Math.round(size * 0.52)} />
     </div>
   )
 }
@@ -137,7 +134,7 @@ export default function ClubsList() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
           {myClubs.map(club => (
             <div key={club.id} onClick={() => navigate(`/clubs/${club.id}`)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer' }}>
-              <ClubBadge name={club.name} />
+              <ClubBadge iconKey={club.icon_key} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
@@ -168,7 +165,7 @@ export default function ClubsList() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {publicClubs.filter(c => !myClubIds.has(c.id)).map(club => (
             <div key={club.id} onClick={() => handleJoinPublic(club)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer' }}>
-              <ClubBadge name={club.name} />
+              <ClubBadge iconKey={club.icon_key} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>

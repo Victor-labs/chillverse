@@ -4,7 +4,7 @@ import { X, Crown } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { supabase } from '../../shared/lib/supabase'
-import { createClub, fetchClubIcons, type ClubIconItem } from './clubs'
+import { createClub } from './clubs'
 
 interface CreateClubModalProps {
   onClose: () => void
@@ -15,15 +15,9 @@ export default function CreateClubModal({ onClose, onCreated }: CreateClubModalP
   const { user } = useAuth()
   const [name, setName] = useState('')
   const [isPrivate, setIsPrivate] = useState(true)
-  const [icons, setIcons] = useState<ClubIconItem[]>([])
-  const [selectedIcon, setSelectedIcon] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [isPro, setIsPro] = useState(false) // display only — real gating happens server-side in create_club
-
-  useEffect(() => {
-    fetchClubIcons().then(setIcons).catch(() => setIcons([]))
-  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -39,7 +33,7 @@ export default function CreateClubModal({ onClose, onCreated }: CreateClubModalP
     setCreating(true)
     setError('')
     try {
-      const roomId = await createClub({ name: name.trim(), isPrivate, iconMallItemId: selectedIcon })
+      const roomId = await createClub({ name: name.trim(), isPrivate })
       onCreated(roomId)
     } catch (e: any) {
       setError(e.message)
@@ -82,33 +76,9 @@ export default function CreateClubModal({ onClose, onCreated }: CreateClubModalP
           <button onClick={() => setIsPrivate(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${!isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: !isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: !isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Public</button>
           <button onClick={() => setIsPrivate(true)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Invite-only</button>
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -10, marginBottom: 16 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -10, marginBottom: 18 }}>
           {isPrivate ? 'Only people with the join code can join.' : 'Anyone can find and join from the Clubs browse list, or use the code.'}
         </p>
-
-        {icons.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Icon (optional)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 16 }}>
-              <button
-                onClick={() => setSelectedIcon(null)}
-                style={{ aspectRatio: '1', borderRadius: 10, border: `2px solid ${selectedIcon === null ? 'var(--accent)' : 'var(--border)'}`, background: 'var(--bg)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-muted)' }}
-              >
-                None
-              </button>
-              {icons.map(icon => (
-                <button
-                  key={icon.id}
-                  onClick={() => setSelectedIcon(icon.id)}
-                  title={icon.name}
-                  style={{ aspectRatio: '1', borderRadius: 10, border: `2px solid ${selectedIcon === icon.id ? 'var(--accent)' : 'var(--border)'}`, padding: 0, overflow: 'hidden', cursor: 'pointer', background: 'var(--bg)' }}
-                >
-                  {icon.image_url && <img src={icon.image_url} alt={icon.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
 
         <button
           onClick={(e) => { ripple(e); handleCreate() }}
