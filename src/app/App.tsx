@@ -49,6 +49,8 @@ const Pro                = lazy(() => import('../features/economy/Pro'))
 const Multiplayer        = lazy(() => import('../features/multiplayer/Multiplayer'))
 const Rooms              = lazy(() => import('../features/multiplayer/Rooms'))
 const Room                = lazy(() => import('../features/multiplayer/Room'))
+const ClubsList           = lazy(() => import('../features/clubs/ClubsList'))
+const ClubChat             = lazy(() => import('../features/clubs/ClubChat'))
 const FeedPage            = lazy(() => import('../features/posts/FeedPage'))
 const SinglePostPage      = lazy(() => import('../features/posts/SinglePostPage'))
 const HighlightsPage      = lazy(() => import('../features/highlights/HighlightsPage'))
@@ -204,6 +206,8 @@ export default function App() {
           <Route path="/play/water-the-tree" element={<Suspense fallback={<Fallback />}><WaterTheTree /></Suspense>} />
           <Route path="/rooms"            element={<Suspense fallback={<Fallback />}><Rooms /></Suspense>} />
           <Route path="/rooms/:roomId"    element={<Suspense fallback={<Fallback />}><Room /></Suspense>} />
+          <Route path="/clubs"            element={<Suspense fallback={<Fallback />}><ClubsList /></Suspense>} />
+          <Route path="/clubs/:roomId"    element={<Suspense fallback={<Fallback />}><ClubChat /></Suspense>} />
           <Route path="/feed"             element={<Suspense fallback={<Fallback />}><FeedPage /></Suspense>} />
           <Route path="/feed/highlights"  element={<Suspense fallback={<Fallback />}><HighlightsPage /></Suspense>} />
           <Route path="/feed/:postId"     element={<Suspense fallback={<Fallback />}><SinglePostPage /></Suspense>} />
