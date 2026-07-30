@@ -6,7 +6,6 @@ import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag,
   Settings, Zap, X, ChevronLeft, ChevronRight,
   Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers, ShieldCheck, LayoutDashboard,
-  Users2,
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
@@ -34,7 +33,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',    to: '/dashboard',   icon: Home,        badge: null },
   { label: 'Streak',       to: '/streak',       icon: Flame,       badge: null },
-  { label: 'Clubs',        to: '/clubs',        icon: Users2,      badge: null },
   {
     label: 'Games',
     to: '/games',
