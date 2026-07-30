@@ -1,19 +1,22 @@
 // src/features/clubs/ClubChat.tsx
-// Dedicated Clubs chat screen — modeled on the message-list/composer
-// patterns in features/chat/Chat.tsx (fetch + realtime INSERT/UPDATE
-// subscription, optimistic send, pin banner, tombstoned deletes), but
-// scoped to what Clubs actually needs. DM/global-only features (blocks,
-// read receipts, voice notes, polls, rank tags, calls) are intentionally
-// left out rather than force-fit in.
+// Dedicated Clubs chat screen. Messages render through the exact same
+// MessageBurst/MessageLine components Global Chat and DMs use (see
+// features/chat/MessageBubble.tsx) — same bubbles, same grouping, same
+// long-press/right-click-to-open-menu interaction. Everything else here
+// (header, banners, composer, club-specific realtime) is Clubs-specific.
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, Users, Pin, PinOff, MoreVertical, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
+import { ArrowLeft, Send, Users, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { useProfilePreview } from '../../context/ProfilePreview'
 import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/profanityFilter'
-import Avatar from '../../shared/components/Avatar'
+import {
+  type Message, type GroupedMessage, type ReadReceipt,
+  groupMessages, MessageBurst,
+} from '../chat/MessageBubble'
 import {
   fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage,
   type ClubRoom, type ClubMemberRow, type ClubRole,
@@ -24,7 +27,7 @@ import ClubIcon from './clubIcons'
 
 const MAX_MESSAGE_LENGTH = 2000 // matches the `messages.content` check constraint in the DB
 
-interface ClubMessage {
+interface RawClubMessage {
   id: string
   sender_id: string | null
   content: string
@@ -32,8 +35,6 @@ interface ClubMessage {
   deleted: boolean
   hidden_reason: string | null
   reply_to_id: string | null
-  senderName: string
-  senderAvatar: string
 }
 
 const TOMBSTONE_LABEL: Record<string, string> = {
@@ -41,22 +42,28 @@ const TOMBSTONE_LABEL: Record<string, string> = {
   deleted_by_vp: 'Message deleted by a VP',
 }
 
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 export default function ClubChat() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { openProfilePreview } = useProfilePreview()
   const myId = user?.id ?? null
 
   const [club, setClub] = useState<ClubRoom | null>(null)
   const [members, setMembers] = useState<ClubMemberRow[]>([])
-  const [messages, setMessages] = useState<ClubMessage[]>([])
+  const [rawMessages, setRawMessages] = useState<RawClubMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [composerError, setComposerError] = useState('')
-  const [replyTo, setReplyTo] = useState<ClubMessage | null>(null)
-  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
+  const [replyTo, setReplyTo] = useState<Message | null>(null)
+  const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
+  const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
   const [membersOpen, setMembersOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -75,8 +82,38 @@ export default function ClubChat() {
   }, [])
   const avatarFor = useCallback((userId: string | null) => {
     const m = membersRef.current.find(mb => mb.user_id === userId)
-    return m?.avatar ?? ''
+    return m?.avatar ?? null
   }, [])
+
+  // Shape the raw rows into the shared Message type MessageBurst/MessageLine
+  // expect — same fields Global/DMs populate, defaults for the ones Clubs
+  // doesn't use yet (voice notes, polls, rank tags).
+  const messages: Message[] = useMemo(() => rawMessages.map((m): Message => {
+    const replySource = m.reply_to_id ? rawMessages.find(r => r.id === m.reply_to_id) : undefined
+    return {
+      id: m.id, sender_id: m.sender_id, content: m.content, created_at: m.created_at,
+      deleted: m.deleted, hidden: false, hidden_reason: m.hidden_reason, reply_to_id: m.reply_to_id,
+      replyPreview: replySource?.content, replyPreviewName: replySource ? nameFor(replySource.sender_id) : undefined,
+      senderName: nameFor(m.sender_id),
+      type: 'text', audio_path: null, audio_duration_seconds: null, call_id: null,
+      rank_tag_group: null, poll_id: null,
+      deletedLabel: TOMBSTONE_LABEL[m.hidden_reason ?? ''],
+    }
+  }), [rawMessages, nameFor, members])
+
+  const groupedMessages: GroupedMessage[] = useMemo(() => groupMessages(messages), [messages])
+
+  // Fold the flat, grouped list into consecutive-sender bursts — same
+  // algorithm Chat.tsx uses for Global/DMs.
+  const bursts: GroupedMessage[][] = useMemo(() => {
+    const out: GroupedMessage[][] = []
+    for (const m of groupedMessages) {
+      const last = out[out.length - 1]
+      if (last && !m.isGroupFirst) last.push(m)
+      else out.push([m])
+    }
+    return out
+  }, [groupedMessages])
 
   const load = useCallback(async () => {
     if (!roomId) return
@@ -97,24 +134,19 @@ export default function ClubChat() {
         .limit(50)
       if (msgErr) throw new Error(msgErr.message)
 
-      const page = [...(msgs ?? [])].reverse().map(m => ({
-        ...m,
-        senderName: nameFor(m.sender_id),
-        senderAvatar: avatarFor(m.sender_id),
-      }))
-      setMessages(page)
+      setRawMessages([...(msgs ?? [])].reverse())
     } catch (e: any) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [roomId, nameFor, avatarFor])
+  }, [roomId])
 
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ block: 'end' })
-  }, [messages.length])
+  }, [rawMessages.length])
 
   // Realtime: new messages, edits (delete tombstone), and pin changes.
   useEffect(() => {
@@ -123,15 +155,12 @@ export default function ClubChat() {
     subRef.current = supabase
       .channel(`club-chat:${roomId}:${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
-        const raw = payload.new as any
-        setMessages(ms => {
-          if (ms.find(m => m.id === raw.id)) return ms
-          return [...ms, { ...raw, senderName: nameFor(raw.sender_id), senderAvatar: avatarFor(raw.sender_id) }]
-        })
+        const raw = payload.new as RawClubMessage
+        setRawMessages(ms => ms.find(m => m.id === raw.id) ? ms : [...ms, raw])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
-        const raw = payload.new as any
-        setMessages(ms => ms.map(m => m.id === raw.id ? { ...m, deleted: raw.deleted, hidden_reason: raw.hidden_reason, content: raw.deleted ? m.content : raw.content } : m))
+        const raw = payload.new as RawClubMessage
+        setRawMessages(ms => ms.map(m => m.id === raw.id ? { ...m, deleted: raw.deleted, hidden_reason: raw.hidden_reason, content: raw.deleted ? m.content : raw.content } : m))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as any
@@ -142,7 +171,7 @@ export default function ClubChat() {
       })
       .subscribe()
     return () => { if (subRef.current) supabase.removeChannel(subRef.current) }
-  }, [roomId, nameFor, avatarFor])
+  }, [roomId])
 
   async function sendMsg() {
     const trimmed = text.trim()
@@ -161,9 +190,7 @@ export default function ClubChat() {
         .from('messages').insert(payload)
         .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id').single()
       if (sendErr) throw new Error(sendErr.message)
-      if (inserted) {
-        setMessages(ms => ms.find(m => m.id === inserted.id) ? ms : [...ms, { ...inserted, senderName: nameFor(myId), senderAvatar: avatarFor(myId) }])
-      }
+      if (inserted) setRawMessages(ms => ms.find(m => m.id === inserted.id) ? ms : [...ms, inserted])
       setText('')
       setReplyTo(null)
     } catch (e: any) {
@@ -175,17 +202,21 @@ export default function ClubChat() {
 
   async function handlePin(messageId: string) {
     if (!roomId) return
-    setMenuOpenFor(null)
+    setCtxMsg(null)
     try { await clubPinMessage(roomId, messageId) } catch (e: any) { setError(e.message) }
   }
   async function handleUnpin() {
     if (!roomId) return
+    setCtxMsg(null)
     try { await clubUnpinMessage(roomId) } catch (e: any) { setError(e.message) }
   }
   async function handleDelete(messageId: string) {
-    setMenuOpenFor(null)
+    setCtxMsg(null)
     try { await clubDeleteMessage(messageId) } catch (e: any) { setError(e.message) }
   }
+
+  const avatarForBurst = (msg: Message, isMine: boolean): string | null => isMine ? null : avatarFor(msg.sender_id)
+  const readReceiptFor = (_msg: Message): ReadReceipt => null // group context — no meaningful per-message read state
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>
@@ -259,63 +290,60 @@ export default function ClubChat() {
         <div style={{ padding: '9px 14px', fontSize: 12, color: '#ff6b6b' }}>{error}</div>
       )}
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {messages.length === 0 ? (
+      {/* Messages — same MessageBurst/MessageLine bubbles as Global Chat and DMs */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column' }}>
+        {bursts.length === 0 ? (
           <div style={{ margin: 'auto', fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>No messages yet. Say hi!</div>
-        ) : messages.map(m => {
-          const canDelete = !m.deleted && canModerate
+        ) : bursts.map(burst => {
+          const first = burst[0]
+          const isMine = first.sender_id === myId
           return (
-            <div key={m.id} style={{ display: 'flex', gap: 9, padding: '2px 14px', alignItems: 'flex-start' }}>
-              <Avatar src={m.senderAvatar} name={m.senderName} userId={m.sender_id ?? undefined} size={30} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{m.senderName}</span>
-                  <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  {(canDelete || !m.deleted) && (
-                    <div style={{ marginLeft: 'auto', position: 'relative' }}>
-                      <button onClick={() => setMenuOpenFor(menuOpenFor === m.id ? null : m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', opacity: 0.7 }}>
-                        <MoreVertical size={13} />
-                      </button>
-                      {menuOpenFor === m.id && (
-                        <>
-                          <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setMenuOpenFor(null)} />
-                          <div style={{ position: 'absolute', top: 22, right: 0, zIndex: 6, background: 'var(--popover)', border: '1px solid var(--border-strong)', borderRadius: 12, minWidth: 150, boxShadow: 'var(--elev-popover)', overflow: 'hidden' }}>
-                            {!m.deleted && (
-                              <button onClick={() => { setReplyTo(m); setMenuOpenFor(null) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                                <Reply size={13} /> Reply
-                              </button>
-                            )}
-                            {!m.deleted && canModerate && (
-                              <button onClick={() => handlePin(m.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                                <Pin size={13} /> Pin
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button onClick={() => handleDelete(m.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
-                                <Trash2 size={13} /> Delete
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {m.reply_to_id && !m.deleted && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', borderLeft: '2px solid var(--border-strong)', paddingLeft: 8, marginTop: 2, marginBottom: 2 }}>
-                    Replying to a message
-                  </div>
-                )}
-                <div style={{ fontSize: 13.5, lineHeight: 1.45, color: m.deleted ? 'var(--text-muted)' : 'var(--text)', fontStyle: m.deleted ? 'italic' : 'normal', wordBreak: 'break-word' }}>
-                  {m.deleted ? (TOMBSTONE_LABEL[m.hidden_reason ?? ''] ?? 'Message deleted') : m.content}
-                </div>
-              </div>
-            </div>
+            <Fragment key={first.id}>
+              <MessageBurst
+                burst={burst}
+                isMine={isMine}
+                senderLabel={first.senderName ?? 'Unknown'}
+                avatarUrl={avatarForBurst(first, isMine)}
+                onOpenProfile={(msg) => { if (msg.sender_id) openProfilePreview(msg.sender_id) }}
+                onContextMenu={(m, x, y) => { setCtxMsg(m); setCtxPos({ x, y }) }}
+                onDoubleClick={m => setReplyTo(m)}
+                formatTime={formatTime}
+                readReceiptFor={readReceiptFor}
+                starredIds={new Set()}
+                isGroupChat
+              />
+            </Fragment>
           )
         })}
         <div ref={bottomRef} />
       </div>
+
+      {/* Message action menu — opened via long-press (mobile) / right-click (desktop),
+          same native contextmenu trigger MessageLine uses everywhere else. */}
+      {ctxMsg && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setCtxMsg(null)} onContextMenu={e => { e.preventDefault(); setCtxMsg(null) }} />
+          <div style={{ position: 'fixed', left: Math.min(ctxPos.x, window.innerWidth - 175), top: Math.min(ctxPos.y, window.innerHeight - 160), zIndex: 100, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--elev-popover)', minWidth: 165 }}>
+            <button onClick={() => { setReplyTo(ctxMsg); setCtxMsg(null) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+              <Reply size={13} /> Reply
+            </button>
+            {canModerate && (
+              club.pinned_message_id === ctxMsg.id
+                ? <button onClick={handleUnpin} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                    <PinOff size={13} /> Unpin
+                  </button>
+                : <button onClick={() => handlePin(ctxMsg.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                    <Pin size={13} /> Pin
+                  </button>
+            )}
+            {canModerate && (
+              <button onClick={() => handleDelete(ctxMsg.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
+                <Trash2 size={13} /> Delete
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Composer */}
       {isArchived ? (
