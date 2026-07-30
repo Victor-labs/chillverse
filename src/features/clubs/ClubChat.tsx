@@ -194,7 +194,7 @@ export default function ClubChat() {
     return (
       <div style={{ maxWidth: 500, margin: '60px auto', textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: '#ff6b6b', marginBottom: 14 }}>{error}</p>
-        <button onClick={() => navigate('/clubs')} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Back to Clubs</button>
+        <button onClick={() => navigate('/chat?tab=clubs')} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--surface)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Back to Clubs</button>
       </div>
     )
   }
@@ -208,7 +208,7 @@ export default function ClubChat() {
     <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 0 14px', borderBottom: '1px solid var(--border)' }}>
-        <button onClick={() => navigate('/clubs')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+        <button onClick={() => navigate('/chat?tab=clubs')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
           <ArrowLeft size={15} />
         </button>
         <div style={{
@@ -363,7 +363,7 @@ export default function ClubChat() {
           myRole={myRole}
           myId={myId}
           onClose={() => setMembersOpen(false)}
-          onLeftOrDeleted={() => navigate('/clubs')}
+          onLeftOrDeleted={() => navigate('/chat?tab=clubs')}
         />
       )}
       {settingsOpen && (

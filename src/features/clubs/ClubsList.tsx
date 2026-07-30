@@ -1,10 +1,11 @@
 // src/features/clubs/ClubsList.tsx
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Lock, RefreshCw, Flag, Archive } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Lock, RefreshCw, Flag, Archive, KeyRound, X } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { getUnreadCounts } from '../../shared/lib/unread'
 import { listPublicClubs, fetchMyClubs, joinClub, type ClubSummary, type MyClub } from './clubs'
 import ClubIcon from './clubIcons'
 import CreateClubModal from './CreateClubModal'
@@ -22,12 +23,20 @@ function ClubBadge({ iconKey, size = 34 }: { iconKey: string | null; size?: numb
   )
 }
 
-export default function ClubsList() {
+interface ClubsListProps {
+  /** True when rendered inside the Chat hub's Clubs tab — hides the
+   *  standalone back-arrow/title row, since the hub already provides it. */
+  embedded?: boolean
+}
+
+export default function ClubsList({ embedded = false }: ClubsListProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [myClubs, setMyClubs] = useState<MyClub[]>([])
   const [publicClubs, setPublicClubs] = useState<ClubSummary[]>([])
+  const [unreadByClub, setUnreadByClub] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [joinOpen, setJoinOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
@@ -40,6 +49,7 @@ export default function ClubsList() {
       const [mine, pub] = await Promise.all([fetchMyClubs(user.id), listPublicClubs()])
       setMyClubs(mine)
       setPublicClubs(pub)
+      setUnreadByClub(await getUnreadCounts(supabase, mine.map(c => c.id), user.id))
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -87,12 +97,21 @@ export default function ClubsList() {
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 48px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
-          <ArrowLeft size={15} />
-        </button>
-        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Clubs</div>
-        <button onClick={load} style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+        {!embedded && (
+          <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+            <ArrowLeft size={15} />
+          </button>
+        )}
+        {!embedded && <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Clubs</div>}
+        <button onClick={load} style={{ marginLeft: embedded ? 0 : 'auto', width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
           <RefreshCw size={14} />
+        </button>
+        <button
+          onClick={() => setJoinOpen(o => !o)}
+          style={{ marginLeft: embedded ? 'auto' : 0, width: 34, height: 34, borderRadius: 10, background: joinOpen ? 'var(--surface2)' : 'var(--surface)', border: joinOpen ? '1px solid var(--accent)' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: joinOpen ? 'var(--accent)' : 'var(--text-dim)' }}
+          title="Join with a code"
+        >
+          <KeyRound size={14} />
         </button>
         <button
           onClick={(e) => { ripple(e); setCreateOpen(true) }}
@@ -107,11 +126,11 @@ export default function ClubsList() {
         <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12.5, marginBottom: 14 }}>{error}</div>
       )}
 
-      {/* Join by code */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 16, marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Join with a code</div>
-        <div style={{ display: 'flex', gap: 8 }}>
+      {/* Join with a code — icon above reveals this inline, no more permanent bar */}
+      {joinOpen && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 12, marginBottom: 18, display: 'flex', gap: 8 }}>
           <input
+            autoFocus
             value={codeInput}
             onChange={e => setCodeInput(e.target.value.toUpperCase())}
             placeholder="e.g. 7F3K9Q"
@@ -121,8 +140,11 @@ export default function ClubsList() {
           <button onClick={handleJoinByCode} disabled={joining || !codeInput.trim()} style={{ padding: '0 18px', borderRadius: 10, border: 'none', background: 'var(--surface2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: joining ? 0.7 : 1 }}>
             {joining ? '…' : 'Join'}
           </button>
+          <button onClick={() => { setJoinOpen(false); setCodeInput('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+            <X size={15} />
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Your clubs */}
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Your clubs</div>
@@ -152,6 +174,11 @@ export default function ClubsList() {
               ) : club.is_private ? (
                 <Lock size={13} style={{ color: 'var(--text-muted)' }} />
               ) : null}
+              {!!unreadByClub.get(club.id) && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)', borderRadius: 10, padding: '2px 7px', minWidth: 18, textAlign: 'center', flexShrink: 0 }}>
+                  {unreadByClub.get(club.id)! > 99 ? '99+' : unreadByClub.get(club.id)}
+                </span>
+              )}
             </div>
           ))}
         </div>
