@@ -438,7 +438,14 @@ const MessageBurst = memo(function MessageBurst({
 
 
 
-export default function Chat() {
+interface ChatProps {
+  /** Restricts which rooms this instance shows and swaps in the matching
+   *  header UI — used by ChatHub to power the separate Global/Chats tabs.
+   *  Omitted (undefined) keeps the original unified behavior. */
+  roomFilter?: 'global' | 'dms'
+}
+
+export default function Chat({ roomFilter }: ChatProps = {}) {
   const { session } = useAuth()
   const { openProfilePreview } = useProfilePreview()
   const myId = session?.user?.id ?? null
@@ -458,6 +465,10 @@ export default function Chat() {
   const creatingDmWithRef = useRef<Set<string>>(new Set()) // guards startDmWith against double-taps/slow-network races
   const [startingDmId, setStartingDmId] = useState<string | null>(null)
   const [dmStartError, setDmStartError] = useState<string | null>(null)
+  // Both former always-visible search bars now live behind a header icon —
+  // "Search chats" for the Chats tab, "Find players by username" for Global.
+  const [roomSearchOpen, setRoomSearchOpen] = useState(false)
+  const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
   useEffect(() => {
     if (!dmStartError) return
     const t = setTimeout(() => setDmStartError(null), 5000)
@@ -728,13 +739,15 @@ export default function Chat() {
     const listChannel = supabase
       .channel(`room-list:${myId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
-        const raw = payload.new as { room_id: string; content: string; created_at: string }
+        const raw = payload.new as { room_id: string; content: string; created_at: string; sender_id: string | null }
 
         setRooms(prev => {
           const idx = prev.findIndex(r => r.id === raw.room_id)
           if (idx === -1) return prev // not a room I'm currently showing — ignore (covers rooms I'm not a member of)
           const room = prev[idx]
-          const updated: ChatRoom = { ...room, lastMsg: raw.content, lastMsgTime: formatTime(raw.created_at), lastMsgAt: raw.created_at }
+          const isOpen = raw.room_id === activeRoomIdRef.current
+          const bumpUnread = !isOpen && raw.sender_id !== myId
+          const updated: ChatRoom = { ...room, lastMsg: raw.content, lastMsgTime: formatTime(raw.created_at), lastMsgAt: raw.created_at, unread: bumpUnread ? room.unread + 1 : room.unread }
           const rest = prev.filter((_, i) => i !== idx)
 
           // Global Chat always stays first; pinned rooms float above unpinned, each
@@ -776,7 +789,7 @@ export default function Chat() {
     await ensureGlobalRoom()
 
     const { data: memberRows, error: memErr } = await supabase
-      .from('room_members').select('room_id, pinned, cleared_at, hidden_at').eq('user_id', myId)
+      .from('room_members').select('room_id, pinned, cleared_at, hidden_at, last_read_at').eq('user_id', myId)
 
     if (memErr || !memberRows?.length) { setRoomsLoading(false); return }
 
@@ -786,16 +799,23 @@ export default function Chat() {
     const visibleRoomIds = memberRows.filter(r => !r.hidden_at).map(r => r.room_id)
     if (!visibleRoomIds.length) { setRooms([]); setRoomsLoading(false); return }
 
-    const { data: roomRows } = await supabase
+    let roomsQuery = supabase
       .from('chat_rooms').select('id, type, name, pinned_message_id, spotlight_message_id, spotlight_expires_at').in('id', visibleRoomIds)
+    if (roomFilter === 'global') roomsQuery = roomsQuery.eq('type', 'global')
+    else if (roomFilter === 'dms') roomsQuery = roomsQuery.in('type', ['dm', 'group'])
+    const { data: roomRows } = await roomsQuery
 
     if (!roomRows?.length) { setRooms([]); setRoomsLoading(false); return }
 
     const built: ChatRoom[] = await Promise.all(roomRows.map(async (room) => {
       const myState = myRoomState.get(room.id)
       const clearedAt = myState?.cleared_at ?? null
+      // Unread = messages from someone else, newer than the later of my
+      // last_read_at / cleared_at for this room (a soft-clear also resets
+      // what counts as "unread", same as it does for the preview text below).
+      const unreadSince = [myState?.last_read_at, clearedAt].filter(Boolean).sort().pop() as string | undefined
 
-      const [{ data: memberData }, { data: lastMsgData }] = await Promise.all([
+      const [{ data: memberData }, { data: lastMsgData }, unreadRes] = await Promise.all([
         supabase
           .from('room_members')
           .select('user_id, profiles(username, display_name, avatar, display_name_font, display_name_color)')
@@ -810,6 +830,12 @@ export default function Chat() {
               .eq('room_id', room.id).eq('deleted', false)
               .order('created_at', { ascending: false }).limit(1)
         ),
+        (() => {
+          let q = supabase.from('messages').select('id', { count: 'exact', head: true })
+            .eq('room_id', room.id).eq('deleted', false).neq('sender_id', myId)
+          if (unreadSince) q = q.gt('created_at', unreadSince)
+          return q
+        })(),
       ])
 
       const members: RoomMember[] = (memberData ?? []).map((m: Record<string, unknown>) => ({
@@ -823,7 +849,7 @@ export default function Chat() {
         lastMsg: lastMsg?.content ?? '',
         lastMsgTime: lastMsg ? formatTime(lastMsg.created_at) : '',
         lastMsgAt: lastMsg?.created_at ?? null,
-        unread: 0,
+        unread: unreadRes.count ?? 0,
         pinned: myState?.pinned ?? false,
         clearedAt,
         pinnedMessageId: room.pinned_message_id ?? null,
@@ -873,6 +899,7 @@ export default function Chat() {
   // ── Open room ───────────────────────────────────────────────
   const openRoom = useCallback(async (room: ChatRoom) => {
     setActiveRoom(room)
+    setRooms(prev => prev.map(r => r.id === room.id ? { ...r, unread: 0 } : r))
     setShowConv(true)
     setMessages([]); setMsgsLoading(true)
     setReplyTo(null); setText('')
@@ -1731,12 +1758,22 @@ export default function Chat() {
     openProfilePreview(msg.sender_id)
   }
 
-  const filteredRooms = rooms.filter(r => !roomSearch || roomLabel(r).toLowerCase().includes(roomSearch.toLowerCase()))
-  const totalUnread = rooms.reduce((s, r) => s + r.unread, 0)
+  const scopedRooms = roomFilter === 'global' ? rooms.filter(r => r.type === 'global')
+    : roomFilter === 'dms' ? rooms.filter(r => r.type !== 'global')
+    : rooms
+  const filteredRooms = scopedRooms.filter(r => !roomSearch || roomLabel(r).toLowerCase().includes(roomSearch.toLowerCase()))
+  const totalUnread = scopedRooms.reduce((s, r) => s + r.unread, 0)
   const groupedMessages = useMemo(() => groupMessages(messages), [messages])
 
-  const showList = !isMobile || !showConv
-  const showChat = !isMobile || showConv
+  // Global mode has exactly one room and no list UI — open it the moment it's loaded.
+  useEffect(() => {
+    if (roomFilter !== 'global' || activeRoom) return
+    const globalRoom = rooms.find(r => r.type === 'global')
+    if (globalRoom) openRoom(globalRoom)
+  }, [roomFilter, rooms, activeRoom, openRoom])
+
+  const showList = roomFilter !== 'global' && (!isMobile || !showConv)
+  const showChat = roomFilter === 'global' || !isMobile || showConv
 
   if (!chatFlagLoading && !isChatFlagEnabled('system:chat') && !isStaff) {
     return (
@@ -1763,72 +1800,25 @@ export default function Chat() {
                 {totalUnread > 0 && <span style={{ background:'var(--accent)', color:'#fff', fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10 }}>{totalUnread}</span>}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <IBtn title="Search chats" onClick={() => setRoomSearchOpen(o => !o)} style={roomSearchOpen ? { color:'var(--text)', borderColor:'var(--accent)' } : undefined}>
+                  <Search size={15} />
+                </IBtn>
                 <IBtn><MoreVertical size={15} /></IBtn>
               </div>
             </div>
 
-            {/* Room search */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:12, padding:'8px 12px', marginBottom:8, marginInline: isMobile ? 12 : 0 }}>
-              <Search size={14} style={{ color:'var(--text-muted)', flexShrink:0 }} />
-              <input type="text" placeholder="Search chats…" value={roomSearch} onChange={e => setRoomSearch(e.target.value)}
-
-                style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
-            </div>
-
-            {/* Player search — with chat icon + prompt */}
-            <div style={{ marginBottom: 4, paddingInline: isMobile ? 12 : 0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                <MessageCircle size={13} style={{ color:'#4f8ef7', flexShrink:0 }} />
-                <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>Start a chat — enter a username</span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid rgba(79,142,247,0.18)', borderRadius:12, padding:'8px 12px' }}>
-                <Search size={14} style={{ color:'#4f8ef7', flexShrink:0 }} />
-                <input type="text" placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
+            {/* Room search — icon above reveals this inline */}
+            {roomSearchOpen && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:12, padding:'8px 12px', marginBottom:8, marginInline: isMobile ? 12 : 0 }}>
+                <Search size={14} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+                <input type="text" autoFocus placeholder="Search chats…" value={roomSearch} onChange={e => setRoomSearch(e.target.value)}
                   style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
-                {playerSearch && (
-                  <button type="button" onClick={() => { setPlayerSearch(''); setPlayerResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
-                    <X size={13} />
-                  </button>
-                )}
+                <button type="button" onClick={() => { setRoomSearchOpen(false); setRoomSearch('') }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
+                  <X size={13} />
+                </button>
               </div>
-            </div>
+            )}
           </div>
-
-          {/* Player search results */}
-          {playerSearch.trim() && (
-            <div style={{ borderBottom:'1px solid var(--border)', paddingBottom:6 }}>
-              <div style={{ padding:'4px 16px 6px', fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Players</div>
-              {playerSearching ? (
-                <div style={{ display:'flex', justifyContent:'center', padding:16 }}>
-                  <span style={{ width:20, height:20, border:'2px solid var(--surface3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
-                </div>
-              ) : playerResults.length === 0 ? (
-                <div style={{ padding:'8px 16px', fontSize:12, color:'var(--text-muted)' }}>No players found</div>
-              ) : (
-                playerResults.map(p => (
-                  <button key={p.id} type="button" onClick={() => openProfilePreview(p.id)}
-                    style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 16px', width:'100%', background:'transparent', border:'none', cursor:'pointer', textAlign:'left', transition:'background 0.12s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                    <Avatar name={p.display_name || p.username} avatarUrl={p.avatar || null} size={36} radius={10} />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
-                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
-                    </div>
-                    <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id) }}
-                      disabled={startingDmId === p.id}
-                      title="Start chat"
-                      style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor: startingDmId === p.id ? 'not-allowed' : 'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0, opacity: startingDmId === p.id ? 0.6 : 1 }}>
-                      {startingDmId === p.id
-                        ? <span style={{ width:12, height:12, border:'2px solid rgba(79,142,247,0.3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
-                        : <MessageCircle size={12} />}
-                      {startingDmId === p.id ? 'Opening…' : 'Chat'}
-                    </button>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
 
           {/* Room list */}
           {dmStartError && (
@@ -1983,6 +1973,11 @@ export default function Chat() {
                     <IBtn onClick={() => { setMsgSearchOpen(o => !o); if (msgSearchOpen) setMsgSearchQuery('') }} style={{ width:32, height:32 }}>
                       <Search size={14} />
                     </IBtn>
+                    {roomFilter === 'global' && activeRoom.type === 'global' && (
+                      <IBtn onClick={() => setPlayerSearchOpen(o => !o)} style={{ width:32, height:32, ...(playerSearchOpen ? { color:'#4f8ef7', borderColor:'rgba(79,142,247,0.4)' } : {}) }} title="Find players by username">
+                        <MessageCircle size={14} />
+                      </IBtn>
+                    )}
                     {activeRoom.type === 'dm' && (
                       <IBtn onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect()
@@ -2016,6 +2011,60 @@ export default function Chat() {
                     <button type="button" onClick={() => setMsgSearchQuery('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
                       <X size={13} />
                     </button>
+                  )}
+                </div>
+              )}
+
+              {/* Find-players composer — Global tab only, slides in below the header */}
+              {roomFilter === 'global' && activeRoom.type === 'global' && playerSearchOpen && (
+                <div style={{ borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexShrink:0 }}>
+                  {dmStartError && (
+                    <div style={{ margin:'8px 14px 0', padding:'8px 12px', borderRadius:10, background:'rgba(255,107,107,0.1)', border:'1px solid rgba(255,107,107,0.25)', fontSize:12, color:'#ff6b6b' }}>
+                      {dmStartError}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px' }}>
+                    <Search size={13} style={{ color:'#4f8ef7', flexShrink:0 }} />
+                    <input type="text" autoFocus placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
+                      style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
+                    {playerSearch && (
+                      <button type="button" onClick={() => { setPlayerSearch(''); setPlayerResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                  {playerSearch.trim() && (
+                    <div style={{ borderTop:'1px solid var(--border)', paddingBottom:6, maxHeight:280, overflowY:'auto' }}>
+                      {playerSearching ? (
+                        <div style={{ display:'flex', justifyContent:'center', padding:16 }}>
+                          <span style={{ width:20, height:20, border:'2px solid var(--surface3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                        </div>
+                      ) : playerResults.length === 0 ? (
+                        <div style={{ padding:'8px 16px', fontSize:12, color:'var(--text-muted)' }}>No players found</div>
+                      ) : (
+                        playerResults.map(p => (
+                          <button key={p.id} type="button" onClick={() => openProfilePreview(p.id)}
+                            style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 16px', width:'100%', background:'transparent', border:'none', cursor:'pointer', textAlign:'left', transition:'background 0.12s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                            <Avatar name={p.display_name || p.username} avatarUrl={p.avatar || null} size={36} radius={10} />
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
+                              <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
+                            </div>
+                            <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id); setPlayerSearchOpen(false) }}
+                              disabled={startingDmId === p.id}
+                              title="Start chat"
+                              style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor: startingDmId === p.id ? 'not-allowed' : 'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0, opacity: startingDmId === p.id ? 0.6 : 1 }}>
+                              {startingDmId === p.id
+                                ? <span style={{ width:12, height:12, border:'2px solid rgba(79,142,247,0.3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                                : <MessageCircle size={12} />}
+                              {startingDmId === p.id ? 'Opening…' : 'Chat'}
+                            </button>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
               )}
