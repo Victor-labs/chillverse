@@ -21,7 +21,7 @@ import OfflineOverlay from '../shared/components/OfflineOverlay'
 
 const Games               = lazy(() => import('../features/games/Games'))
 const ProfileRedirect    = lazy(() => import('../features/profile/ProfileRedirect'))
-const Chat               = lazy(() => import('../features/chat/Chat'))
+const ChatHub             = lazy(() => import('../features/chat/ChatHub'))
 const Streak             = lazy(() => import('../features/missions/Streak'))
 const Settings           = lazy(() => import('../features/settings/Settings'))
 const AppTheme           = lazy(() => import('../features/settings/AppTheme'))
@@ -178,7 +178,7 @@ export default function App() {
           <Route path="/buy-diamonds"     element={<Suspense fallback={<Fallback />}><BuyDiamonds /></Suspense>} />
           <Route path="/profile"          element={<Suspense fallback={<Fallback />}><ProfileRedirect /></Suspense>} />
           <Route path="/profile/:userId"  element={<Suspense fallback={<Fallback />}><ProfileRedirect /></Suspense>} />
-          <Route path="/chat"             element={<Suspense fallback={<Fallback />}><Chat /></Suspense>} />
+          <Route path="/chat"             element={<Suspense fallback={<Fallback />}><ChatHub /></Suspense>} />
           <Route path="/streak"           element={<Suspense fallback={<Fallback />}><Streak /></Suspense>} />
           <Route path="/settings"         element={<Suspense fallback={<Fallback />}><Settings /></Suspense>} />
           <Route path="/settings/theme"   element={<Suspense fallback={<Fallback />}><AppTheme /></Suspense>} />
