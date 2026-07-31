@@ -227,7 +227,7 @@ function BestAchievementCard({ ach, unlockedAt, onTap }: { ach: Achievement | nu
   return (
     <button type="button" onClick={onTap}
       style={{
-        width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', position: 'relative', overflow: 'hidden',
+        width: '100%', textAlign: 'left', cursor: 'pointer', position: 'relative', overflow: 'hidden',
         padding: '22px 20px', borderRadius: 22,
         background: `linear-gradient(155deg, ${rarityColor}26, var(--surface) 60%)`,
         border: `1px solid ${rarityColor}3d`,
