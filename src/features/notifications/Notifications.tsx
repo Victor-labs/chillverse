@@ -12,6 +12,7 @@ import {
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getNotifications, markNotificationsRead, notifyFollow } from '../achievements/achievements'
+import { getNotificationRoute } from './notificationRoutes'
 import type React from 'react'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,7 +111,8 @@ function FollowBackButton({ myId, followerId }: { myId: string; followerId: stri
 
   if (state === 'checking' || state === 'hidden') return null
 
-  async function handleClick() {
+  async function handleClick(e: React.MouseEvent) {
+    e.stopPropagation()
     setState('busy')
     await supabase.from('follows').insert({ follower_id: myId, following_id: followerId })
     await notifyFollow(myId, followerId)
@@ -234,9 +236,11 @@ export default function Notifications() {
             const color = TYPE_COLOR[n.type] ?? '#888899'
             const iconKey = n.icon && n.icon !== 'bell' ? n.icon : (TYPE_ICON[n.type] ?? 'bell')
             const label = TYPE_LABEL[n.type] ?? n.type
+            const target = getNotificationRoute(n.type, n.meta)
             return (
               <div key={n.id}
-                style={{ display: 'flex', gap: 12, padding: '14px 16px', background: !n.read ? `${color}08` : 'var(--surface)', border: !n.read ? `1px solid ${color}22` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: 'var(--elev-raise-sm)', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)', position: 'relative' }}>
+                onClick={() => { if (target) navigate(target) }}
+                style={{ display: 'flex', gap: 12, padding: '14px 16px', background: !n.read ? `${color}08` : 'var(--surface)', border: !n.read ? `1px solid ${color}22` : '1px solid rgba(255,255,255,0.04)', borderRadius: 16, boxShadow: 'var(--elev-raise-sm)', transition: 'background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out)', position: 'relative', cursor: target ? 'pointer' : 'default' }}>
 
                 {/* Icon */}
                 <div style={{ width: 42, height: 42, borderRadius: 13, background: `${color}18`, border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color }}>
@@ -262,7 +266,7 @@ export default function Notifications() {
                 )}
 
                 {/* Delete */}
-                <button type="button" onClick={() => deleteOne(n.id)}
+                <button type="button" onClick={(e) => { e.stopPropagation(); deleteOne(n.id) }}
                   style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: 0.5, padding: 4 }}
                   onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#ff6b6b' }}
                   onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--text-muted)' }}>

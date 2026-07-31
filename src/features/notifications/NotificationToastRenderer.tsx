@@ -1,9 +1,11 @@
 // src/components/NotificationToastRenderer.tsx
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell, Trophy, Flame, UserPlus, Zap, Heart, Eye, Crown, Fan, MessageCircle, Spade, Image, Brain, Wifi, CirclePlay, Camera, Sparkles, Compass } from 'lucide-react'
 import type React from 'react'
 import { useNotificationToast } from './useNotificationToast'
 import type { ToastNotif } from './useNotificationToast'
+import { getNotificationRoute } from './notificationRoutes'
 import haloMascot from '../../assets/halo-mascot.png'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,7 +34,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 const SWIPE_DISMISS_PX = 70
 
-function ToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () => void }) {
+function ToastItem({ toast, onDismiss, onNavigate }: { toast: ToastNotif; onDismiss: () => void; onNavigate: (path: string) => void }) {
   const Icon = ICON_MAP[toast.icon] ?? Bell
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -58,6 +60,13 @@ function ToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () => v
     }
   }
 
+  function handleTap() {
+    if (Math.abs(dragX) >= 4) return
+    const target = getNotificationRoute(toast.type, toast.meta)
+    onDismiss()
+    if (target) onNavigate(target)
+  }
+
   return (
     <div
       ref={cardRef}
@@ -65,7 +74,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () => v
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onClick={() => { if (Math.abs(dragX) < 4) onDismiss() }}
+      onClick={handleTap}
       style={{
         display: 'flex', alignItems: 'center', gap: 11,
         padding: '12px 16px',
@@ -110,7 +119,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () => v
   )
 }
 
-function HaloToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () => void }) {
+function HaloToastItem({ toast, onDismiss, onNavigate }: { toast: ToastNotif; onDismiss: () => void; onNavigate: (path: string) => void }) {
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const startX = useRef(0)
@@ -135,6 +144,13 @@ function HaloToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () 
     }
   }
 
+  function handleTap() {
+    if (Math.abs(dragX) >= 4) return
+    const target = getNotificationRoute(toast.type, toast.meta)
+    onDismiss()
+    if (target) onNavigate(target)
+  }
+
   return (
     <div
       ref={cardRef}
@@ -142,7 +158,7 @@ function HaloToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () 
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onClick={() => { if (Math.abs(dragX) < 4) onDismiss() }}
+      onClick={handleTap}
       style={{
         display: 'flex', alignItems: 'flex-end', gap: 0,
         cursor: 'grab', touchAction: 'pan-y',
@@ -191,6 +207,7 @@ function HaloToastItem({ toast, onDismiss }: { toast: ToastNotif; onDismiss: () 
 
 export default function NotificationToastRenderer() {
   const { toasts, dismiss } = useNotificationToast()
+  const navigate = useNavigate()
 
   if (toasts.length === 0) return null
 
@@ -205,8 +222,8 @@ export default function NotificationToastRenderer() {
         {toasts.map(t => (
           <div key={t.id} style={{ pointerEvents: 'auto', position: 'relative', width: '100%' }}>
             {t.type === 'halo'
-              ? <HaloToastItem toast={t} onDismiss={() => dismiss(t.id)} />
-              : <ToastItem toast={t} onDismiss={() => dismiss(t.id)} />}
+              ? <HaloToastItem toast={t} onDismiss={() => dismiss(t.id)} onNavigate={navigate} />
+              : <ToastItem toast={t} onDismiss={() => dismiss(t.id)} onNavigate={navigate} />}
           </div>
         ))}
       </div>

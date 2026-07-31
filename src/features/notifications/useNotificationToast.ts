@@ -10,6 +10,7 @@ export interface ToastNotif {
   body: string
   icon: string
   color: string
+  meta: Record<string, unknown> | null
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -50,7 +51,7 @@ export function useNotificationToast() {
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        const n = payload.new as { id: string; type: string; title: string; body: string; icon: string }
+        const n = payload.new as { id: string; type: string; title: string; body: string; icon: string; meta?: Record<string, unknown> | null }
         const toast: ToastNotif = {
           id:    n.id,
           type:  n.type,
@@ -58,6 +59,7 @@ export function useNotificationToast() {
           body:  n.body,
           icon:  n.icon,
           color: TYPE_COLOR[n.type] ?? '#888899',
+          meta:  n.meta ?? null,
         }
         setToasts(prev => [...prev, toast])
         // Auto-dismiss after 4s
