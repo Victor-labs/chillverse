@@ -1,7 +1,8 @@
 // src/features/highlights/HighlightCard.tsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Share2, Check, Clover } from 'lucide-react'
+import { Heart, Share2, Check } from 'lucide-react'
+import haloMascot from '../../assets/halo-mascot.png'
 import { useAuth } from '../auth/useAuth'
 import { toggleHighlightLike } from './highlights'
 import { shareHighlight } from './shareHighlight'
@@ -126,12 +127,15 @@ function HighlightArt({ highlight, authorName }: { highlight: Highlight; authorN
   }
 
   if (highlight.kind === 'lucky_user') {
+    // Halo's own mascot art announces the win, rather than a generic icon —
+    // this is Halo picking the winner, so Halo's face is the art.
     return (
       <div style={{
         width: size, height: size, borderRadius: size * 0.3, flexShrink: 0, display: 'flex',
         alignItems: 'center', justifyContent: 'center', background: '#f5c5421f',
+        filter: 'drop-shadow(0 0 8px rgba(245,197,66,0.35))',
       }}>
-        <Clover size={size * 0.5} color="#f5c542" />
+        <img src={haloMascot} alt="Halo" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
       </div>
     )
   }
