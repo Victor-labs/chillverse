@@ -2,13 +2,47 @@
 import { supabase } from '../../shared/lib/supabase'
 import type { SignupProfileInput } from '../../shared/types'
 
-/** Sign up a new user with email + password. */
-export async function signUpWithEmail(email: string, password: string) {
+export interface SignupMetadata {
+  username: string
+  displayName: string
+  country: string
+  interests: string[]
+  dob: string
+  connectedPlatform: string | null
+  referralCode: string | null
+  deviceId: string
+}
+
+/**
+ * Sign up a new user with email + password.
+ *
+ * All the onboarding data collected in Signup.tsx (username, display name,
+ * country, interests, dob, connected platform, referral code, device id)
+ * is sent here as auth signUp() metadata rather than saved via a separate
+ * client-side upsert after the fact. That separate upsert only ran if a
+ * session already existed the instant signup returned — which isn't true
+ * when the project requires email confirmation, so the data was silently
+ * lost. Metadata lands on auth.users.raw_user_meta_data immediately and is
+ * read by the handle_new_user() DB trigger to populate the profile (and
+ * apply/credit any referral) the moment the account row is created —
+ * reliable regardless of confirmation flow, tab, or device.
+ */
+export async function signUpWithEmail(email: string, password: string, meta: SignupMetadata) {
   return supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${window.location.origin}/dashboard`,
+      data: {
+        username: meta.username,
+        display_name: meta.displayName,
+        country: meta.country,
+        interests: meta.interests,
+        dob: meta.dob || null,
+        connected_platform: meta.connectedPlatform,
+        referral_code: meta.referralCode,
+        device_id: meta.deviceId,
+      },
     },
   })
 }

@@ -2,9 +2,9 @@
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Rocket, Check } from 'lucide-react'
-import { signUpWithEmail, signInWithGoogle, upsertProfile, getCurrentSession } from './auth'
+import { signUpWithEmail, signInWithGoogle, getCurrentSession } from './auth'
 import { interestIcons } from '../../shared/lib/icons'
-import { stashReferralCode, consumePendingReferralCode, applyReferralCode } from '../referral/referral'
+import { getDeviceId } from '../referral/referral'
 import Wordmark from '../../layout/Wordmark'
 import Logo from '../../layout/Logo'
 import Seo from '../../shared/components/Seo'
@@ -63,11 +63,39 @@ function neuInput(hasError: boolean): React.CSSProperties {
   }
 }
 
-function PwStrength({ score }: { score: number }) {
-  const cls = score <= 1 ? 'weak' : score <= 2 ? 'fair' : 'strong'
+const PW_SYMBOL_RE = /[@_\-.]/
+
+function pwRequirements(v: string) {
+  return [
+    { label: 'At least 8 characters', met: v.length >= 8 },
+    { label: 'One uppercase letter (A–Z)', met: /[A-Z]/.test(v) },
+    { label: 'One lowercase letter (a–z)', met: /[a-z]/.test(v) },
+    { label: 'One number (0–9)', met: /[0-9]/.test(v) },
+    { label: 'One symbol (@ _ - .)', met: PW_SYMBOL_RE.test(v) },
+  ]
+}
+
+function pwMeetsAllRequirements(v: string): boolean {
+  return pwRequirements(v).every(r => r.met)
+}
+
+function PwRequirements({ value }: { value: string }) {
   return (
-    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-      {[0,1,2,3].map(i => <div key={i} className={`pw-bar ${i < score ? cls : ''}`} />)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
+      {pwRequirements(value).map(r => (
+        <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, fontWeight: 600, color: r.met ? 'var(--green)' : 'var(--text-muted)', transition: 'color var(--dur-base) var(--ease-out)' }}>
+          <span style={{
+            width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: r.met ? 'rgba(62,207,142,0.15)' : 'transparent',
+            border: `1.5px solid ${r.met ? 'var(--green)' : 'var(--border-strong)'}`,
+            transition: 'background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)',
+          }}>
+            {r.met && <Check size={9} strokeWidth={3} />}
+          </span>
+          {r.label}
+        </div>
+      ))}
     </div>
   )
 }
@@ -95,11 +123,20 @@ export default function Signup() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
 
-  // Capture ?ref=CODE from a referral link the moment the signup page loads,
-  // so it survives through email confirmation before we can actually apply it.
+  const [refCode,   setRefCode]   = useState('')
+  const [refLocked, setRefLocked] = useState(false)
+
+  // Capture ?ref=CODE from a referral link the moment the signup page loads
+  // and pre-fill + lock the referral field. The code travels with the rest
+  // of the signup data as auth metadata and is applied server-side the
+  // instant the account is created (see handle_new_user() / migration
+  // 0093), so no separate stash-and-reapply step is needed here.
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('ref')
-    if (code) stashReferralCode(code)
+    if (code) {
+      setRefCode(code.toUpperCase())
+      setRefLocked(true)
+    }
   }, [])
 
   const [username,    setUsername]    = useState('')
@@ -126,15 +163,6 @@ export default function Signup() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  function pwStrength(v: string) {
-    let s = 0
-    if (v.length >= 8) s++
-    if (/[A-Z]/.test(v)) s++
-    if (/[0-9]/.test(v)) s++
-    if (/[^A-Za-z0-9]/.test(v)) s++
-    return s
-  }
-
   function validateStep1() {
     const e: Record<string, string> = {}
     if (username.trim().length < 3 || username.trim().length > 20) e.username = 'Username must be 3–20 characters'
@@ -145,7 +173,7 @@ export default function Signup() {
     } else {
       e.dob = 'You must be at least 13 to join'
     }
-    if (password.length < 8) e.password = 'Password must be at least 8 characters'
+    if (!pwMeetsAllRequirements(password)) e.password = 'Password must meet all requirements below'
     if (password !== confirm || confirm.length === 0) e.confirm = 'Passwords do not match'
     if (!legalChecked) e.legal = 'You must accept the terms to continue'
     setErrors(e)
@@ -168,7 +196,16 @@ export default function Signup() {
 
   async function handleFinish() {
     setLoading(true)
-    const { data: signUpData, error } = await signUpWithEmail(email.trim(), password)
+    const { data: signUpData, error } = await signUpWithEmail(email.trim(), password, {
+      username: username.trim(),
+      displayName: displayName.trim(),
+      country,
+      interests,
+      dob,
+      connectedPlatform: selectedPlatform,
+      referralCode: refCode.trim() ? refCode.trim().toUpperCase() : null,
+      deviceId: getDeviceId(),
+    })
 
     if (error) {
       setLoading(false)
@@ -183,37 +220,18 @@ export default function Signup() {
       return
     }
 
+    setLoading(false)
+
+    // Username/display name/country/interests/dob/platform/referral were
+    // all sent as signup metadata above, so the profile is already fully
+    // set up server-side by now — no follow-up client write needed here,
+    // and nothing here depends on a session existing yet.
     const { data: { session } } = await getCurrentSession()
 
     if (!session) {
-      setLoading(false)
       showToast('Confirmation email sent! Check your inbox AND spam folder 📩', 'success')
       setTimeout(() => navigate('/login'), 2200)
       return
-    }
-
-    const { error: profileError } = await upsertProfile(session.user.id, {
-      username: username.trim(),
-      displayName: displayName.trim(),
-      country, interests, dob,
-      connectedPlatform: selectedPlatform,
-    })
-
-    setLoading(false)
-
-    if (profileError) {
-      showToast(
-        profileError.code === '42501'
-          ? "We couldn't save your profile — please confirm your email and try again."
-          : 'Something went wrong saving your profile. Please try again.',
-        'err'
-      )
-      return
-    }
-
-    const pendingRefCode = consumePendingReferralCode()
-    if (pendingRefCode) {
-      applyReferralCode(session.user.id, pendingRefCode).catch(e => console.error('applyReferralCode error:', e))
     }
 
     showToast('Account created! Welcome to the verse 🚀', 'success')
@@ -296,7 +314,7 @@ export default function Signup() {
                   onFocus={e => { e.target.style.borderColor = 'color-mix(in srgb, var(--accent) 40%, transparent)' }} onBlur={e => { e.target.style.borderColor = errors.password ? 'var(--red)' : 'rgba(255,255,255,0.07)' }} />
                 <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>{showPw ? 'Hide' : 'Show'}</button>
               </div>
-              <PwStrength score={pwStrength(password)} />
+              <PwRequirements value={password} />
             </Field>
 
             <Field label="Confirm password" error={errors.confirm}>
@@ -305,6 +323,27 @@ export default function Signup() {
                   onFocus={e => { e.target.style.borderColor = 'color-mix(in srgb, var(--accent) 40%, transparent)' }} onBlur={e => { e.target.style.borderColor = errors.confirm ? 'var(--red)' : 'rgba(255,255,255,0.07)' }} />
                 <button type="button" onClick={() => setShowConfirm(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>{showConfirm ? 'Hide' : 'Show'}</button>
               </div>
+            </Field>
+
+            <Field label={refLocked ? 'Referral code' : 'Referral code (optional)'}>
+              <input
+                value={refCode}
+                onChange={e => setRefCode(e.target.value.toUpperCase())}
+                placeholder="Have a code from a friend?"
+                readOnly={refLocked}
+                style={{
+                  ...neuInput(false),
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  opacity: refLocked ? 0.65 : 1,
+                  cursor: refLocked ? 'not-allowed' : 'text',
+                }}
+                onFocus={e => { if (!refLocked) e.target.style.borderColor = 'color-mix(in srgb, var(--accent) 40%, transparent)' }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.07)' }}
+              />
+              {refLocked && (
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Applied from your invite link</span>
+              )}
             </Field>
 
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer' }}>
