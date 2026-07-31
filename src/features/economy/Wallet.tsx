@@ -1,11 +1,12 @@
 // src/pages/Wallet.tsx
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, ShoppingBag, Ticket } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Clock, ShoppingBag, Ticket, Play, Loader2 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useWallet } from './useWallet'
+import { useWatchAdForOrbs } from '../ads/useWatchAdForOrbs'
 
 // ─── Types ────────────────────────────────────────────────────
 interface DiamondTx {
@@ -163,8 +164,10 @@ function EmptyState({ label }: { label: string }) {
 // ─── Main Page ────────────────────────────────────────────────
 export default function Wallet() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const { wallet, loading: walletLoading } = useWallet()
+  const { wallet, loading: walletLoading, refetch: refetchWallet } = useWallet()
+  const watchAd = useWatchAdForOrbs(() => refetchWallet())
 
   // Diamond transaction history
   const [diamondTxs, setDiamondTxs] = useState<DiamondTx[]>([])
@@ -174,8 +177,12 @@ export default function Wallet() {
   const [spends, setSpends] = useState<SpendEntry[]>([])
   const [spendsLoading, setSpendsLoading] = useState(true)
 
-  // Active tab: 'diamonds' | 'orbs' | 'vouchers'
-  const [activeTab, setActiveTab] = useState<'diamonds' | 'orbs' | 'vouchers'>('diamonds')
+  // Active tab: 'diamonds' | 'orbs' | 'vouchers' — deep-linkable via ?tab=orbs
+  // (used by the Dashboard's "Missions" card).
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<'diamonds' | 'orbs' | 'vouchers'>(
+    initialTab === 'orbs' || initialTab === 'vouchers' ? initialTab : 'diamonds',
+  )
 
   useEffect(() => {
     if (!user) return
@@ -218,6 +225,7 @@ export default function Wallet() {
   }, [user])
 
   const diamonds = wallet?.gem_balance ?? 0
+  const orbs = wallet?.orb_balance ?? 0
 
   // Filter spends by currency type
   const diamondSpends = spends.filter(s => s.item_type === 'diamond')
@@ -273,8 +281,8 @@ export default function Wallet() {
           <CurrencyCard
             icon={<OrbIcon size={16} />}
             label="Orbs"
-            amount="—"
-            sub="Coming soon"
+            amount={walletLoading ? '—' : fmt(orbs)}
+            sub="Earn by watching ads"
             accent="#34d399"
             bg="rgba(52,211,153,0.07)"
             border="rgba(52,211,153,0.18)"
@@ -389,13 +397,58 @@ export default function Wallet() {
       {/* ─── TAB: ORBS ─── */}
       {activeTab === 'orbs' && (
         <div style={{ padding: '0 20px' }}>
+          <SectionLabel>Missions</SectionLabel>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
+            padding: 16, boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(52,211,153,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <OrbIcon size={20} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Watch an ad</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                {watchAd.status === 'success'
+                  ? `+${watchAd.orbsEarned} Orbs credited!`
+                  : watchAd.status === 'error' || watchAd.status === 'capped'
+                    ? watchAd.errorMessage
+                    : 'Earn 15 Orbs, up to 10 times a day'}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting'}
+              onClick={(e) => { ripple(e); watchAd.status === 'success' || watchAd.status === 'error' ? watchAd.reset() : watchAd.watchAd() }}
+              className="ripple-wrap btn-primary"
+              style={{
+                flexShrink: 0, padding: '9px 16px', borderRadius: 12, fontSize: 12.5, fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: 6,
+                opacity: (watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting') ? 0.6 : 1,
+                cursor: (watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting') ? 'default' : 'pointer',
+              }}
+            >
+              {watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting' ? (
+                <><Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> Loading</>
+              ) : watchAd.status === 'success' ? (
+                'Done'
+              ) : watchAd.status === 'capped' ? (
+                'Come back later'
+              ) : (
+                <><Play size={13} /> Watch</>
+              )}
+            </button>
+          </div>
+
           <SectionLabel>Orb Activity</SectionLabel>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '0 16px', boxShadow: 'var(--elev-raise-sm)' }}>
             {orbSpends.length === 0 ? (
               <div style={{ padding: '36px 0', textAlign: 'center' }}>
                 <OrbIcon size={28} />
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 10, fontWeight: 600 }}>Orb currency coming soon</p>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Earn &amp; spend Orbs on exclusive items</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 10, fontWeight: 600 }}>No Orb spending yet</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Orb-priced items in the Mall are coming soon</p>
               </div>
             ) : (
               orbSpends.map(s => (
