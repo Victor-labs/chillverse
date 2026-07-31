@@ -38,6 +38,7 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [busy, setBusy] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -60,6 +61,8 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
     const q = search.trim().toLowerCase()
     return members.filter(m => m.username.toLowerCase().includes(q) || (m.display_name ?? '').toLowerCase().includes(q))
   }, [members, search])
+
+  const menuForMember = menuFor ? members.find(m => m.user_id === menuFor) ?? null : null
 
   async function handlePromote(userId: string, role: 'member' | 'vp') {
     setBusy(true)
@@ -191,40 +194,25 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
                 </div>
 
                 {canManage && m.user_id !== myId && (
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => setMenuFor(menuFor === m.user_id ? null : m.user_id)} disabled={busy} style={{ width: 28, height: 28, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MoreVertical size={15} />
-                    </button>
-                    {menuFor === m.user_id && (
-                      <>
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setMenuFor(null)} />
-                        <div style={{ position: 'absolute', top: 30, right: 0, zIndex: 6, background: 'var(--popover)', border: '1px solid var(--border-strong)', borderRadius: 12, minWidth: 175, boxShadow: 'var(--elev-popover)', overflow: 'hidden' }}>
-                          {myRole === 'president' && m.role !== 'vp' && (
-                            <button onClick={() => handlePromote(m.user_id, 'vp')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                              <ShieldCheck size={13} /> Make VP
-                            </button>
-                          )}
-                          {myRole === 'president' && m.role === 'vp' && (
-                            <button onClick={() => handlePromote(m.user_id, 'member')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                              <UserMinus size={13} /> Remove VP
-                            </button>
-                          )}
-                          {muted ? (
-                            <button onClick={() => handleUnmute(m.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                              <Volume2 size={13} /> Unmute
-                            </button>
-                          ) : (
-                            <button onClick={() => handleMute(m.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                              <VolumeX size={13} /> Mute (1h)
-                            </button>
-                          )}
-                          <button onClick={() => handleRemove(m.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
-                            <Trash2 size={13} /> Kick from club
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      if (menuFor === m.user_id) { setMenuFor(null); return }
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      // Anchored to the viewport (not the scrollable list), so the
+                      // menu always renders in full instead of being clipped by
+                      // the list's overflow:auto — flips left near the right edge
+                      // and clamps to the viewport bottom near the last row.
+                      const menuWidth = 175
+                      const left = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)
+                      const top = Math.min(rect.bottom + 4, window.innerHeight - 190)
+                      setMenuPos({ top, left: Math.max(8, left) })
+                      setMenuFor(m.user_id)
+                    }}
+                    disabled={busy}
+                    style={{ width: 28, height: 28, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <MoreVertical size={15} />
+                  </button>
                 )}
               </div>
             )
@@ -237,6 +225,41 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
           </button>
         </div>
       </div>
+
+      {/* Action menu — a single instance, position:fixed to the viewport via
+          menuPos (set from the trigger button's rect on click). Rendered here,
+          outside the scrollable member list, so it's never clipped by that
+          list's overflow:auto the way an absolutely-positioned child of a row
+          would be. */}
+      {menuForMember && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 202 }} onClick={() => setMenuFor(null)} />
+          <div style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 203, background: 'var(--popover)', border: '1px solid var(--border-strong)', borderRadius: 12, minWidth: 175, boxShadow: 'var(--elev-popover)', overflow: 'hidden' }}>
+            {myRole === 'president' && menuForMember.role !== 'vp' && (
+              <button onClick={() => handlePromote(menuForMember.user_id, 'vp')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                <ShieldCheck size={13} /> Make VP
+              </button>
+            )}
+            {myRole === 'president' && menuForMember.role === 'vp' && (
+              <button onClick={() => handlePromote(menuForMember.user_id, 'member')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                <UserMinus size={13} /> Remove VP
+              </button>
+            )}
+            {isMuted(menuForMember) ? (
+              <button onClick={() => handleUnmute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                <Volume2 size={13} /> Unmute
+              </button>
+            ) : (
+              <button onClick={() => handleMute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                <VolumeX size={13} /> Mute (1h)
+              </button>
+            )}
+            <button onClick={() => handleRemove(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
+              <Trash2 size={13} /> Kick from club
+            </button>
+          </div>
+        </>
+      )}
     </>
   )
 }

@@ -35,7 +35,10 @@ interface RawClubMessage {
   deleted: boolean
   hidden_reason: string | null
   reply_to_id: string | null
+  type: string
 }
+
+const MARK_READ_THROTTLE_MS = 2000 // matches Chat.tsx — minimum gap between last_read_at writes
 
 const TOMBSTONE_LABEL: Record<string, string> = {
   deleted_by_president: 'Message deleted by the president',
@@ -71,6 +74,19 @@ export default function ClubChat() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const membersRef = useRef<ClubMemberRow[]>([])
   membersRef.current = members
+  const lastMarkReadAtRef = useRef(0)
+
+  /** Persists my read position for this club, throttled the same way Chat.tsx
+   *  does for DMs/Global. Without this the unread badge on the Clubs list never
+   *  clears, since nothing else ever writes room_members.last_read_at for a club. */
+  const markRoomAsRead = useCallback((id: string, uid: string) => {
+    const now = Date.now()
+    if (now - lastMarkReadAtRef.current < MARK_READ_THROTTLE_MS) return
+    lastMarkReadAtRef.current = now
+    supabase.from('room_members').update({ last_read_at: new Date().toISOString() })
+      .eq('room_id', id).eq('user_id', uid)
+      .then(({ error }) => { if (error) console.error('Failed to mark club as read:', error.message) })
+  }, [])
 
   const myRole: ClubRole | null = members.find(m => m.user_id === myId)?.role ?? null
   const canModerate = myRole === 'president' || myRole === 'vp'
@@ -95,7 +111,7 @@ export default function ClubChat() {
       deleted: m.deleted, hidden: false, hidden_reason: m.hidden_reason, reply_to_id: m.reply_to_id,
       replyPreview: replySource?.content, replyPreviewName: replySource ? nameFor(replySource.sender_id) : undefined,
       senderName: nameFor(m.sender_id),
-      type: 'text', audio_path: null, audio_duration_seconds: null, call_id: null,
+      type: (m.type as Message['type']) ?? 'text', audio_path: null, audio_duration_seconds: null, call_id: null,
       rank_tag_group: null, poll_id: null,
       deletedLabel: TOMBSTONE_LABEL[m.hidden_reason ?? ''],
     }
@@ -128,7 +144,7 @@ export default function ClubChat() {
 
       const { data: msgs, error: msgErr } = await supabase
         .from('messages')
-        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id')
+        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type')
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(50)
@@ -148,6 +164,14 @@ export default function ClubChat() {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ block: 'end' })
   }, [rawMessages.length])
 
+  // Entering the club counts as reading it — bypass the throttle here since
+  // this only fires once per mount/room change, not on every message.
+  useEffect(() => {
+    if (!roomId || !myId || loading) return
+    lastMarkReadAtRef.current = 0
+    markRoomAsRead(roomId, myId)
+  }, [roomId, myId, loading, markRoomAsRead])
+
   // Realtime: new messages, edits (delete tombstone), and pin changes.
   useEffect(() => {
     if (!roomId) return
@@ -157,6 +181,7 @@ export default function ClubChat() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
         setRawMessages(ms => ms.find(m => m.id === raw.id) ? ms : [...ms, raw])
+        if (myId) markRoomAsRead(roomId, myId)
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
@@ -188,7 +213,7 @@ export default function ClubChat() {
       if (replyTo) payload.reply_to_id = replyTo.id
       const { data: inserted, error: sendErr } = await supabase
         .from('messages').insert(payload)
-        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id').single()
+        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type').single()
       if (sendErr) throw new Error(sendErr.message)
       if (inserted) setRawMessages(ms => ms.find(m => m.id === inserted.id) ? ms : [...ms, inserted])
       setText('')
@@ -236,7 +261,7 @@ export default function ClubChat() {
   const inGrace = !!club.grace_started_at && !isArchived
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 32px)' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 60px)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 0 14px', borderBottom: '1px solid var(--border)' }}>
         <button onClick={() => navigate('/chat?tab=clubs')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
