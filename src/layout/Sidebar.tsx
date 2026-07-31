@@ -11,6 +11,7 @@ import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
 import Avatar from '../shared/components/Avatar'
 import Logo from './Logo'
+import NotificationBell from '../features/notifications/NotificationBell'
 import type { Profile } from '../shared/types'
 
 // Matches the presence values stored on profiles.presence (see Profile.tsx / Settings.tsx)
@@ -317,17 +318,7 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
                   </div>
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={(e) => { ripple(e); navigate('/settings'); onClose() }}
-                title="Settings"
-                className="ripple-wrap"
-                style={{ width: 30, height: 30, borderRadius: 8, background: 'transparent', border: 'none', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)' }}
-              >
-                <Settings size={15} />
-              </button>
+              <NotificationBell />
             </div>
           ) : (
             <button

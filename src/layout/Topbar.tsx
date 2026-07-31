@@ -1,7 +1,6 @@
 // src/components/Topbar.tsx
 import { Link } from 'react-router-dom'
 import { MessageCircle, ArrowLeft, Search } from 'lucide-react'
-import NotificationBell from '../features/notifications/NotificationBell'
 
 interface TopbarProps {
   title: string
@@ -54,7 +53,6 @@ export default function Topbar({ title, showBack, onBack, onMenuClick }: TopbarP
       </div>
 
       <div className="flex items-center gap-2">
-        <NotificationBell />
         <Link
           to="/search"
           aria-label="Search"
