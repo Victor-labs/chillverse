@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send, Users, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
+import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -21,7 +21,6 @@ import {
   fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage,
   type ClubRoom, type ClubMemberRow, type ClubRole,
 } from './clubs'
-import ClubMembersPanel from './ClubMembersPanel'
 import ClubSettingsModal from './ClubSettingsModal'
 import ClubIcon from './clubIcons'
 
@@ -64,7 +63,6 @@ export default function ClubChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
-  const [membersOpen, setMembersOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -253,14 +251,11 @@ export default function ClubChat() {
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{members.length} member{members.length === 1 ? '' : 's'}</div>
         </div>
-        {myRole === 'president' && (
+        {myRole && (
           <button onClick={() => setSettingsOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
             <Settings size={15} />
           </button>
         )}
-        <button onClick={() => setMembersOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
-          <Users size={15} />
-        </button>
       </div>
 
       {isArchived && (
@@ -385,20 +380,15 @@ export default function ClubChat() {
         </div>
       )}
 
-      {membersOpen && myId && myRole && (
-        <ClubMembersPanel
-          club={club}
-          myRole={myRole}
-          myId={myId}
-          onClose={() => setMembersOpen(false)}
-          onLeftOrDeleted={() => navigate('/chat?tab=clubs')}
-        />
-      )}
-      {settingsOpen && (
+      {settingsOpen && myId && myRole && (
         <ClubSettingsModal
           club={club}
+          members={members}
+          myId={myId}
+          myRole={myRole}
           onClose={() => setSettingsOpen(false)}
-          onUpdated={(updated) => { setClub(updated); setSettingsOpen(false) }}
+          onUpdated={(updated) => setClub(updated)}
+          onLeftOrDeleted={() => { setSettingsOpen(false); navigate('/chat?tab=clubs') }}
         />
       )}
     </div>

@@ -1,9 +1,9 @@
 // src/features/clubs/ClubMembersPanel.tsx
 import { useEffect, useState, useCallback } from 'react'
-import { X, Crown, ShieldCheck, MoreVertical, UserMinus, LogOut, Trash2, Copy, Check } from 'lucide-react'
+import { X, Crown, ShieldCheck, MoreVertical, UserMinus, LogOut, Trash2 } from 'lucide-react'
 import Avatar from '../../shared/components/Avatar'
 import {
-  fetchClubMembers, promoteClubMember, removeClubMember, leaveClub, deleteClub,
+  fetchClubMembers, promoteClubMember, removeClubMember, leaveClub,
   type ClubMemberRow, type ClubRole, type ClubRoom,
 } from './clubs'
 
@@ -23,9 +23,7 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [codeCopied, setCodeCopied] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -80,26 +78,6 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
     }
   }
 
-  async function handleDelete() {
-    setBusy(true)
-    setError('')
-    try {
-      await deleteClub(club.id)
-      onLeftOrDeleted()
-    } catch (e: any) {
-      setError(e.message)
-      setBusy(false)
-    }
-  }
-
-  function copyCode() {
-    if (!club.join_code) return
-    navigator.clipboard.writeText(club.join_code).then(() => {
-      setCodeCopied(true)
-      setTimeout(() => setCodeCopied(false), 1500)
-    })
-  }
-
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)' }} onClick={onClose} />
@@ -115,16 +93,6 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
             <X size={16} />
           </button>
         </div>
-
-        {club.join_code && (myRole === 'president' || myRole === 'vp') && (
-          <div style={{ margin: '0 20px 14px', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Join code</span>
-            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 2, color: 'var(--text)', flex: 1 }}>{club.join_code}</span>
-            <button onClick={copyCode} style={{ background: 'none', border: 'none', cursor: 'pointer', color: codeCopied ? '#3ecf8e' : 'var(--text-dim)', display: 'flex' }}>
-              {codeCopied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-          </div>
-        )}
 
         {error && (
           <div style={{ margin: '0 20px 12px', padding: '9px 12px', borderRadius: 10, background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12 }}>{error}</div>
@@ -181,25 +149,9 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
         </div>
 
         <div style={{ padding: '14px 20px 0', borderTop: '1px solid var(--border)', marginTop: 10 }}>
-          {myRole === 'president' ? (
-            confirmDelete ? (
-              <div>
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>Delete this club for everyone? This can't be undone.</p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleDelete} disabled={busy} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#ff6b6b', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>Delete club</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                <Trash2 size={14} /> Delete club
-              </button>
-            )
-          ) : (
-            <button onClick={handleLeave} disabled={busy} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>
-              <LogOut size={14} /> Leave club
-            </button>
-          )}
+          <button onClick={handleLeave} disabled={busy} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>
+            <LogOut size={14} /> Leave club
+          </button>
         </div>
       </div>
     </>

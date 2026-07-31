@@ -29,6 +29,10 @@ export interface ClubRoom {
   grace_started_at: string | null
   created_at: string
   pinned_message_id: string | null
+  description: string | null
+  welcome_message: string | null
+  muted: boolean
+  awaiting_list_enabled: boolean
 }
 
 export interface MyClub extends ClubRoom {
@@ -52,6 +56,7 @@ export interface ClubMemberRow {
 // friendlier copy; everything else passes through as-is.
 const FRIENDLY_ERRORS: Record<string, string> = {
   club_limit_reached: "You've reached the 2-club limit for free accounts. Go Pro to create more.",
+  club_vp_limit_reached: 'This club already has 2 VPs — demote one before promoting another.',
   'this club is invite-only': 'This club is invite-only — ask a member for the join code.',
   'club is full': 'This club is full.',
   'club not found': "That club doesn't exist, or the code is wrong.",
@@ -71,7 +76,7 @@ export async function listPublicClubs(): Promise<ClubSummary[]> {
 export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id)')
+    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,awaiting_list_enabled)')
     .eq('user_id', userId)
     .eq('chat_rooms.type', 'club')
   if (error) throw new Error(error.message)
@@ -101,7 +106,7 @@ export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
 export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id')
+    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,awaiting_list_enabled')
     .eq('id', roomId)
     .eq('type', 'club')
     .maybeSingle()
@@ -170,12 +175,35 @@ export async function removeClubMember(roomId: string, userId: string): Promise<
   if (error) throw friendlyError(error)
 }
 
-export async function updateClubSettings(roomId: string, opts: { name?: string; isPrivate?: boolean }): Promise<void> {
+export async function updateClubSettings(roomId: string, opts: {
+  name?: string; isPrivate?: boolean; description?: string; welcomeMessage?: string;
+  muted?: boolean; awaitingListEnabled?: boolean;
+}): Promise<void> {
   const { error } = await supabase.rpc('update_club_settings', {
     p_room_id: roomId,
     p_name: opts.name ?? null,
     p_is_private: opts.isPrivate ?? null,
+    p_description: opts.description ?? null,
+    p_welcome_message: opts.welcomeMessage ?? null,
+    p_muted: opts.muted ?? null,
+    p_awaiting_list_enabled: opts.awaitingListEnabled ?? null,
   })
+  if (error) throw friendlyError(error)
+}
+
+export async function regenerateClubCode(roomId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('regenerate_club_code', { p_room_id: roomId })
+  if (error) throw friendlyError(error)
+  return data as string
+}
+
+export async function transferClubOwnership(roomId: string, newPresidentId: string): Promise<void> {
+  const { error } = await supabase.rpc('transfer_club_ownership', { p_room_id: roomId, p_new_president_id: newPresidentId })
+  if (error) throw friendlyError(error)
+}
+
+export async function clearClubChat(roomId: string): Promise<void> {
+  const { error } = await supabase.rpc('clear_club_chat', { p_room_id: roomId })
   if (error) throw friendlyError(error)
 }
 
