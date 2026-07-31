@@ -49,6 +49,7 @@ export interface ClubMemberRow {
   display_name: string | null
   avatar: string
   presence: string | null
+  muted_until: string | null
 }
 
 // Errors raised by the RPCs come through as e.message straight from
@@ -117,7 +118,7 @@ export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
 export async function fetchClubMembers(roomId: string): Promise<ClubMemberRow[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('room_id, user_id, role, joined_at, profiles!inner(username, display_name, avatar, presence)')
+    .select('room_id, user_id, role, joined_at, muted_until, profiles!inner(username, display_name, avatar, presence)')
     .eq('room_id', roomId)
     .order('role', { ascending: true }) // president, vp, member — matches alphabetical only incidentally; re-sorted below
   if (error) throw new Error(error.message)
@@ -129,6 +130,7 @@ export async function fetchClubMembers(roomId: string): Promise<ClubMemberRow[]>
       user_id: r.user_id,
       role: r.role as ClubRole,
       joined_at: r.joined_at,
+      muted_until: r.muted_until,
       username: r.profiles.username,
       display_name: r.profiles.display_name,
       avatar: r.profiles.avatar,
@@ -172,6 +174,16 @@ export async function promoteClubMember(roomId: string, userId: string, newRole:
 
 export async function removeClubMember(roomId: string, userId: string): Promise<void> {
   const { error } = await supabase.rpc('remove_club_member', { p_room_id: roomId, p_user_id: userId })
+  if (error) throw friendlyError(error)
+}
+
+export async function muteClubMember(roomId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('mute_club_member', { p_room_id: roomId, p_user_id: userId })
+  if (error) throw friendlyError(error)
+}
+
+export async function unmuteClubMember(roomId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('unmute_club_member', { p_room_id: roomId, p_user_id: userId })
   if (error) throw friendlyError(error)
 }
 

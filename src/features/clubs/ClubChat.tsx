@@ -21,6 +21,7 @@ import {
   fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage,
   type ClubRoom, type ClubMemberRow, type ClubRole,
 } from './clubs'
+import ClubMembersPanel from './ClubMembersPanel'
 import ClubSettingsModal from './ClubSettingsModal'
 import ClubIcon from './clubIcons'
 
@@ -63,6 +64,7 @@ export default function ClubChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
+  const [membersOpen, setMembersOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -240,17 +242,22 @@ export default function ClubChat() {
         <button onClick={() => navigate('/chat?tab=clubs')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
           <ArrowLeft size={15} />
         </button>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-          background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-        }}>
-          <ClubIcon iconKey={club.icon_key} size={18} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{members.length} member{members.length === 1 ? '' : 's'}</div>
-        </div>
+        <button
+          onClick={() => setMembersOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+        >
+          <div style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+          }}>
+            <ClubIcon iconKey={club.icon_key} size={18} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{members.length} member{members.length === 1 ? '' : 's'}</div>
+          </div>
+        </button>
         {myRole && (
           <button onClick={() => setSettingsOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
             <Settings size={15} />
@@ -380,6 +387,15 @@ export default function ClubChat() {
         </div>
       )}
 
+      {membersOpen && myId && myRole && (
+        <ClubMembersPanel
+          club={club}
+          myRole={myRole}
+          myId={myId}
+          onClose={() => setMembersOpen(false)}
+          onLeftOrDeleted={() => { setMembersOpen(false); navigate('/chat?tab=clubs') }}
+        />
+      )}
       {settingsOpen && myId && myRole && (
         <ClubSettingsModal
           club={club}
