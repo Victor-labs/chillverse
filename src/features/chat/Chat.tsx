@@ -443,9 +443,16 @@ interface ChatProps {
    *  header UI — used by ChatHub to power the separate Global/Chats tabs.
    *  Omitted (undefined) keeps the original unified behavior. */
   roomFilter?: 'global' | 'dms'
+  /** Fires whenever this instance switches between showing the room list
+   *  and showing a full conversation with no list beside it. ChatHub uses
+   *  this on mobile to hide the persistent icon rail while a conversation
+   *  is open, so the chat gets the whole screen — matching how Discord's
+   *  server rail disappears once you're inside a DM on mobile, instead of
+   *  staying pinned and eating into the chat's width. */
+  onFullScreenChatChange?: (fullScreen: boolean) => void
 }
 
-export default function Chat({ roomFilter }: ChatProps = {}) {
+export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps = {}) {
   const { session } = useAuth()
   const { openProfilePreview } = useProfilePreview()
   const myId = session?.user?.id ?? null
@@ -1788,6 +1795,17 @@ export default function Chat({ roomFilter }: ChatProps = {}) {
 
   const showList = roomFilter !== 'global' && (!isMobile || !showConv)
   const showChat = roomFilter === 'global' || !isMobile || showConv
+
+  // Tell ChatHub when we're showing a conversation with no list beside it on
+  // mobile, so it can hide the rail and let the chat use the full width.
+  useEffect(() => {
+    onFullScreenChatChange?.(isMobile && showChat && !showList)
+  }, [isMobile, showChat, showList, onFullScreenChatChange])
+
+  useEffect(() => {
+    return () => { onFullScreenChatChange?.(false) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!chatFlagLoading && !isChatFlagEnabled('system:chat') && !isStaff) {
     return (

@@ -31,6 +31,10 @@ export default function ChatHub() {
   // show me who I talk to", which is the common case landing on /chat.
   const active: HubTab = isHubTab(searchParams.get('tab')) ? (searchParams.get('tab') as HubTab) : 'chats'
   const [badges, setBadges] = useState<Record<HubTab, number>>({ global: 0, chats: 0, clubs: 0 })
+  // On mobile, once a conversation is open with no list beside it, the rail
+  // is dead weight cramping the chat — hide it so the chat gets the full
+  // screen, same as Discord. Chat.tsx reports this via onFullScreenChatChange.
+  const [hideRailForMobileChat, setHideRailForMobileChat] = useState(false)
 
   // Icon-rail badges (Global/Chats/Clubs dots) — a lightweight aggregate
   // pass, independent of whichever screen is actually mounted.
@@ -73,14 +77,15 @@ export default function ChatHub() {
   // this just keeps the rail from showing a stale dot while they do.
   useEffect(() => {
     setBadges(b => ({ ...b, [active]: 0 }))
+    setHideRailForMobileChat(false)
   }, [active])
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
-      <IconRail active={active} badges={badges} />
+      {!hideRailForMobileChat && <IconRail active={active} badges={badges} />}
       <div style={{ flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
-        {active === 'global' && <Chat roomFilter="global" />}
-        {active === 'chats' && <Chat roomFilter="dms" />}
+        {active === 'global' && <Chat roomFilter="global" onFullScreenChatChange={setHideRailForMobileChat} />}
+        {active === 'chats' && <Chat roomFilter="dms" onFullScreenChatChange={setHideRailForMobileChat} />}
         {active === 'clubs' && (
           <div style={{ height: '100%', overflowY: 'auto', padding: '0 12px' }}>
             <ClubsList embedded />
