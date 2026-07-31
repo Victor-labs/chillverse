@@ -25,7 +25,7 @@ export function buildReferralLink(referralCode: string): string {
   return `${window.location.origin}/signup?ref=${referralCode}`
 }
 
-/** Stashes an incoming ?ref= code so Signup.tsx can apply it after the account is created. */
+/** Stashes an incoming ?ref= code so Signup.tsx can pre-fill the field on load. */
 const REF_STORAGE_KEY = 'cv_pending_referral_code'
 
 export function stashReferralCode(code: string) {
@@ -42,7 +42,38 @@ export function consumePendingReferralCode(): string | null {
   }
 }
 
-/** Links a new signup to whoever referred them. Safe to call even if no code is pending. */
+/**
+ * A persistent per-device identifier, generated once and kept in
+ * localStorage (survives across accounts created on the same device,
+ * unlike sessionStorage/cookies scoped to a single session). Sent as
+ * signup metadata so the server can detect the same device creating
+ * multiple accounts to farm referral rewards — see handle_new_user() /
+ * migration 0093_signup_metadata_and_referral_on_signup.sql.
+ */
+const DEVICE_ID_KEY = 'cv_device_id'
+
+export function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY)
+    if (!id) {
+      id = crypto.randomUUID()
+      localStorage.setItem(DEVICE_ID_KEY, id)
+    }
+    return id
+  } catch {
+    // localStorage unavailable (private mode, etc.) — fraud check is just
+    // skipped server-side for this signup rather than blocking it.
+    return crypto.randomUUID()
+  }
+}
+
+/**
+ * Links a new signup to whoever referred them. Referral linking + crediting
+ * now happens immediately at account creation, server-side, in the
+ * handle_new_user() trigger (see migration 0093) — this is kept only as a
+ * harmless fallback for any pre-existing account created before that
+ * migration that still has a pending code and no referred_by set.
+ */
 export async function applyReferralCode(userId: string, code: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('apply_referral_code', { p_user_id: userId, p_code: code })
   if (error) {
@@ -50,16 +81,6 @@ export async function applyReferralCode(userId: string, code: string): Promise<b
     return false
   }
   return !!data
-}
-
-/**
- * Call after every completed game. Server-side function is idempotent —
- * it only pays out once per referred user, so it's safe to fire on every
- * game completion without tracking "is this their first game" client-side.
- */
-export async function completeReferralIfEligible(userId: string): Promise<void> {
-  const { error } = await supabase.rpc('complete_referral', { p_user_id: userId })
-  if (error) console.error('completeReferralIfEligible error:', error)
 }
 
 // ── Referral page visited flag ──────────────────────────────────

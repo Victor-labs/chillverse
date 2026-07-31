@@ -31,7 +31,7 @@ export default function ReferralPage() {
   async function handleShare() {
     if (!info || !user) return
     const url = buildReferralLink(info.referralCode)
-    const text = `Join me on Chillverse — we both get diamonds when you play your first game! ${url}`
+    const text = `Join me on Chillverse — we both get diamonds the moment you sign up! ${url}`
 
     updateMissionProgress(user.id, 'referral_link_shared', 1).catch(console.error)
 
@@ -142,7 +142,7 @@ export default function ReferralPage() {
                 })}
               </div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>
-                Reward unlocks once your friend signs up and plays their first game.
+                Reward unlocks the moment your friend signs up with your code.
               </p>
             </div>
           </>
