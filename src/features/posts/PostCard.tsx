@@ -44,6 +44,15 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   const rankTagInfo = post.post_kind === 'rank_tag' && post.rank_tag_group
     ? getRankGroupInfo(post.rank_tag_group as RankGroupId)
     : null
+  // See migration 0092 — blog_slug/title/excerpt/hero_image are a snapshot
+  // taken at share time, not a live join, so this renders fine even if the
+  // source article (or its category) was since edited, unpublished, or
+  // deleted entirely.
+  const isBlogFeature = post.post_kind === 'blog_feature' && !!post.blog_slug
+
+  function goToBlogArticle() {
+    if (post.blog_slug) navigate(`/blog/${post.blog_slug}`)
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -215,9 +224,51 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
         </div>
       </div>
 
-      {post.hidden ? <HiddenContentNotice reason={post.hidden_reason} isOwner={isAuthor} /> : <PostBody body={post.body} />}
+      {post.hidden ? (
+        <HiddenContentNotice reason={post.hidden_reason} isOwner={isAuthor} />
+      ) : (
+        <PostBody body={post.body} />
+      )}
 
-      {!post.hidden && post.media_type === 'image' && post.media_url && (
+      {!post.hidden && isBlogFeature && (
+        <button
+          type="button"
+          onClick={(e) => { ripple(e); goToBlogArticle() }}
+          className="ripple-wrap"
+          style={{
+            display: 'flex', flexDirection: 'column', textAlign: 'left', cursor: 'pointer',
+            background: 'var(--surface2)', border: 'none', borderRadius: 14,
+            padding: 0, width: '100%', marginTop: 10, overflow: 'hidden',
+          }}
+        >
+          {post.blog_hero_image_url && (
+            <img
+              src={post.blog_hero_image_url}
+              alt=""
+              loading="lazy"
+              style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          <div style={{ padding: 12 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              📰 From the blog
+            </span>
+            <h4 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: '4px 0 4px', lineHeight: 1.3 }}>
+              {post.blog_title}
+            </h4>
+            {post.blog_excerpt && (
+              <p style={{
+                fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.4, margin: 0,
+                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
+                {post.blog_excerpt}
+              </p>
+            )}
+          </div>
+        </button>
+      )}
+
+      {!post.hidden && !isBlogFeature && post.media_type === 'image' && post.media_url && (
         <img
           src={post.media_url}
           alt=""

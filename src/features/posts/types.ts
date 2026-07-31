@@ -2,7 +2,7 @@
 
 export type PostAuthorType = 'user' | 'admin' | 'system'
 
-export type PostKind = 'announcement' | 'feature_update' | 'general' | 'rank_tag'
+export type PostKind = 'announcement' | 'feature_update' | 'general' | 'rank_tag' | 'blog_feature'
 
 export type TagType =
   | 'achievement'
@@ -52,6 +52,14 @@ export interface Post {
   // attached image, if any (set by StaffComposer's uploadFeedImage — see staffPosts.ts)
   media_url?: string | null
   media_type?: 'image' | null
+  /** Set only when post_kind === 'blog_feature' — a snapshot of the source
+   *  blog_posts row taken at share time (see migration 0092). These are
+   *  plain copied values, not a live join: the source article can later be
+   *  edited, unpublished, or deleted with zero effect on this post. */
+  blog_slug?: string | null
+  blog_title?: string | null
+  blog_excerpt?: string | null
+  blog_hero_image_url?: string | null
   // joined client-side, not a real column
   author?: PostAuthor
   liked_by_me?: boolean
