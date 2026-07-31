@@ -27,7 +27,7 @@ export interface Message {
   senderNameFont?: string | null
   senderNameColor?: string | null
   senderUsername?: string
-  /** 'text' (default) | 'voice_note' | 'call_log' | 'rank_tag' | 'poll'. */
+  /** 'text' (default) | 'voice_note' | 'call_log' | 'rank_tag' | 'poll' | 'system'. */
   type: MessageType
   audio_path: string | null
   audio_duration_seconds: number | null
@@ -40,7 +40,7 @@ export interface Message {
    *  who deleted it (president/VP). Undefined falls back to the generic label. */
   deletedLabel?: string
 }
-export type MessageType = 'text' | 'voice_note' | 'call_log' | 'rank_tag' | 'poll'
+export type MessageType = 'text' | 'voice_note' | 'call_log' | 'rank_tag' | 'poll' | 'system'
 
 /** Read-receipt state for one of MY OWN messages: 'sent' = persisted but not yet
  *  confirmed read by the other member, 'read' = their last_read_at has passed
@@ -61,7 +61,7 @@ export function groupMessages(messages: Message[]): GroupedMessage[] {
   return messages.map((m, i) => {
     const prev = messages[i - 1]
     const next = messages[i + 1]
-    const isStandalone = (t: MessageType) => t === 'rank_tag' || t === 'poll'
+    const isStandalone = (t: MessageType) => t === 'rank_tag' || t === 'poll' || t === 'system'
     const isGroupFirst = !prev || prev.sender_id !== m.sender_id || isStandalone(prev.type) || isStandalone(m.type) ||
       (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) > GROUP_GAP_MS
     const isGroupLast = !next || next.sender_id !== m.sender_id || isStandalone(next.type) || isStandalone(m.type) ||
@@ -226,6 +226,23 @@ export const MessageBurst = memo(function MessageBurst({
   onOpenProfile, onContextMenu, onDoubleClick, formatTime, readReceiptFor, starredIds, isGroupChat,
 }: MessageBurstProps) {
   const first = burst[0]
+
+  // System notices (e.g. a club's welcome message) have no real sender —
+  // render as a centered pill, never as an avatar+bubble row, and skip the
+  // context-menu/reply interactions those rows carry.
+  if (first.type === 'system') {
+    return (
+      <div style={{ display:'flex', justifyContent:'center', margin:'10px 0' }}>
+        <span style={{
+          fontSize:11.5, lineHeight:1.4, color:'var(--text-dim)', textAlign:'center',
+          background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20,
+          padding:'6px 14px', maxWidth:'85%',
+        }}>
+          {first.content}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:6, marginBottom:4 }}>
