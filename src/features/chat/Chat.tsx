@@ -5,21 +5,19 @@ import {
   ArrowLeft, Search, MoreVertical,
   Smile, Send, X, Trash2, Reply, Flag, Lock,
   MessageCircle, UserPlus, ShieldOff,
-  Pin, PinOff,
+  Check, CheckCheck, Pin, PinOff, Phone,
   Megaphone, BarChart3, Zap, Eye, EyeOff, Star, Paperclip, ChevronDown,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
-import {
-  type Message, type MessageType, type ReadReceipt, type GroupedMessage,
-  groupMessages, Avatar, MessageBurst,
-} from './MessageBubble'
+import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { updateMissionProgress, trackWeeklyUniqueValue } from '../missions/weeklyMissions'
 import { notifyMessage, notifyRankTag } from '../achievements/achievements'
 import { useAuth } from '../auth/useAuth'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import StartCallButton from './calling/StartCallButton'
 import VoiceNoteRecorderButton from './voiceNotes/VoiceNoteRecorderButton'
+import VoiceNotePlayer from './voiceNotes/VoiceNotePlayer'
 import { uploadVoiceNote } from './voiceNotes/voiceNoteStorage'
 import type { VoiceRecorderResult } from './voiceNotes/useVoiceRecorder'
 import ReportModal from '../safety/ReportModal'
@@ -57,6 +55,34 @@ interface ChatRoom {
   spotlightMessageId: string | null // temporary pin (Staff/Mod/Admin, Global Chat only) — see migration 0040
   spotlightExpiresAt: string | null
 }
+interface Message {
+  id: string
+  sender_id: string | null
+  content: string
+  created_at: string
+  deleted: boolean
+  hidden: boolean
+  hidden_reason: string | null
+  reply_to_id: string | null
+  replyPreview?: string
+  /** Display name of whoever sent the message being replied to — shown stacked
+   *  above the reply, since names are otherwise hidden outside of reply context. */
+  replyPreviewName?: string
+  senderName?: string
+  senderNameFont?: string | null
+  senderNameColor?: string | null
+  senderUsername?: string
+  /** 'text' (default) | 'voice_note' | 'call_log' | 'rank_tag' | 'poll' — see migrations 0009, 0038, 0039. */
+  type: MessageType
+  audio_path: string | null
+  audio_duration_seconds: number | null
+  call_id: string | null
+  /** Set only when type === 'rank_tag' — one of the 8 RANK_GROUP_IDS. */
+  rank_tag_group: string | null
+  /** Set only when type === 'poll'. */
+  poll_id: string | null
+}
+type MessageType = 'text' | 'voice_note' | 'call_log' | 'rank_tag' | 'poll'
 interface SearchedProfile {
   id: string
   username: string
@@ -64,14 +90,41 @@ interface SearchedProfile {
   avatar: string
 }
 
+/** Read-receipt state for one of MY OWN messages: 'sent' = persisted but not yet
+ *  confirmed read by the other DM member, 'read' = their last_read_at has passed
+ *  this message's created_at. Only computed for DMs — global chat has too many
+ *  members for a single "read" state to mean anything. */
+type ReadReceipt = 'sent' | 'read' | null
+
 /** Result of checking the `blocks` table for the two members of an open DM. */
 type DmBlockState = 'none' | 'blockedByMe' | 'blockedMe'
 
+/** Pre-processed render-ready message with consecutive-group metadata. */
+interface GroupedMessage extends Message {
+  isGroupFirst: boolean
+  isGroupLast: boolean
+}
+
+const GROUP_GAP_MS = 5 * 60 * 1000 // 5 min — new burst starts after this gap
 const MESSAGE_PAGE_SIZE = 30 // most-recent-page size for initial load + each "load older" fetch
 const MAX_MESSAGE_LENGTH = 2000 // must match the `messages.content` check constraint in the DB
 const TYPING_IDLE_MS = 3000 // stop broadcasting "typing" after this long without a keystroke
 const NEAR_BOTTOM_PX = 150 // how close to the bottom counts as "already reading the latest"
 const MARK_READ_THROTTLE_MS = 2000 // minimum gap between last_read_at writes
+
+/** Splits a flat message list into consecutive-sender "bursts" for compact rendering. */
+function groupMessages(messages: Message[]): GroupedMessage[] {
+  return messages.map((m, i) => {
+    const prev = messages[i - 1]
+    const next = messages[i + 1]
+    const isStandalone = (t: MessageType) => t === 'rank_tag' || t === 'poll'
+    const isGroupFirst = !prev || prev.sender_id !== m.sender_id || isStandalone(prev.type) || isStandalone(m.type) ||
+      (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) > GROUP_GAP_MS
+    const isGroupLast = !next || next.sender_id !== m.sender_id || isStandalone(next.type) || isStandalone(m.type) ||
+      (new Date(next.created_at).getTime() - new Date(m.created_at).getTime()) > GROUP_GAP_MS
+    return { ...m, isGroupFirst, isGroupLast }
+  })
+}
 
 const EMOJIS = ['😂','🔥','💀','👑','😍','🎮','💯','🙌','😅','🤯','❤️','👀','🫡','💪','🏆']
 
@@ -88,6 +141,32 @@ function IBtn({ onClick, children, style, title }: {
       onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-dim)' }}>
       {children}
     </button>
+  )
+}
+
+function Avatar({ name, avatarUrl, size = 40, radius = 13 }: { name: string; avatarUrl?: string | null; size?: number; radius?: number }) {
+  const colors = ['#ff6b6b','#4f8ef7','#9b6dff','#3ecf8e','#f5c542','#ff4d8b','var(--accent2)','#00e5ff']
+  const color = colors[(name.charCodeAt(0) || 0) % colors.length]
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={{ width:size, height:size, borderRadius:radius, objectFit:'cover', flexShrink:0, display:'block' }}
+        onError={e => {
+          // fall back to initials if image fails to load
+          const el = e.currentTarget
+          el.style.display = 'none'
+          const fallback = el.nextElementSibling as HTMLElement | null
+          if (fallback) fallback.style.display = 'flex'
+        }}
+      />
+    )
+  }
+  return (
+    <div style={{ width:size, height:size, borderRadius:radius, background:color, color:'#fff', fontWeight:700, fontSize:size*0.35, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+      {(name || '?').charAt(0).toUpperCase()}
+    </div>
   )
 }
 
@@ -133,6 +212,125 @@ function SkeletonRoomList() {
   )
 }
 
+interface MessageLineProps {
+  msg: GroupedMessage
+  isMine: boolean
+  onContextMenu: (msg: Message, x: number, y: number) => void
+  onDoubleClick: (msg: Message) => void
+  formatTime: (iso: string) => string
+  readReceipt: ReadReceipt
+  /** Whether the viewer has starred this message — DMs only, shows a small badge. */
+  isStarred: boolean
+  /** Whether this is a Global Chat thread (as opposed to a DM) — used to decide
+   *  whether a received bubble's leading corner should defer to the name row
+   *  shown above the first message of a group. */
+  isGroupChat: boolean
+}
+
+/** Small diagonal corner-bracket accent, absolutely positioned over one corner
+ *  of a bubble. Two of these (an opposite diagonal pair) frame each message:
+ *  top-left + bottom-right for received bubbles, top-right + bottom-left for
+ *  sent ones — matching the app's accent color instead of a flat border. */
+function BracketCorner({ position, color = 'var(--accent)' }: {
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  color?: string
+}) {
+  const size = 10
+  const thickness = 1.5
+  const base: React.CSSProperties = { position:'absolute', width:size, height:size, pointerEvents:'none' }
+  const placement: Record<string, React.CSSProperties> = {
+    'top-left':     { top:-1, left:-1, borderTop:`${thickness}px solid ${color}`, borderLeft:`${thickness}px solid ${color}`, borderTopLeftRadius:3 },
+    'top-right':    { top:-1, right:-1, borderTop:`${thickness}px solid ${color}`, borderRight:`${thickness}px solid ${color}`, borderTopRightRadius:3 },
+    'bottom-left':  { bottom:-1, left:-1, borderBottom:`${thickness}px solid ${color}`, borderLeft:`${thickness}px solid ${color}`, borderBottomLeftRadius:3 },
+    'bottom-right': { bottom:-1, right:-1, borderBottom:`${thickness}px solid ${color}`, borderRight:`${thickness}px solid ${color}`, borderBottomRightRadius:3 },
+  }
+  return <span style={{ ...base, ...placement[position] }} />
+}
+
+/** One message, rendered as a neomorphic "soft" bubble framed by a diagonal
+ *  pair of accent corner-brackets — sized to that message's own content,
+ *  never to a sibling's. Consecutive messages from the same sender stack by
+ *  simply rendering several of these one after another; each one keeps (and
+ *  is pushed down by) its own bubble instead of one shared shape stretching
+ *  to fit whatever's widest in the stack. On a received bubble that opens a
+ *  Global Chat group, the leading (top-left) corner is skipped — the name
+ *  row rendered above the burst already marks that edge, so the bracket
+ *  would otherwise double up right next to it. */
+const MessageLine = memo(function MessageLine({
+  msg, isMine, onContextMenu, onDoubleClick, formatTime, readReceipt, isStarred, isGroupChat,
+}: MessageLineProps) {
+  const showLeadingCorner = !(isGroupChat && !isMine && msg.isGroupFirst)
+  return (
+    <div
+      className="msg-bubble-col"
+      onContextMenu={e => { if (!msg.deleted) { e.preventDefault(); onContextMenu(msg, e.clientX, e.clientY) } }}
+      onDoubleClick={() => onDoubleClick(msg)}
+      style={{
+        position:'relative', cursor:'context-menu', userSelect:'none',
+        // `width: fit-content` (rather than plain `inline-block`, which falls
+        // back to filling all available space once the text needs to wrap)
+        // is what keeps this bubble sized to whatever the longest actual
+        // rendered line is, instead of stretching out to the full bubble
+        // column width for any message that happens to wrap onto more than
+        // one line.
+        display:'inline-block', width:'fit-content', maxWidth:'100%',
+        marginBottom:4,
+        padding:'5px 9px',
+        borderRadius:8,
+        background:'var(--surface)',
+        boxShadow:'3px 3px 7px rgba(10,10,12,0.45), -2px -2px 5px rgba(38,38,48,0.35)',
+      }}>
+
+      {!isMine && showLeadingCorner && <BracketCorner position="top-left" />}
+      {!isMine && <BracketCorner position="bottom-right" />}
+      {isMine && <BracketCorner position="top-right" />}
+      {isMine && <BracketCorner position="bottom-left" />}
+
+      {/* Reply header — target user's name + their quoted text, stacked directly above
+          this line. This is the ONLY place a name appears on a received message; own
+
+          messages never show a name at all. */}
+      {msg.replyPreview && !msg.deleted && (
+        <div style={{ marginBottom:3, display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+          <span style={{ fontSize:10, fontWeight:700, color:'#4f8ef7' }}>{msg.replyPreviewName || 'Unknown'}</span>
+          <span style={{ fontSize:10.5, color:'var(--text-dim)', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {msg.replyPreview.length > 60 ? `${msg.replyPreview.slice(0, 60)}…` : msg.replyPreview}
+          </span>
+        </div>
+      )}
+
+      {/* Message content, with the timestamp/ticks flowing inline right after the
+          text — plain inline flow (no flex-shrink) so short text like "hey" can
+          never get squeezed into a one-letter-per-line collapse. Text wraps at
+          word boundaries the normal way only once it's actually too long. */}
+      <span style={{ fontSize:12.5, lineHeight:1.4, color:'var(--text)', fontStyle: msg.deleted ? 'italic' : 'normal', opacity: msg.deleted ? 0.6 : 1, wordBreak:'break-word' }}>
+        {msg.hidden ? (
+          <HiddenContentNotice reason={msg.hidden_reason} isOwner={isMine} inline />
+        ) : msg.deleted ? 'Message deleted' : msg.type === 'voice_note' ? (
+          msg.audio_path ? (
+            <VoiceNotePlayer audioPath={msg.audio_path} durationSeconds={msg.audio_duration_seconds ?? 0} tint={isMine ? 'light' : 'dark'} />
+          ) : (
+            <span style={{ fontStyle:'italic', opacity:0.75 }}>Uploading voice note…</span>
+          )
+        ) : msg.type === 'call_log' ? (
+          <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+            <Phone size={13} />
+            {msg.content}
+            {msg.audio_duration_seconds ? ` · ${Math.floor(msg.audio_duration_seconds / 60)}:${String(msg.audio_duration_seconds % 60).padStart(2, '0')}` : ''}
+          </span>
+        ) : msg.content}
+        {' '}
+        <span style={{ display:'inline-flex', alignItems:'center', gap:2, whiteSpace:'nowrap' }}>
+          {isStarred && <Star size={9} fill="#ffc107" style={{ color:'#ffc107' }} />}
+          <span style={{ fontSize:9.5, color:'var(--text-muted)' }}>{formatTime(msg.created_at)}</span>
+          {isMine && !msg.deleted && readReceipt === 'read' && <CheckCheck size={11} style={{ color:'var(--accent)' }} />}
+          {isMine && !msg.deleted && readReceipt === 'sent' && <Check size={11} style={{ color:'var(--text-muted)' }} />}
+        </span>
+      </span>
+    </div>
+  )
+})
+
 /** Distinct full-width "official" card for a Staff/Moderator/Admin rank tag —
  *  deliberately not styled like MessageLine's bracket-cornered chat bubbles,
  *  so it reads as an announcement rather than a regular message. Global Chat
@@ -164,6 +362,81 @@ const RankTagAnnouncement = memo(function RankTagAnnouncement({
     </div>
   )
 })
+
+interface MessageBurstProps {
+  burst: GroupedMessage[]
+  isMine: boolean
+  senderLabel: string
+  senderNameFont?: string | null
+  senderNameColor?: string | null
+  avatarUrl: string | null
+  onOpenProfile: (msg: Message) => void
+  onContextMenu: (msg: Message, x: number, y: number) => void
+  onDoubleClick: (msg: Message) => void
+  formatTime: (iso: string) => string
+  readReceiptFor: (msg: Message) => ReadReceipt
+  /** Message ids the viewer has starred — used to show the badge (DMs only). */
+  starredIds: Set<string>
+  /** Avatars only make sense where more than two people share the thread (Global
+   *  Chat) — a DM never shows one, since which side of the screen a message sits
+   *  on already identifies the sender. Even in Global Chat this only ever renders
+   *  for other people's messages (see the `!isMine` check below); your own
+   *  avatar is never shown, for the same reason a DM never shows one for you. */
+  isGroupChat: boolean
+}
+
+/** A consecutive run of messages from one sender. The avatar (Global Chat only,
+ *  and only for other senders — never your own) appears once per burst, aligned
+ *  to the bottom line. Each message underneath keeps rendering its own
+ *  independent chat-line — replying, or just sending another message, always
+ *  starts a new line of its own width, simply pushed further down the stack
+ *  rather than widening anything above it. */
+const MessageBurst = memo(function MessageBurst({
+  burst, isMine, senderLabel, senderNameFont, senderNameColor, avatarUrl,
+  onOpenProfile, onContextMenu, onDoubleClick, formatTime, readReceiptFor, starredIds, isGroupChat,
+}: MessageBurstProps) {
+  const first = burst[0]
+
+  return (
+    <div style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', alignItems:'flex-start', gap:6, marginBottom:4 }}>
+      {isGroupChat && !isMine && (
+        <button
+          type="button"
+          onClick={() => onOpenProfile(first)}
+          style={{ background:'none', border:'none', padding:0, cursor:'pointer', flexShrink:0 }}
+          title={senderLabel}>
+          <Avatar name={senderLabel} avatarUrl={avatarUrl} size={30} radius={10} />
+        </button>
+      )}
+
+      <div style={{ display:'flex', flexDirection:'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth:'78%' }}>
+        {/* Sender name — Global Chat only, and only for other players' messages;
+            your own messages never get one, since you already know who sent them. */}
+        {isGroupChat && !isMine && (
+          <span style={{ fontSize:11.5, fontWeight:700, color:'#4f8ef7', marginBottom:3, marginLeft:2, ...nameStyleFor({ display_name_font: senderNameFont, display_name_color: senderNameColor }) }}>
+            {senderLabel}
+          </span>
+        )}
+        {burst.map(msg => (
+          <MessageLine
+            key={msg.id}
+            msg={msg}
+            isMine={isMine}
+            onContextMenu={onContextMenu}
+            onDoubleClick={onDoubleClick}
+            formatTime={formatTime}
+            readReceipt={readReceiptFor(msg)}
+            isStarred={starredIds.has(msg.id)}
+            isGroupChat={isGroupChat}
+          />
+        ))}
+      </div>
+    </div>
+  )
+})
+
+
+
 
 interface ChatProps {
   /** Restricts which rooms this instance shows and swaps in the matching
@@ -1160,6 +1433,20 @@ export default function Chat({ roomFilter }: ChatProps = {}) {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, myId, roomsLoading])
+
+  // Handles the handoff from IconRail's group-chat icons, which navigate
+  // here with `state: { openRoomId }` to jump straight into a specific
+  // room without going through the list first. Waits for the room list to
+  // finish loading (the room has to already be in `rooms`), then clears
+  // the state so refreshing/going back doesn't re-trigger it.
+  useEffect(() => {
+    const targetRoomId = (location.state as { openRoomId?: string } | null)?.openRoomId
+    if (!targetRoomId || roomsLoading) return
+    const room = rooms.find(r => r.id === targetRoomId)
+    if (room) openRoom(room)
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, rooms, roomsLoading])
 
   // ── Send ────────────────────────────────────────────────────
   interface MessageInsertPayload {

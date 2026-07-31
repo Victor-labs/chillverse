@@ -13,6 +13,7 @@ import { supabase } from '../../shared/lib/supabase'
 import { getUnreadCounts } from '../../shared/lib/unread'
 import Chat from './Chat'
 import ClubsList from '../clubs/ClubsList'
+import IconRail from './IconRail'
 
 type HubTab = 'global' | 'chats' | 'clubs'
 const TABS: { key: HubTab; label: string }[] = [
@@ -95,54 +96,62 @@ export default function ChatHub() {
     setBadges(b => ({ ...b, [active]: 0 }))
   }, [active])
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ position: 'relative', display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', padding: '0 4px', marginBottom: 14, flexShrink: 0 }}>
-        {TABS.map(t => {
-          const isActive = active === t.key
-          const badge = badges[t.key]
-          return (
-            <button
-              key={t.key}
-              ref={el => { tabRefs.current[t.key] = el }}
-              onClick={() => setActive(t.key)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: '10px 14px 12px', display: 'flex', alignItems: 'center', gap: 6,
-                fontSize: isActive ? 16 : 13.5, fontWeight: isActive ? 800 : 600,
-                color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                transition: 'font-size 0.18s ease, color 0.18s ease',
-              }}
-            >
-              {t.label}
-              {badge > 0 && (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)',
-                  borderRadius: 10, padding: '1px 6px', minWidth: 16, textAlign: 'center',
-                }}>
-                  {badge > 99 ? '99+' : badge}
-                </span>
-              )}
-            </button>
-          )
-        })}
-        <div
-          style={{
-            position: 'absolute', bottom: -1, height: 2, borderRadius: 2, background: 'var(--accent)',
-            left: underline.left, width: underline.width,
-            transition: 'left 0.22s cubic-bezier(0.4,0,0.2,1), width 0.22s cubic-bezier(0.4,0,0.2,1)',
-          }}
-        />
-      </div>
+  // The icon rail (group chats + clubs as one-tap icons, plus a Friends
+  // shortcut) only makes sense once there's somewhere to jump to — it's
+  // hidden on Global, which has neither.
+  const showRail = active === 'chats' || active === 'clubs'
 
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {active === 'global' && <Chat roomFilter="global" />}
-        {active === 'chats' && <Chat roomFilter="dms" />}
-        {active === 'clubs' && (
-          <div style={{ height: '100%', overflowY: 'auto', padding: '0 12px' }}>
-            <ClubsList embedded />
-          </div>
-        )}
+  return (
+    <div style={{ display: 'flex', height: '100%' }}>
+      {showRail && <IconRail />}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minWidth: 0 }}>
+        <div style={{ position: 'relative', display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', padding: '0 4px', marginBottom: 14, flexShrink: 0 }}>
+          {TABS.map(t => {
+            const isActive = active === t.key
+            const badge = badges[t.key]
+            return (
+              <button
+                key={t.key}
+                ref={el => { tabRefs.current[t.key] = el }}
+                onClick={() => setActive(t.key)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '10px 14px 12px', display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: isActive ? 16 : 13.5, fontWeight: isActive ? 800 : 600,
+                  color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                  transition: 'font-size 0.18s ease, color 0.18s ease',
+                }}
+              >
+                {t.label}
+                {badge > 0 && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)',
+                    borderRadius: 10, padding: '1px 6px', minWidth: 16, textAlign: 'center',
+                  }}>
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+          <div
+            style={{
+              position: 'absolute', bottom: -1, height: 2, borderRadius: 2, background: 'var(--accent)',
+              left: underline.left, width: underline.width,
+              transition: 'left 0.22s cubic-bezier(0.4,0,0.2,1), width 0.22s cubic-bezier(0.4,0,0.2,1)',
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          {active === 'global' && <Chat roomFilter="global" />}
+          {active === 'chats' && <Chat roomFilter="dms" />}
+          {active === 'clubs' && (
+            <div style={{ height: '100%', overflowY: 'auto', padding: '0 12px' }}>
+              <ClubsList embedded />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
