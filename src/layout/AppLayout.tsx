@@ -197,7 +197,10 @@ export default function AppLayout() {
 
         <main
           className={`relative z-10 transition-all duration-300 ${isFullBleedChatRoute ? 'pt-[60px] pb-0' : 'pt-[68px] pb-12'}`}
-          style={{ paddingLeft: 'clamp(1rem, 4vw, 2rem)', paddingRight: 'clamp(1rem, 4vw, 2rem)' }}
+          style={{
+            paddingLeft: isFullBleedChatRoute ? 0 : 'clamp(1rem, 4vw, 2rem)',
+            paddingRight: isFullBleedChatRoute ? 0 : 'clamp(1rem, 4vw, 2rem)',
+          }}
         >
           <style>{`
             @media (min-width: 1024px) {
