@@ -8,10 +8,7 @@ import BadgeEarnedModal from '../features/badges/BadgeEarnedModal'
 import NotificationToastRenderer from '../features/notifications/NotificationToastRenderer'
 import PromoOverlay from '../features/notifications/PromoOverlay'
 import { useReferralPromoAd } from '../features/referral/useReferralPromoAd'
-import { useHaloDailyFlow } from '../features/halo-moments/useHaloDailyFlow'
 import { useRandomSurprise } from '../features/halo-moments/useRandomSurprise'
-import HaloChallengeModal from '../features/halo-moments/HaloChallengeModal'
-import MysteryBoxFloatingButton from '../features/halo-moments/MysteryBoxFloatingButton'
 import { useProfile } from '../features/profile/useProfile'
 import { useAuth } from '../features/auth/useAuth'
 import { getUserRankTier } from '../features/profile/ranks'
@@ -77,7 +74,6 @@ export default function AppLayout() {
   const { user, session } = useAuth()
   const myId = session?.user?.id ?? null
   const { active: referralAd, dismiss: dismissReferralAd } = useReferralPromoAd(myId)
-  const halo = useHaloDailyFlow(myId)
   useRandomSurprise(myId)
   const { isStaff, loading: roleLoading } = useModRole()
   const [maintenance, setMaintenance] = useState<{ enabled: boolean; message: string } | null>(null)
@@ -187,18 +183,6 @@ export default function AppLayout() {
         <BadgeEarnedModal />
         <NotificationToastRenderer />
         {referralAd && <PromoOverlay notification={referralAd} onDismiss={dismissReferralAd} />}
-        {halo.showChallengeModal && halo.challenge && (
-          <HaloChallengeModal
-            challenge={halo.challenge}
-            onAccept={halo.acceptChallenge}
-            onDecline={halo.declineChallenge}
-          />
-        )}
-        <MysteryBoxFloatingButton
-          visible={halo.boxButtonVisible}
-          box={halo.box}
-          onOpened={halo.handleBoxOpened}
-        />
 
         <main
           className={`relative z-10 transition-all duration-300 ${isFullBleedChatRoute ? 'pt-[60px] pb-0 chat-fullbleed' : 'pt-[68px] pb-12'}`}
