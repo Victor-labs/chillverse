@@ -6,10 +6,10 @@ import {
   Target, Layers, Moon, Calendar, Activity, Sword, Crown, TrendingUp,
   Flag, Plus, ArrowRight, Grid, Search, Brain, Award, Settings,
   CheckCircle, Rocket, Eye, Gem, MessageCircle, UserPlus, Heart,
-  Mail, Sprout, User, Home, BarChart2, ChevronRight, Gift as GiftIcon,
+  Mail, Sprout, User, Home, BarChart2, ChevronRight, Gift as GiftIcon, X,
   ShoppingBag, Tag, Clapperboard, Gift, Zap as FlashZap, ArrowLeft,
   Tv2, UserCheck, Repeat2, Package, Swords, Film, PartyPopper,
-  ShoppingCart, Wifi, Sparkle, Image, Spade,
+  ShoppingCart, Wifi, Sparkle, Image, Spade, Info,
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -399,8 +399,12 @@ function FullListScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }
   onClose: () => void; onSelect: (a: Achievement) => void
 }) {
   const [activeCategory, setActiveCategory] = useState<string>('all')
+  const [query, setQuery] = useState('')
   const categories = ['all', ...Object.keys(CATEGORY_META)]
-  const filtered = activeCategory === 'all' ? allAchs : allAchs.filter(a => a.category === activeCategory)
+  const q = query.trim().toLowerCase()
+  const filtered = allAchs
+    .filter(a => activeCategory === 'all' || a.category === activeCategory)
+    .filter(a => !q || a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q))
   const sorted = [...filtered].sort((a, b) => {
     const aU = unlockedSet.has(a.id) ? 0 : 1
     const bU = unlockedSet.has(b.id) ? 0 : 1
@@ -411,6 +415,22 @@ function FullListScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }
   return (
     <SubPageShell title="All Achievements" onClose={onClose}>
       <div style={{ padding: '14px 16px 0' }}>
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search achievements…"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '11px 14px 11px 38px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }}
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery('')}
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'var(--surface3)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={12} />
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
           {categories.map(cat => {
             const meta = CATEGORY_META[cat]
@@ -433,7 +453,9 @@ function FullListScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }
           <AchievementRow key={ach.id} ach={ach} isUnlocked={unlockedSet.has(ach.id)} unlockedAt={unlockedMap.get(ach.id)} onTap={() => onSelect(ach)} />
         ))}
         {!sorted.length && (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No achievements in this category</div>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>
+            {q ? `No achievements match "${query}"` : 'No achievements in this category'}
+          </div>
         )}
       </div>
     </SubPageShell>
@@ -451,6 +473,21 @@ function RewardsScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }:
     () => allAchs.filter(a => a.reward_type === 'profile_pic' || a.reward_type === 'banner'),
     [allAchs]
   )
+
+  const [itemImages, setItemImages] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const itemIds = [...new Set(rewardAchs.map(a => a.reward_item_id).filter((id): id is string => !!id))]
+    if (!itemIds.length) return
+    supabase.from('mall_items').select('id, image_url').in('id', itemIds).then(({ data }) => {
+      if (!data) return
+      const map: Record<string, string> = {}
+      for (const row of data as { id: string; image_url: string | null }[]) {
+        if (row.image_url) map[row.id] = row.image_url
+      }
+      setItemImages(map)
+    })
+  }, [rewardAchs])
+
   const sorted = [...rewardAchs].sort((a, b) => {
     const aU = unlockedSet.has(a.id) ? 0 : 1
     const bU = unlockedSet.has(b.id) ? 0 : 1
@@ -458,6 +495,7 @@ function RewardsScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }:
     return (RARITY_ORDER[a.rarity] ?? 3) - (RARITY_ORDER[b.rarity] ?? 3)
   })
   const claimedCount = rewardAchs.filter(a => unlockedSet.has(a.id)).length
+  const [previewAch, setPreviewAch] = useState<Achievement | null>(null)
 
   return (
     <SubPageShell title="Achievement Rewards" onClose={onClose}>
@@ -478,10 +516,11 @@ function RewardsScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }:
           const isUnlocked = unlockedSet.has(ach.id)
           const unlockedAt = unlockedMap.get(ach.id)
           const rarityColor = RARITY_COLOR[ach.rarity]
+          const itemImg = ach.reward_item_id ? itemImages[ach.reward_item_id] : null
           return (
             <button key={ach.id} type="button" onClick={() => onSelect(ach)}
               style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: isUnlocked ? RARITY_GLOW[ach.rarity] : 'var(--surface)', borderRadius: 16, boxShadow: isUnlocked ? `0 4px 20px ${rarityColor}22` : '4px 4px 10px var(--neu-dark), -3px -3px 7px var(--neu-light)', opacity: isUnlocked ? 1 : 0.6 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: isUnlocked ? `linear-gradient(135deg,${rarityColor}33,${rarityColor}11)` : 'var(--surface)', border: isUnlocked ? `1.5px solid ${rarityColor}44` : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.4)' }}>
+              <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 14, background: isUnlocked ? `linear-gradient(135deg,${rarityColor}33,${rarityColor}11)` : 'var(--surface)', border: isUnlocked ? `1.5px solid ${rarityColor}44` : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.4)' }}>
                 {isUnlocked ? <AchIcon iconKey={ach.icon} size={20} color={rarityColor} /> : <Lock size={16} style={{ color: 'var(--text-muted)' }} />}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -491,6 +530,13 @@ function RewardsScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }:
                     {ach.reward_type === 'profile_pic' ? <Image size={8} /> : <Sparkle size={8} />}
                     {ach.reward_type === 'profile_pic' ? 'PROFILE PIC' : 'BANNER'}
                   </span>
+                  {itemImg && (
+                    <button type="button" onClick={e => { e.stopPropagation(); setPreviewAch(ach) }}
+                      aria-label="Preview image"
+                      style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface3)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                      <Info size={10} />
+                    </button>
+                  )}
                   {isUnlocked && unlockedAt && (
                     <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                       Claimed {new Date(unlockedAt).toLocaleDateString([], { day: 'numeric', month: 'short' })}
@@ -512,7 +558,80 @@ function RewardsScreen({ allAchs, unlockedSet, unlockedMap, onClose, onSelect }:
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No item rewards available yet</div>
         )}
       </div>
+
+      {previewAch && (
+        <ItemImagePreviewModal
+          ach={previewAch}
+          imageUrl={previewAch.reward_item_id ? itemImages[previewAch.reward_item_id] : null}
+          isUnlocked={unlockedSet.has(previewAch.id)}
+          onClose={() => setPreviewAch(null)}
+        />
+      )}
     </SubPageShell>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Item image preview popup — shown when tapping the "i" info icon
+// ══════════════════════════════════════════════════════════════
+function ItemImagePreviewModal({ ach, imageUrl, isUnlocked, onClose }: {
+  ach: Achievement; imageUrl: string | null | undefined; isUnlocked: boolean; onClose: () => void
+}) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(t)
+  }, [])
+
+  function requestClose() {
+    setVisible(false)
+    setTimeout(onClose, 200)
+  }
+
+  const rarityColor = RARITY_COLOR[ach.rarity]
+
+  return createPortal(
+    <div onClick={requestClose} style={{
+      position: 'fixed', inset: 0, zIndex: 20015, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      opacity: visible ? 1 : 0, transition: 'opacity 0.2s ease',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 300, background: 'var(--surface2)', borderRadius: 22,
+        border: `1px solid ${rarityColor}3d`, boxShadow: `0 20px 60px ${rarityColor}26, var(--elev-popover)`,
+        padding: 18, textAlign: 'center', position: 'relative',
+        transform: visible ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(12px)',
+        transition: 'transform 0.24s cubic-bezier(0.34,1.56,0.64,1)',
+      }}>
+        <button type="button" onClick={requestClose} aria-label="Close"
+          style={{ position: 'absolute', top: 12, right: 12, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--surface3)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <X size={13} />
+        </button>
+
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 16, overflow: 'hidden', background: 'var(--surface3)', marginBottom: 14 }}>
+          {imageUrl ? (
+            <img src={imageUrl} alt={ach.title} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isUnlocked ? 'none' : 'blur(6px)' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AchIcon iconKey={ach.icon} size={40} color={rarityColor} />
+            </div>
+          )}
+          {!isUnlocked && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(0,0,0,0.25)' }}>
+              <Lock size={22} style={{ color: '#fff' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>Unlock to reveal</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{ach.title}</div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 8, background: ach.reward_type === 'profile_pic' ? 'rgba(168,85,247,0.18)' : 'rgba(6,182,212,0.18)', color: ach.reward_type === 'profile_pic' ? '#a855f7' : '#06b6d4' }}>
+          {ach.reward_type === 'profile_pic' ? <Image size={9} /> : <Sparkle size={9} />}
+          {ach.reward_type === 'profile_pic' ? 'Profile Pic' : 'Banner'}
+        </span>
+      </div>
+    </div>,
+    document.body
   )
 }
 
@@ -541,12 +660,29 @@ function StatsScreen({ allAchs, playerAchs, unlockedSet, onClose }: {
     return bestDay ? { day: bestDay, count: bestCount } : null
   }, [byDate])
 
-  // Last 10 active days, chronological
-  const chartDays = useMemo(() => {
+  const [range, setRange] = useState<'recent' | 'all'>('recent')
+
+  // Recent mode: last 10 active days, chronological
+  const recentDays = useMemo(() => {
     const entries = [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
     return entries.slice(-10)
   }, [byDate])
-  const maxDayCount = Math.max(1, ...chartDays.map(([, c]) => c))
+
+  // All-time mode: grouped by month across full history
+  const byMonth = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const [day, count] of byDate) {
+      const month = day.slice(0, 7) // YYYY-MM
+      map.set(month, (map.get(month) ?? 0) + count)
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [byDate])
+
+  const chartEntries = range === 'recent' ? recentDays : byMonth
+  const chartLabelFmt = (key: string) => range === 'recent'
+    ? new Date(key).toLocaleDateString([], { day: 'numeric', month: 'short' })
+    : new Date(`${key}-01`).toLocaleDateString([], { month: 'short', year: '2-digit' })
+  const maxDayCount = Math.max(1, ...chartEntries.map(([, c]) => c))
 
   const categoryBreakdown = useMemo(() => {
     return Object.entries(CATEGORY_META).map(([key, meta]) => {
@@ -562,18 +698,28 @@ function StatsScreen({ allAchs, playerAchs, unlockedSet, onClose }: {
 
         {/* Activity chart */}
         <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '18px 16px', boxShadow: 'var(--elev-raise-sm)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-            <Activity size={14} style={{ color: 'var(--accent)' }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>Unlock Activity</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Activity size={14} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>Unlock Activity</span>
+            </div>
+            <div style={{ display: 'flex', background: 'var(--surface3)', borderRadius: 10, padding: 3, gap: 2 }}>
+              {(['recent', 'all'] as const).map(r => (
+                <button key={r} type="button" onClick={() => setRange(r)}
+                  style={{ padding: '5px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, background: range === r ? 'var(--accent)' : 'transparent', color: range === r ? '#fff' : 'var(--text-muted)' }}>
+                  {r === 'recent' ? 'Recent' : 'All Time'}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {chartDays.length ? (
+          {chartEntries.length ? (
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
-              {chartDays.map(([day, count]) => {
-                const isPeak = peak && day === peak.day
+              {chartEntries.map(([key, count]) => {
+                const isPeak = peak && (range === 'recent' ? key === peak.day : key === peak.day.slice(0, 7))
                 const h = Math.max(10, (count / maxDayCount) * 100)
                 return (
-                  <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
+                  <div key={key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: isPeak ? '#f5c542' : 'var(--text-dim)' }}>{count}</span>
                     <div style={{
                       width: '100%', maxWidth: 22, height: `${h}%`, borderRadius: 6,
@@ -581,7 +727,7 @@ function StatsScreen({ allAchs, playerAchs, unlockedSet, onClose }: {
                       boxShadow: isPeak ? '0 0 14px rgba(245,197,66,0.5)' : 'none',
                     }} />
                     <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
-                      {new Date(day).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                      {chartLabelFmt(key)}
                     </span>
                   </div>
                 )
