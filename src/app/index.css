@@ -568,10 +568,6 @@
 .reveal.in { opacity: 1; transform: translateY(0); }
 
 /* ── Password strength ── */
-.pw-bar { height: 3px; flex: 1; border-radius: 2px; background: var(--surface2); transition: background var(--dur-slow) var(--ease-out); }
-.pw-bar.weak   { background: var(--red); }
-.pw-bar.fair   { background: var(--gold); }
-.pw-bar.strong { background: var(--green); }
 
 /* ── Live dot ── */
 @keyframes live-pulse {
