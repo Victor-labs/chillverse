@@ -31,7 +31,7 @@ export default function ReferralPage() {
   async function handleShare() {
     if (!info || !user) return
     const url = buildReferralLink(info.referralCode)
-    const text = `Join me on Chillverse — we both get diamonds the moment you sign up! ${url}`
+    const text = `Join me on Chillverse — sign up with my code and help me earn diamond rewards! ${url}`
 
     updateMissionProgress(user.id, 'referral_link_shared', 1).catch(console.error)
 
@@ -71,7 +71,7 @@ export default function ReferralPage() {
         </button>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: 0 }}>Refer & Earn</h1>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: 0 }}>You and your friend both get diamonds</p>
+          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: 0 }}>Earn diamonds for every friend who joins</p>
         </div>
       </div>
 
