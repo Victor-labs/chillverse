@@ -155,13 +155,18 @@ export default function AppLayout() {
       <OnlinePresenceProvider myId={myId}>
       <ProfilePreviewProvider>
       <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
-        {/* Ambient bubbles */}
-        <div className="bubble-bg">
-          <div className="bubble" style={{ width: 420, height: 420, background: 'var(--accent)', left: '-10%', top: '10%', animationDuration: '22s' }} />
-          <div className="bubble" style={{ width: 300, height: 300, background: '#9b6dff', right: '5%', top: '30%', animationDuration: '28s', animationDelay: '-8s' }} />
-          <div className="bubble" style={{ width: 250, height: 250, background: '#4f8ef7', left: '40%', bottom: '15%', animationDuration: '18s', animationDelay: '-4s' }} />
-          <div className="bubble" style={{ width: 180, height: 180, background: '#3ecf8e', right: '25%', top: '5%', animationDuration: '32s', animationDelay: '-12s' }} />
-        </div>
+        {/* Ambient bubbles — decorative only; suppressed on the full-bleed
+            chat route so the Discord-style chat surface stays true flat
+            black instead of having colored blur bleed through the empty
+            space around the message list. */}
+        {!isFullBleedChatRoute && (
+          <div className="bubble-bg">
+            <div className="bubble" style={{ width: 420, height: 420, background: 'var(--accent)', left: '-10%', top: '10%', animationDuration: '22s' }} />
+            <div className="bubble" style={{ width: 300, height: 300, background: '#9b6dff', right: '5%', top: '30%', animationDuration: '28s', animationDelay: '-8s' }} />
+            <div className="bubble" style={{ width: 250, height: 250, background: '#4f8ef7', left: '40%', bottom: '15%', animationDuration: '18s', animationDelay: '-4s' }} />
+            <div className="bubble" style={{ width: 180, height: 180, background: '#3ecf8e', right: '25%', top: '5%', animationDuration: '32s', animationDelay: '-12s' }} />
+          </div>
+        )}
 
         <Sidebar
           open={sidebarOpen}
