@@ -40,6 +40,7 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
   const [codeInput, setCodeInput] = useState('')
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
+  const [pendingNotice, setPendingNotice] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
@@ -74,9 +75,16 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
     if (!codeInput.trim()) return
     setJoining(true)
     setError('')
+    setPendingNotice('')
     try {
-      const roomId = await joinClub({ code: codeInput.trim() })
-      navigate(`/clubs/${roomId}`)
+      const { roomId, status } = await joinClub({ code: codeInput.trim() })
+      if (status === 'pending') {
+        setPendingNotice("You're on the waiting list — a president or VP needs to accept you before you can chat.")
+        setCodeInput('')
+        setJoinOpen(false)
+      } else {
+        navigate(`/clubs/${roomId}`)
+      }
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -86,9 +94,14 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
 
   async function handleJoinPublic(club: ClubSummary) {
     setError('')
+    setPendingNotice('')
     try {
-      const roomId = await joinClub({ roomId: club.id })
-      navigate(`/clubs/${roomId}`)
+      const { roomId, status } = await joinClub({ roomId: club.id })
+      if (status === 'pending') {
+        setPendingNotice(`You're on the waiting list for "${club.name}" — a president or VP needs to accept you.`)
+      } else {
+        navigate(`/clubs/${roomId}`)
+      }
     } catch (e: any) {
       setError(e.message)
     }
@@ -124,6 +137,10 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
 
       {error && (
         <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12.5, marginBottom: 14 }}>{error}</div>
+      )}
+
+      {pendingNotice && (
+        <div style={{ padding: '10px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 12.5, marginBottom: 14 }}>{pendingNotice}</div>
       )}
 
       {/* Join with a code — icon above reveals this inline, no more permanent bar */}

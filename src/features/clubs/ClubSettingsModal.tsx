@@ -1,10 +1,11 @@
 // src/features/clubs/ClubSettingsModal.tsx
 // One modal for everyone: club name/icon/description + a "Members" row that
-// opens ClubMembersPanel. President-only sections underneath cover
-// everything the spec calls "settings" — name/description, invite code,
-// awaiting list, mute club, welcome message, transfer ownership, clear
-// chat, delete club. Reached from a single header icon in ClubChat — no
-// separate members-only icon anymore.
+// opens ClubMembersPanel. Waiting list + welcome message are president OR
+// VP (matches update_club_settings' permission split in
+// 0090_club_awaiting_list.sql). Everything else below that — name/
+// description, privacy, invite code, mute club, transfer ownership, clear
+// chat, delete club — stays president-only. Reached from a single header
+// icon in ClubChat — no separate members-only icon anymore.
 
 import { useState, type CSSProperties } from 'react'
 import { X, Copy, Check, RefreshCw, Users } from 'lucide-react'
@@ -169,6 +170,35 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{members.length}</span>
         </button>
 
+        {/* Waiting list + welcome message — president or VP, per spec */}
+        {(isPresident || myRole === 'vp') && (
+          <>
+            {!isPrivate && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Waiting list</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>New joiners wait for a VP or president to accept them</div>
+                </div>
+                <button onClick={() => { setAwaitingListEnabled(!awaitingListEnabled); saveField({ awaitingListEnabled: !awaitingListEnabled }) }}
+                  style={{ width: 40, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: awaitingListEnabled ? 'var(--accent)' : 'var(--surface3)', position: 'relative', flexShrink: 0 }}>
+                  <span style={{ position: 'absolute', top: 3, left: awaitingListEnabled ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+                </button>
+              </div>
+            )}
+
+            <div style={sectionTitle}>Welcome message</div>
+            <textarea value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} rows={3}
+              style={{ ...inputStyle, resize: 'vertical', fontWeight: 400, lineHeight: 1.4 }}
+              onBlur={() => { if (welcomeMessage !== (club.welcome_message ?? DEFAULT_WELCOME)) saveField({ welcomeMessage }) }} />
+            <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>
+              Placeholders: <code>{'{display_name}'}</code> <code>{'{club_name}'}</code> <code>{'{member_count}'}</code> — remove any you don't want, or leave as default.
+            </p>
+            <button onClick={() => { setWelcomeMessage(DEFAULT_WELCOME); saveField({ welcomeMessage: DEFAULT_WELCOME }) }} style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+              Reset to default
+            </button>
+          </>
+        )}
+
         {!isPresident ? null : (
           <>
             <div style={sectionTitle}>Club name</div>
@@ -199,21 +229,8 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
               </button>
             </div>
             <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>
-              {isPrivate ? 'Share this code to let someone join instantly.' : "Anyone with this code skips straight to the waiting list (or joins instantly if it's off below)."}
+              {isPrivate ? 'Share this code to let someone join instantly.' : "Anyone with this code skips straight to the waiting list (or joins instantly if it's off above)."}
             </p>
-
-            {!isPrivate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Waiting list</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>New joiners wait for a VP or president to accept them</div>
-                </div>
-                <button onClick={() => { setAwaitingListEnabled(!awaitingListEnabled); saveField({ awaitingListEnabled: !awaitingListEnabled }) }}
-                  style={{ width: 40, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: awaitingListEnabled ? 'var(--accent)' : 'var(--surface3)', position: 'relative', flexShrink: 0 }}>
-                  <span style={{ position: 'absolute', top: 3, left: awaitingListEnabled ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
-                </button>
-              </div>
-            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
               <div style={{ flex: 1 }}>
@@ -225,17 +242,6 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
                 <span style={{ position: 'absolute', top: 3, left: muted ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
               </button>
             </div>
-
-            <div style={sectionTitle}>Welcome message</div>
-            <textarea value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} rows={3}
-              style={{ ...inputStyle, resize: 'vertical', fontWeight: 400, lineHeight: 1.4 }}
-              onBlur={() => { if (welcomeMessage !== (club.welcome_message ?? DEFAULT_WELCOME)) saveField({ welcomeMessage }) }} />
-            <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>
-              Placeholders: <code>{'{display_name}'}</code> <code>{'{club_name}'}</code> <code>{'{member_count}'}</code> — remove any you don't want, or leave as default.
-            </p>
-            <button onClick={() => { setWelcomeMessage(DEFAULT_WELCOME); saveField({ welcomeMessage: DEFAULT_WELCOME }) }} style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
-              Reset to default
-            </button>
 
             {vps.length > 0 && (
               <>
@@ -280,10 +286,10 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
                 Delete club
               </button>
             )}
-
-            {saving && <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>Saving…</p>}
           </>
         )}
+
+        {saving && <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>Saving…</p>}
       </div>
 
       {membersOpen && (

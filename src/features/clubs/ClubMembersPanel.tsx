@@ -6,12 +6,14 @@
 // extra wiring needed for that part.
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { X, Crown, ShieldCheck, MoreVertical, UserMinus, LogOut, Trash2, VolumeX, Volume2, Search } from 'lucide-react'
+import { X, Crown, ShieldCheck, MoreVertical, UserMinus, LogOut, Trash2, VolumeX, Volume2, Search, UserPlus, Check, Clock } from 'lucide-react'
 import Avatar from '../../shared/components/Avatar'
 import {
   fetchClubMembers, promoteClubMember, removeClubMember, muteClubMember, unmuteClubMember, leaveClub,
-  type ClubMemberRow, type ClubRole, type ClubRoom,
+  fetchClubPendingMembers, acceptClubPendingMember, rejectClubPendingMember,
+  type ClubMemberRow, type ClubRole, type ClubRoom, type ClubPendingMember,
 } from './clubs'
+import ClubAddMembersModal from './ClubAddMembersModal'
 
 interface ClubMembersPanelProps {
   club: ClubRoom
@@ -33,8 +35,11 @@ function muteMinutesLeft(m: ClubMemberRow): number {
   return Math.max(0, Math.round((new Date(m.muted_until).getTime() - Date.now()) / 60000))
 }
 
+const isPresidentOrVp = (role: ClubRole) => role === 'president' || role === 'vp'
+
 export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOrDeleted }: ClubMembersPanelProps) {
   const [members, setMembers] = useState<ClubMemberRow[]>([])
+  const [pending, setPending] = useState<ClubPendingMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
@@ -42,17 +47,20 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
   const [busy, setBusy] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [addMembersOpen, setAddMembersOpen] = useState(false)
+  const [pendingBusyId, setPendingBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       setMembers(await fetchClubMembers(club.id))
+      setPending(isPresidentOrVp(myRole) ? await fetchClubPendingMembers(club.id) : [])
     } catch (e: any) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [club.id])
+  }, [club.id, myRole])
 
   useEffect(() => { load() }, [load])
 
@@ -120,6 +128,32 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
     }
   }
 
+  async function handleAcceptPending(userId: string) {
+    setPendingBusyId(userId)
+    setError('')
+    try {
+      await acceptClubPendingMember(club.id, userId)
+      await load()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setPendingBusyId(null)
+    }
+  }
+
+  async function handleRejectPending(userId: string) {
+    setPendingBusyId(userId)
+    setError('')
+    try {
+      await rejectClubPendingMember(club.id, userId)
+      await load()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setPendingBusyId(null)
+    }
+  }
+
   async function handleLeave() {
     setBusy(true)
     setError('')
@@ -143,6 +177,9 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
       }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px', marginBottom: club.description ? 6 : 14 }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flex: 1 }}>{club.name}</p>
+          <button type="button" onClick={() => setAddMembersOpen(true)} title="Add members from your chats" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginRight: 6 }}>
+            <UserPlus size={16} />
+          </button>
           <button type="button" onClick={() => setSearchOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: searchOpen ? 'var(--accent)' : 'var(--text-muted)', marginRight: 6 }}>
             <Search size={16} />
           </button>
@@ -153,6 +190,32 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
 
         {club.description && (
           <p style={{ margin: '0 20px 14px', fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.4 }}>{club.description}</p>
+        )}
+
+        {isPresidentOrVp(myRole) && pending.length > 0 && (
+          <div style={{ margin: '0 20px 14px', padding: '10px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              <Clock size={11} /> Awaiting approval ({pending.length})
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {pending.map(p => {
+                const displayName = p.display_name || p.username
+                const rowBusy = pendingBusyId === p.user_id
+                return (
+                  <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Avatar src={p.avatar} name={displayName} userId={p.user_id} size={28} />
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
+                    <button onClick={() => handleAcceptPending(p.user_id)} disabled={rowBusy} title="Accept" style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'rgba(62,207,142,0.15)', color: '#3ecf8e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: rowBusy ? 0.6 : 1 }}>
+                      <Check size={13} />
+                    </button>
+                    <button onClick={() => handleRejectPending(p.user_id)} disabled={rowBusy} title="Reject" style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: rowBusy ? 0.6 : 1 }}>
+                      <X size={13} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {searchOpen && (
@@ -177,7 +240,13 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
           ) : filteredMembers.length === 0 ? (
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No members match "{search}"</div>
           ) : filteredMembers.map(m => {
-            const canManage = (myRole === 'president' && m.role !== 'president') || (myRole === 'vp' && m.role === 'member')
+            // Mute: president or VP can mute anyone except the president —
+            // a VP can mute another VP (the backend allows it). Kick and
+            // promote/demote stay president-only once the target is a VP.
+            const canMute = myRole !== 'member' && m.role !== 'president'
+            const canKick = myRole === 'president' ? m.role !== 'president' : m.role === 'member'
+            const canPromote = myRole === 'president' && m.role !== 'president'
+            const canManage = canMute || canKick || canPromote
             const displayName = m.display_name || m.username
             const muted = isMuted(m)
             return (
@@ -231,7 +300,10 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
           outside the scrollable member list, so it's never clipped by that
           list's overflow:auto the way an absolutely-positioned child of a row
           would be. */}
-      {menuForMember && (
+      {menuForMember && (() => {
+        const targetCanMute = myRole !== 'member' && menuForMember.role !== 'president'
+        const targetCanKick = myRole === 'president' ? menuForMember.role !== 'president' : menuForMember.role === 'member'
+        return (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 202 }} onClick={() => setMenuFor(null)} />
           <div style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 203, background: 'var(--popover)', border: '1px solid var(--border-strong)', borderRadius: 12, minWidth: 175, boxShadow: 'var(--elev-popover)', overflow: 'hidden' }}>
@@ -245,20 +317,33 @@ export default function ClubMembersPanel({ club, myRole, myId, onClose, onLeftOr
                 <UserMinus size={13} /> Remove VP
               </button>
             )}
-            {isMuted(menuForMember) ? (
-              <button onClick={() => handleUnmute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                <Volume2 size={13} /> Unmute
-              </button>
-            ) : (
-              <button onClick={() => handleMute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
-                <VolumeX size={13} /> Mute (1h)
+            {targetCanMute && (
+              isMuted(menuForMember) ? (
+                <button onClick={() => handleUnmute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                  <Volume2 size={13} /> Unmute
+                </button>
+              ) : (
+                <button onClick={() => handleMute(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                  <VolumeX size={13} /> Mute (1h)
+                </button>
+              )
+            )}
+            {targetCanKick && (
+              <button onClick={() => handleRemove(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
+                <Trash2 size={13} /> Kick from club
               </button>
             )}
-            <button onClick={() => handleRemove(menuForMember.user_id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
-              <Trash2 size={13} /> Kick from club
-            </button>
           </div>
         </>
+        )
+      })()}
+
+      {addMembersOpen && (
+        <ClubAddMembersModal
+          roomId={club.id}
+          onClose={() => setAddMembersOpen(false)}
+          onInvited={load}
+        />
       )}
     </>
   )
