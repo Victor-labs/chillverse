@@ -123,11 +123,11 @@ export default function FriendsPanel({ open, onClose }: { open: boolean; onClose
   })
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', justifyContent:'flex-end', background:'rgba(0,0,0,0.45)' }} onClick={onClose}>
+    <div style={{ position:'fixed', top:0, right:0, bottom:0, left:64, zIndex:200, display:'flex', justifyContent:'flex-end', background:'rgba(0,0,0,0.45)' }} onClick={onClose}>
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width:'min(380px, 100vw)', height:'100%', background:'var(--bg)', display:'flex', flexDirection:'column',
+          width:'min(380px, calc(100vw - 64px))', height:'100%', background:'var(--bg)', display:'flex', flexDirection:'column',
           borderLeft:'1px solid var(--border)', boxShadow:'-8px 0 24px rgba(0,0,0,0.35)',
         }}
       >
