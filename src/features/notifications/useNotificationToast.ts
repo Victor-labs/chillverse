@@ -55,6 +55,12 @@ export function useNotificationToast() {
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
         const n = payload.new as { id: string; type: string; title: string; body: string; icon: string; meta?: Record<string, unknown> | null }
+        // Achievement unlocks already get their own richer toast from
+        // AchievementToast.tsx (subscribed to player_achievements inserts
+        // directly, with batching for simultaneous unlocks). Showing this
+        // generic toast too meant every single unlock produced two toasts
+        // stacked on screen at once — skip it here.
+        if (n.type === 'achievement') return
         const toast: ToastNotif = {
           id:    n.id,
           type:  n.type,
