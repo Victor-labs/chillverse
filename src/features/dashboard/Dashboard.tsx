@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Gamepad2, ShoppingBag, Film, Swords, Sparkles, Rss,
-  Flame, Zap, ChevronRight, Fan,
+  Flame, Zap, ChevronRight, Fan, PlayCircle,
 } from 'lucide-react'
 import { useProfile } from '../profile/useProfile'
 import { getUserRankTier, getNextRankTier, getRankProgress } from '../profile/ranks'
@@ -278,7 +278,7 @@ export default function Dashboard() {
   const QUICK_ACTIONS: QuickAction[] = [
     { label: 'Play Games',  sub: onlineCount != null ? `${onlineCount} online` : '…', to: '/games',      bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2 },
     { label: 'Mall',        sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,var(--accent),var(--accent2))', icon: ShoppingBag },
-    { label: 'Community',   sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
+    { label: 'Feed',        sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
   ]
 
   return (
@@ -403,6 +403,7 @@ export default function Dashboard() {
             { label: 'Watch',            desc: 'Trending videos & streams',    icon: Film,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/watch'           },
             { label: 'Games',            desc: 'Play, compete & rank up',       icon: Gamepad2, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/games'           },
             { label: 'Weekly Missions',  desc: 'Complete missions, earn XP',    icon: Sparkles, iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/weekly-missions' },
+            { label: 'Missions',         desc: 'Watch ads, earn Orbs',          icon: PlayCircle, iconBg: 'rgba(52,211,153,0.12)', iconColor: '#34d399', to: '/wallet?tab=orbs' },
             { label: 'Artifacts',        desc: 'Collect & explore relics',      icon: Fan,      iconBg: 'rgba(239,68,68,0.12)',   iconColor: '#ef4444', to: '/artifacts'       },
           ].map((tile) => {
             const Icon = tile.icon
