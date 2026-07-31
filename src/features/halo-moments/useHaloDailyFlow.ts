@@ -1,14 +1,18 @@
 // src/features/halo-moments/useHaloDailyFlow.ts
 //
-// Replaces useDailyCheckIn.ts under the redesigned flow (no more combined
-// sheet). Sequencing:
-//   1. Fetch today's challenge. If status === 'offered', show
-//      HaloChallengeModal and wait for Accept/Decline.
-//   2. Once responded to (or if it was already accepted/declined earlier
-//      today, e.g. a page reload) fetch the mystery box and let the
-//      floating button appear.
-// Daily Fortune has no client-side piece at all anymore — it's a scheduled
-// push notification (migration 0079), not something this hook fetches.
+// Redesign: Halo's Daily Challenge and the Daily Mystery Box are now two
+// independent icon buttons (HaloChallengeIcon / MysteryBoxIcon) rather than
+// a blocking modal + a gated floating button. There is no more accept/
+// decline step — a challenge is active the moment it's picked, so this
+// hook just fetches both pieces of state in parallel on mount.
+//
+// Backward compatibility: a challenge row created before this change may
+// still be sitting at status 'offered' (the old default). Rather than
+// leaving it stuck — record_halo_challenge_progress() only accrues
+// progress once status = 'accepted' — this hook silently auto-accepts it
+// in the background the first time it's seen, with no UI step for the
+// player. New challenge rows are inserted already 'accepted' server-side
+// (migration 0095), so this path only matters for pre-existing rows.
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -20,32 +24,30 @@ import {
 export function useHaloDailyFlow(userId: string | null) {
   const [challenge, setChallenge] = useState<HaloChallengeState | null>(null)
   const [box, setBox] = useState<MysteryBoxState | null>(null)
-  const [boxGateOpen, setBoxGateOpen] = useState(false)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
     if (!userId || fetchedRef.current) return
     fetchedRef.current = true
+
     getOrCreateHaloChallenge().then(c => {
-      setChallenge(c)
-      // No challenge today, or already responded to in an earlier session
-      // today — nothing blocking the mystery box, fetch it right away.
-      if (!c || c.status !== 'offered') {
-        setBoxGateOpen(true)
+      if (!c) return
+      if (c.status === 'offered') {
+        // Silent self-heal for old rows — no modal, no user action.
+        respondToHaloChallenge(true).catch(console.error)
+        setChallenge({ ...c, status: 'accepted' })
+      } else {
+        setChallenge(c)
       }
     })
+
+    getOrCreateDailyMysteryBox().then(setBox)
   }, [userId])
 
-  useEffect(() => {
-    if (!boxGateOpen || !userId) return
-    getOrCreateDailyMysteryBox().then(setBox)
-  }, [boxGateOpen, userId])
-
-  async function respond(accept: boolean) {
-    if (!challenge) return
-    await respondToHaloChallenge(accept)
-    setChallenge(prev => prev ? { ...prev, status: accept ? 'accepted' : 'declined' } : prev)
-    setBoxGateOpen(true)
+  /** HaloChallengeIcon calls claimHaloChallenge() itself — this just syncs
+   *  local state once it reports the result back. */
+  function handleChallengeClaimed() {
+    setChallenge(prev => (prev ? { ...prev, claimed: true } : prev))
   }
 
   /** MysteryBoxModal calls openMysteryBox() itself internally — this just
@@ -57,12 +59,9 @@ export function useHaloDailyFlow(userId: string | null) {
   }
 
   return {
-    showChallengeModal: !!challenge && challenge.status === 'offered',
     challenge,
-    acceptChallenge: () => respond(true),
-    declineChallenge: () => respond(false),
+    handleChallengeClaimed,
     box,
-    boxButtonVisible: boxGateOpen,
     handleBoxOpened,
   }
 }

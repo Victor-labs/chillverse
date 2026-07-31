@@ -1,12 +1,13 @@
 // src/features/halo-moments/MysteryBoxModal.tsx
 //
 // Reveal flow for the Daily Mystery Box (plan §4.1). Calls openMysteryBox()
-// as soon as it mounts (i.e. the moment the player taps the card) — a
-// short "opening" state covers the round-trip, then the result renders
-// with Halo's line (mystery_box_win / mystery_box_empty, picked
-// server-side by open_mystery_box()).
+// as soon as it mounts (i.e. the moment the player taps the icon) — the
+// box shakes with increasing frequency to build anticipation while the
+// round-trip is in flight, then the result renders with Halo's line
+// (mystery_box_win / mystery_box_empty, picked server-side by
+// open_mystery_box()).
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Star, Shirt, Frown } from 'lucide-react'
@@ -28,20 +29,30 @@ export default function MysteryBoxModal({
   onOpened: (result: MysteryBoxResult) => void
 }) {
   const [phase, setPhase] = useState<'opening' | 'result' | 'error'>('opening')
+  const [shakeStage, setShakeStage] = useState<1 | 2 | 3>(1)
   const [result, setResult] = useState<MysteryBoxResult | null>(null)
   const [itemName, setItemName] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const shakeTimers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
     if (!isOpen) return
     setPhase('opening')
+    setShakeStage(1)
     setResult(null)
     setItemName(null)
 
     let cancelled = false
-    // Brief pause so the "opening" animation actually shows, rather than
+
+    // Escalating shake: slow → medium → fast, building anticipation before
+    // the reveal. Purely cosmetic — runs in parallel with the network call
+    // below, not gating it.
+    shakeTimers.current.push(setTimeout(() => { if (!cancelled) setShakeStage(2) }, 500))
+    shakeTimers.current.push(setTimeout(() => { if (!cancelled) setShakeStage(3) }, 950))
+
+    // Brief pause so the shake build-up actually plays out, rather than
     // flashing straight to the result on a fast connection.
-    const minDelay = new Promise(res => setTimeout(res, 900))
+    const minDelay = new Promise(res => setTimeout(res, 1400))
 
     Promise.all([openMysteryBox(), minDelay]).then(async ([{ result: r, error }]) => {
       if (cancelled) return
@@ -60,7 +71,11 @@ export default function MysteryBoxModal({
       setPhase('result')
     })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      shakeTimers.current.forEach(clearTimeout)
+      shakeTimers.current = []
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
@@ -90,7 +105,7 @@ export default function MysteryBoxModal({
           <div style={{
             width: 110, height: 110, margin: '0 auto 18px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'mbxShake 0.5s ease-in-out infinite',
+            animation: `mbxShake${shakeStage} ${shakeStage === 1 ? 0.6 : shakeStage === 2 ? 0.35 : 0.16}s ease-in-out infinite`,
           }}>
             <img src={mysteryBoxImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
@@ -150,7 +165,9 @@ export default function MysteryBoxModal({
       </div>
 
       <style>{`
-        @keyframes mbxShake { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+        @keyframes mbxShake1 { 0%,100% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(-5deg) scale(1); } 75% { transform: rotate(5deg) scale(1); } }
+        @keyframes mbxShake2 { 0%,100% { transform: rotate(0deg) scale(1.02); } 25% { transform: rotate(-9deg) scale(1.02); } 75% { transform: rotate(9deg) scale(1.02); } }
+        @keyframes mbxShake3 { 0%,100% { transform: rotate(0deg) scale(1.05); } 25% { transform: rotate(-13deg) scale(1.05); } 75% { transform: rotate(13deg) scale(1.05); } }
         @keyframes mbxPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       `}</style>
     </div>,
