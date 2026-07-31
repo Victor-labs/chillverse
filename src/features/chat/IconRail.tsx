@@ -1,14 +1,15 @@
 // src/features/chat/IconRail.tsx
 //
-// Discord-style vertical icon strip shown alongside the Chat hub's Chats
-// and Clubs tabs. Gives one-tap access to group chats and clubs without
-// going through their list first, plus a "Friends" shortcut at the top
-// that opens the same friends/followers + add-friends panel used from the
-// Chats tab header. Lives outside both Chat.tsx and ClubsList.tsx (in
-// ChatHub.tsx) since it needs to jump between both of them.
+// The primary navigation for the Chat hub now — a Discord-style vertical
+// icon strip. Top section is fixed nav: Friends (opens the friends/DM
+// slide-over), Global, Chats ("all my chats" — the Messages list), and
+// Clubs (browse/manage all your clubs). Below a divider: one icon per
+// group chat and one per club you've joined, for one-tap access — exactly
+// like Discord's server list. Tapping a group/club icon jumps straight
+// into that room without going through its list first.
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users } from 'lucide-react'
+import { Users, Globe, MessageSquare, Compass } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getUnreadCounts } from '../../shared/lib/unread'
@@ -16,13 +17,19 @@ import { fetchMyClubs, type MyClub } from '../clubs/clubs'
 import ClubIcon from '../clubs/clubIcons'
 import SharedAvatar from '../../shared/components/Avatar'
 import FriendsPanel from './FriendsPanel'
+import type { HubTab } from './ChatHub'
 
 interface GroupChatRow {
   id: string
   name: string | null
 }
 
-export default function IconRail() {
+interface IconRailProps {
+  active: HubTab
+  badges: Record<HubTab, number>
+}
+
+export default function IconRail({ active, badges }: IconRailProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [clubs, setClubs] = useState<MyClub[]>([])
@@ -52,7 +59,7 @@ export default function IconRail() {
     load()
     if (!user) return
     // Cheap catch-all refresh — new message anywhere, or membership change
-    // (joined/left a club or group) — same pattern as ChatHub's tab badges.
+    // (joined/left a club or group) — same pattern as ChatHub's badges.
     const ch = supabase
       .channel('icon-rail')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, load)
@@ -62,8 +69,9 @@ export default function IconRail() {
   }, [load, user])
 
   function openGroup(id: string) {
-    // Chat.tsx (mounted under the Chats tab) watches location.state.openRoomId
-    // and jumps straight into that room once its room list has loaded.
+    // Chat.tsx (mounted under the Chats screen) watches location.state.openRoomId
+    // and jumps straight into that room once its room list has loaded. Using
+    // ?tab=chats also flips ChatHub's active screen if we're on Global/Clubs.
     navigate('/chat?tab=chats', { state: { openRoomId: id } })
   }
 
@@ -78,6 +86,18 @@ export default function IconRail() {
       >
         <RailIcon label="Friends" onClick={() => setFriendsOpen(true)}>
           <Users size={20} />
+        </RailIcon>
+
+        <div style={{ width: 32, height: 2, borderRadius: 1, background: 'var(--border)', flexShrink: 0 }} />
+
+        <RailIcon label="Global" active={active === 'global'} unread={badges.global} onClick={() => navigate('/chat?tab=global')}>
+          <Globe size={20} />
+        </RailIcon>
+        <RailIcon label="Chats" active={active === 'chats'} unread={badges.chats} onClick={() => navigate('/chat?tab=chats')}>
+          <MessageSquare size={20} />
+        </RailIcon>
+        <RailIcon label="Clubs" active={active === 'clubs'} unread={badges.clubs} onClick={() => navigate('/chat?tab=clubs')}>
+          <Compass size={20} />
         </RailIcon>
 
         {(groups.length > 0 || clubs.length > 0) && (
@@ -108,11 +128,12 @@ export default function IconRail() {
   )
 }
 
-function RailIcon({ children, label, onClick, unread }: {
+function RailIcon({ children, label, onClick, unread, active }: {
   children: React.ReactNode
   label: string
   onClick: () => void
   unread?: number
+  active?: boolean
 }) {
   const [hover, setHover] = useState(false)
   return (
@@ -124,9 +145,11 @@ function RailIcon({ children, label, onClick, unread }: {
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative', width: 48, height: 48, flexShrink: 0,
-        borderRadius: hover ? 14 : 16, border: 'none', background: 'var(--surface)',
+        borderRadius: hover || active ? 14 : 16, border: 'none',
+        background: active ? 'var(--accent)' : 'var(--surface)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', color: 'var(--text-dim)', transition: 'border-radius 0.15s ease',
+        cursor: 'pointer', color: active ? '#fff' : 'var(--text-dim)',
+        transition: 'border-radius 0.15s ease, background 0.15s ease, color 0.15s ease',
         padding: 0, overflow: 'hidden',
       }}
     >
@@ -134,9 +157,9 @@ function RailIcon({ children, label, onClick, unread }: {
       {!!unread && (
         <span style={{
           position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 8,
-          background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 800,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
-          border: '2px solid var(--bg)',
+          background: active ? '#fff' : 'var(--accent)', color: active ? 'var(--accent)' : '#fff',
+          fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 4px', border: '2px solid var(--bg)',
         }}>
           {unread > 9 ? '9+' : unread}
         </span>
