@@ -152,10 +152,18 @@ export async function triggerAchievementCheck(userId: string): Promise<void> {
     // diamond_purchases / diamond_topups don't exist as separate tables — all
     // diamond buys land in diamond_transactions. Both diamond_purse (>=1 buy)
     // and premium_lifestyle (>=5 buys) read off the same count.
+    //
+    // diamond_transactions also holds non-purchase diamond GRANTS (referral
+    // welcome/milestone bonuses, mystery box, daily challenge, weekly
+    // missions, lucky user, random surprise) — none of those are a real
+    // purchase and must not count here. pack_id is only ever set by the
+    // credit-diamonds edge function after a verified Paystack payment, so
+    // filtering on it excludes every bonus grant and counts real buys only.
     const { count: diamondTxCount } = await supabase
       .from('diamond_transactions')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .not('pack_id', 'is', null)
 
     const diamondPurchaseCount = diamondTxCount ?? 0
     const diamondTopUpCount = diamondTxCount ?? 0
