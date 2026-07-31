@@ -126,8 +126,8 @@
 
   /* ── MIDNIGHT (free) — near-black, tight light ── */
   [data-theme="midnight"] {
-    --bg:        #09090b;
-    --nav:       #101014;
+    --bg:        #000000;
+    --nav:       #000000;
     --surface:   #17171c;
     --surface2:  #1d1d23;
     --surface3:  #23232b;
