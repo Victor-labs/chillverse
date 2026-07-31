@@ -5,9 +5,15 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Send } from 'lucide-react'
 import { useHaloAI, type HaloMessage } from './useHaloAI'
 import { useProfile } from '../profile/useProfile'
+import { useAuth } from '../auth/useAuth'
 import { useFeatureFlags } from '../../shared/lib/featureFlags'
 import { useModRole } from '../moderation/useModRole'
 import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
+import { useHaloDailyFlow } from '../halo-moments/useHaloDailyFlow'
+import HaloChallengeModal from '../halo-moments/HaloChallengeModal'
+import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
+import MysteryBoxFloatingButton from '../halo-moments/MysteryBoxFloatingButton'
+import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
 import haloMascotImg from '../../assets/halo-mascot.png'
 
 const LOADING_WORDS = [
@@ -127,10 +133,18 @@ function HaloMascotBackdrop({ active }: { active: boolean }) {
 export default function HaloAI() {
   const navigate = useNavigate()
   const { profile } = useProfile()
+  const { session } = useAuth()
+  const userId = session?.user?.id ?? null
   const { isEnabled: isHaloFlagEnabled, loading: haloFlagLoading } = useFeatureFlags()
   const { isStaff: haloIsStaff } = useModRole()
   const { messages, loading, error, messagesLeft, isIncreasedTier, sendMessage, clearError, addLocalMessage } =
     useHaloAI()
+  // Halo Moments — Daily Challenge modal/card and the Mystery Box button
+  // used to live app-wide (AppLayout) and on the Dashboard. They're now
+  // scoped entirely to the Halo AI page: the challenge is offered here,
+  // accepting it shows the progress card here, and the mystery box button
+  // only appears while this page is open.
+  const halo = useHaloDailyFlow(userId)
   const [input, setInput] = useState('')
   const [loadingWord, setLoadingWord] = useState(LOADING_WORDS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -185,7 +199,17 @@ export default function HaloAI() {
     ? { text: 'Boosted', color: 'var(--purple)', glow: true }
     : null
 
+  // The hardcoded welcome message is injected into `messages` as soon as
+  // the profile loads, which used to flip `isEmpty` to false almost
+  // immediately — the hero (and the quick-prompt picker inside it) would
+  // render for a single frame, then vanish the moment the welcome bubble
+  // landed. Emptiness for hero/backdrop purposes is now based on whether
+  // the *user* has actually said anything, not on message count in
+  // general, so the hero and quick prompts stay visible through the
+  // auto-welcome instead of flashing away.
+  const hasUserMessage = messages.some(m => m.role === 'user')
   const isEmpty = messages.length === 0
+  const showQuickPrompts = !hasUserMessage && messagesLeft > 0
 
   if (!haloFlagLoading && !isHaloFlagEnabled('system:halo_ai') && !haloIsStaff) {
     return (
@@ -211,7 +235,15 @@ export default function HaloAI() {
         @keyframes dotPulse { 0%,80%,100% { opacity:0.2 } 40% { opacity:1 } }
       `}</style>
 
-      <HaloMascotBackdrop active={isEmpty} />
+      <HaloMascotBackdrop active={!hasUserMessage} />
+
+      {halo.showChallengeModal && halo.challenge && (
+        <HaloChallengeModal
+          challenge={halo.challenge}
+          onAccept={halo.acceptChallenge}
+          onDecline={halo.declineChallenge}
+        />
+      )}
 
       {/* Header */}
       <div
@@ -261,6 +293,15 @@ export default function HaloAI() {
         )}
       </div>
 
+      {/* Halo Moments — Lucky User banner + Daily Challenge card, moved
+          here from the Dashboard. Both render nothing until there's
+          something to show (lucky winner today / challenge accepted), so
+          this adds no visible space otherwise. */}
+      <div style={{ position: 'relative', zIndex: 1, padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <LuckyUserBanner userId={userId} />
+        <HaloChallengeCard userId={userId} />
+      </div>
+
       {/* Hero (empty state) */}
       {isEmpty && (
         <div style={{ position: 'relative', zIndex: 1, padding: '24px 18px 8px', textAlign: 'center' }}>
@@ -281,35 +322,6 @@ export default function HaloAI() {
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
             I'm Halo. Ask me anything about Chillverse.
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              overflowX: 'auto',
-              paddingBottom: 4,
-              justifyContent: 'center',
-            }}
-          >
-            {SUGGESTED_PROMPTS.map(prompt => (
-              <button
-                key={prompt}
-                onClick={() => handleSend(prompt)}
-                style={{
-                  flexShrink: 0,
-                  background: 'var(--surface2)',
-                  border: '1px solid rgba(155,109,255,0.2)',
-                  borderRadius: 20,
-                  padding: '8px 14px',
-                  fontSize: 12,
-                  color: 'var(--text-dim)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {prompt}
-              </button>
-            ))}
           </div>
         </div>
       )}
@@ -511,6 +523,37 @@ export default function HaloAI() {
           backdropFilter: 'blur(8px)',
         }}
       >
+        {showQuickPrompts && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 10,
+            }}
+          >
+            {SUGGESTED_PROMPTS.map(prompt => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => handleSend(prompt)}
+                style={{
+                  flexShrink: 0,
+                  background: 'var(--surface2)',
+                  border: '1px solid rgba(155,109,255,0.2)',
+                  borderRadius: 20,
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
         {messagesLeft === 0 ? (
           <div
             style={{
@@ -583,6 +626,12 @@ export default function HaloAI() {
           </div>
         )}
       </div>
+
+      <MysteryBoxFloatingButton
+        visible={halo.boxButtonVisible}
+        box={halo.box}
+        onOpened={halo.handleBoxOpened}
+      />
     </div>
   )
 }
