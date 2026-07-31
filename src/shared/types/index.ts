@@ -162,6 +162,7 @@ export interface ProfilePicUnlockRequirement {
 export interface UserWallet {
   user_id: string
   gem_balance: number
+  orb_balance: number
 }
 
 export interface UserInventoryItem {
