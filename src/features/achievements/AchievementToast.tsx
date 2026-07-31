@@ -19,7 +19,13 @@ interface ToastItem {
   icon: string
   xp_reward: number
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  /** Set when several achievements unlocked together and were collapsed
+   *  into a single combined toast (see flushBuffer in the container below).
+   *  Undefined/1 renders the normal single-achievement card. */
+  count?: number
 }
+
+const RARITY_RANK: Record<ToastItem['rarity'], number> = { common: 0, rare: 1, epic: 2, legendary: 3 }
 
 const RARITY_COLOR: Record<string, string> = {
   common:    '#888899',
@@ -46,11 +52,14 @@ function ToastCard({ toast, userId, onDismiss }: { toast: ToastItem; userId: str
     e.stopPropagation()
     if (shared || sharing) return
     setSharing(true)
+    const body = toast.count && toast.count > 1
+      ? `Unlocked ${toast.count} achievements 🏆`
+      : `Unlocked "${toast.title}" 🏆`
     const { error } = await createHighlight({
       authorId: userId,
       kind: 'achievement',
       gameKey: null,
-      body: `Unlocked "${toast.title}" 🏆`,
+      body,
     })
     setSharing(false)
     if (!error) setShared(true)
@@ -204,7 +213,7 @@ function ToastCard({ toast, userId, onDismiss }: { toast: ToastItem; userId: str
             marginBottom: 2,
           }}
         >
-          Achievement Unlocked · {toast.rarity}
+          {toast.count && toast.count > 1 ? `${toast.count} Achievements Unlocked` : `Achievement Unlocked · ${toast.rarity}`}
         </div>
         <div
           style={{
@@ -212,15 +221,18 @@ function ToastCard({ toast, userId, onDismiss }: { toast: ToastItem; userId: str
             fontWeight: 700,
             color: 'var(--text)',
             marginBottom: 2,
-            whiteSpace: 'nowrap',
+            whiteSpace: toast.count && toast.count > 1 ? 'normal' : 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+            display: toast.count && toast.count > 1 ? '-webkit-box' : 'block',
+            WebkitLineClamp: toast.count && toast.count > 1 ? 2 : undefined,
+            WebkitBoxOrient: toast.count && toast.count > 1 ? 'vertical' : undefined,
           }}
         >
           {toast.title}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#f5c542', fontWeight: 700 }}>
-          <Zap size={10} /> +{toast.xp_reward} XP
+          <Zap size={10} /> +{toast.xp_reward} XP{toast.count && toast.count > 1 ? ' total' : ''}
         </div>
       </div>
 
@@ -270,15 +282,57 @@ function ToastCard({ toast, userId, onDismiss }: { toast: ToastItem; userId: str
   )
 }
 
+// How long to wait after the first unlock in a burst before flushing the
+// buffer, to see whether any more unlocks land in the same batch (e.g. a
+// new player clearing several easy conditions in one triggerAchievementCheck
+// run). Achievements unlocked within this window of each other are shown as
+// a single combined toast instead of one card per achievement.
+const BATCH_WINDOW_MS = 900
+
 // ── Container ────────────────────────────────────────────────────
 export default function AchievementToast() {
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
   const [queue, setQueue] = useState<ToastItem[]>([])
+  const bufferRef = useRef<ToastItem[]>([])
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const dismiss = useCallback((id: string) => {
     setQueue(q => q.filter(t => t.id !== id))
   }, [])
+
+  const flushBuffer = useCallback(() => {
+    const items = bufferRef.current
+    bufferRef.current = []
+    flushTimerRef.current = null
+    if (items.length === 0) return
+
+    if (items.length === 1) {
+      const only = items[0]
+      setQueue(q => [...q, only])
+      setTimeout(() => dismiss(only.id), 5000)
+      return
+    }
+
+    // Multiple achievements landed in the same batch — collapse into one
+    // combined toast rather than stacking a card per achievement.
+    const totalXp = items.reduce((sum, i) => sum + i.xp_reward, 0)
+    const topRarity = items.reduce<ToastItem['rarity']>(
+      (top, i) => (RARITY_RANK[i.rarity] > RARITY_RANK[top] ? i.rarity : top),
+      'common',
+    )
+    const grouped: ToastItem = {
+      id:          `group-${Date.now()}`,
+      title:       items.map(i => i.title).join(', '),
+      description: items.map(i => i.description).join(' '),
+      icon:        'trophy',
+      xp_reward:   totalXp,
+      rarity:      topRarity,
+      count:       items.length,
+    }
+    setQueue(q => [...q, grouped])
+    setTimeout(() => dismiss(grouped.id), 6500)
+  }, [dismiss])
 
   useEffect(() => {
     if (!userId) return
@@ -312,15 +366,22 @@ export default function AchievementToast() {
             rarity:      ach.rarity,
           }
 
-          setQueue(q => [...q, item])
-          // Auto-dismiss after 5s
-          setTimeout(() => dismiss(item.id), 5000)
+          // Buffer instead of showing immediately — if another unlock
+          // arrives within BATCH_WINDOW_MS it'll be folded into the same
+          // combined toast rather than showing as a separate card.
+          bufferRef.current.push(item)
+          if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+          flushTimerRef.current = setTimeout(flushBuffer, BATCH_WINDOW_MS)
         },
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [userId, dismiss])
+    return () => {
+      supabase.removeChannel(channel)
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+      bufferRef.current = []
+    }
+  }, [userId, flushBuffer])
 
   if (queue.length === 0 || !userId) return null
 

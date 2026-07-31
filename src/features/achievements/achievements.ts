@@ -45,6 +45,12 @@ export async function getPlayerAchievements(userId: string): Promise<PlayerAchie
 }
 
 // ── Unlock an achievement + send notification ─────────────────
+// Note: this no longer fires the "Halo Saw That" reaction itself — when a
+// batch of achievements unlock together (e.g. a new player clearing several
+// easy conditions at once), firing that reaction once per achievement here
+// used to flood the toast pipeline with several Halo commendations back to
+// back. checkAndUnlockAchievements() now fires it (at most) once per batch,
+// after every unlock in the batch has resolved — see below.
 export async function unlockAchievement(userId: string, achievementId: string): Promise<boolean> {
   // Idempotent — ignore if already unlocked
   const { error } = await supabase
@@ -94,14 +100,6 @@ export async function unlockAchievement(userId: string, achievementId: string): 
       icon: ach.icon,
       meta: { achievement_id: achievementId, xp_reward: ach.xp_reward },
     })
-
-    // "Halo Saw That" (Halo Moments plan §4.7) — low-frequency flavor
-    // reaction on top of a REAL unlock event (this line only runs once the
-    // insert above has succeeded, i.e. genuinely new). Fire-and-forget,
-    // same convention as triggerAchievementCheck — never blocks or fails
-    // the achievement unlock itself.
-    const { notifyHaloSawThat } = await import('../halo-moments/haloMoments')
-    notifyHaloSawThat(userId).catch(console.error)
   }
 
   return true
@@ -156,11 +154,20 @@ export async function checkAndUnlockAchievements(payload: AchievementCheckPayloa
     .select('achievement_id')
     .eq('user_id', userId)
   const unlocked = new Set((existing ?? []).map((r: { achievement_id: string }) => r.achievement_id))
+  // Every id newly unlocked during this single check-run — used below to
+  // fire at most one "Halo Saw That" reaction for the whole batch, instead
+  // of one per achievement (which used to flood new/active players with a
+  // wall of Halo commendation toasts whenever several conditions cleared
+  // at once).
+  const newlyUnlocked: string[] = []
 
   async function tryUnlock(id: string) {
     if (!unlocked.has(id)) {
       const success = await unlockAchievement(userId, id)
-      if (success) unlocked.add(id)
+      if (success) {
+        unlocked.add(id)
+        newlyUnlocked.push(id)
+      }
     }
   }
 
@@ -283,6 +290,17 @@ export async function checkAndUnlockAchievements(payload: AchievementCheckPayloa
   // ── Pattern King ──
   if (payload.patternKingFastestWinSec <= 30)  await tryUnlock('pk_quick_thinker')
   if (payload.gameRanks['pattern_king'] === 'master') await tryUnlock('pk_memory_genius')
+
+  // "Halo Saw That" (Halo Moments plan §4.7) — low-frequency flavor
+  // reaction on top of a REAL unlock event. Fired at most once per call to
+  // checkAndUnlockAchievements(), regardless of how many achievements just
+  // unlocked in this batch — never once per achievement. Fire-and-forget,
+  // same convention as triggerAchievementCheck — never blocks or fails the
+  // achievement check itself.
+  if (newlyUnlocked.length > 0) {
+    const { notifyHaloSawThat } = await import('../halo-moments/haloMoments')
+    notifyHaloSawThat(userId).catch(console.error)
+  }
 }
 
 // ── Notification helpers ──────────────────────────────────────
