@@ -30,6 +30,9 @@ const TYPE_COLOR: Record<string, string> = {
   streak_warning:   '#ff4d8b',
   exploration_complete: '#3ecf8e',
   halo:             '#9b6dff',
+  club_added:            '#3ecf8e',
+  club_invite_pending:   '#f5c542',
+  club_invite_accepted:  '#3ecf8e',
 }
 
 export function useNotificationToast() {

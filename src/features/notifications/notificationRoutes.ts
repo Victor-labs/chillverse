@@ -45,6 +45,13 @@ export function getNotificationRoute(type: string, meta: Meta): string | null {
     case 'missed_call':
     case 'rank_tag':          return '/chat?tab=chats'
 
+    // ── Clubs ──────────────────────────────────────────────────
+    // Pending invites can't open the room yet (not a member) — send them
+    // to the Clubs tab, where the "waiting list" banner already shows.
+    case 'club_invite_pending': return '/chat?tab=clubs'
+    case 'club_added':
+    case 'club_invite_accepted': return str(m.room_id) ? `/clubs/${str(m.room_id)}` : '/chat?tab=clubs'
+
     // ── Live / system ──────────────────────────────────────────
     case 'session_reset':         return '/games'
     case 'movies_open':           return '/watch'

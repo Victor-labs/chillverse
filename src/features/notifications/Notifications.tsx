@@ -61,6 +61,9 @@ const TYPE_COLOR: Record<string, string> = {
   come_back:     '#9b6dff',
   streak_warning: '#ff4d8b',
   exploration_complete: '#3ecf8e',
+  club_added:            '#3ecf8e',
+  club_invite_pending:   '#f5c542',
+  club_invite_accepted:  '#3ecf8e',
 }
 
 const TYPE_ICON: Record<string, string> = {
