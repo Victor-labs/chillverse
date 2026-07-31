@@ -134,6 +134,12 @@ export default function AppLayout() {
           : ROUTE_TITLES[pathname] || 'Dashboard'
 
   const isTopLevel = TOP_LEVEL_ROUTES.includes(pathname)
+  // /chat (ChatHub -> Chat.tsx) and /clubs/:roomId (ClubChat.tsx) both render
+  // their own fixed-height, fixed-composer chat layout sized to exactly
+  // 100dvh - 60px — any extra padding here throws that calc off, leaving a
+  // gap between the last message and the composer that grows/shrinks with
+  // viewport height. Every other page keeps the normal padded layout.
+  const isFullBleedChatRoute = pathname === '/chat' || /^\/clubs\/[^/]+$/.test(pathname)
   const sidebarWidth = sidebarCollapsed ? 72 : 280
 
   if (maintenance?.enabled) {
@@ -190,7 +196,7 @@ export default function AppLayout() {
         />
 
         <main
-          className={`relative z-10 transition-all duration-300 ${pathname === '/chat' ? 'pt-[60px] pb-0' : 'pt-[68px] pb-12'}`}
+          className={`relative z-10 transition-all duration-300 ${isFullBleedChatRoute ? 'pt-[60px] pb-0' : 'pt-[68px] pb-12'}`}
           style={{ paddingLeft: 'clamp(1rem, 4vw, 2rem)', paddingRight: 'clamp(1rem, 4vw, 2rem)' }}
         >
           <style>{`
