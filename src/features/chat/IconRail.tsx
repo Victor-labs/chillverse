@@ -1,22 +1,22 @@
 // src/features/chat/IconRail.tsx
 //
 // The primary navigation for the Chat hub now — a Discord-style vertical
-// icon strip. Top section is fixed nav: Friends (opens the friends/DM
-// slide-over), Global, Chats ("all my chats" — the Messages list), and
-// Clubs (browse/manage all your clubs). Below a divider: one icon per
-// group chat and one per club you've joined, for one-tap access — exactly
-// like Discord's server list. Tapping a group/club icon jumps straight
-// into that room without going through its list first.
+// icon strip. Top section is fixed nav: Global, Chats ("all my chats" —
+// the Messages list, which also owns the "Add Friends" / start-new-DM
+// search inline — see Chat.tsx), and Clubs (browse/manage all your
+// clubs). Below a divider: one icon per group chat and one per club
+// you've joined, for one-tap access — exactly like Discord's server
+// list. Tapping a group/club icon jumps straight into that room without
+// going through its list first.
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Globe, MessageSquare, Compass } from 'lucide-react'
+import { Globe, MessageSquare, Compass } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getUnreadCounts } from '../../shared/lib/unread'
 import { fetchMyClubs, type MyClub } from '../clubs/clubs'
 import ClubIcon from '../clubs/clubIcons'
 import SharedAvatar from '../../shared/components/Avatar'
-import FriendsPanel from './FriendsPanel'
 import type { HubTab } from './ChatHub'
 
 interface GroupChatRow {
@@ -35,7 +35,6 @@ export default function IconRail({ active, badges }: IconRailProps) {
   const [clubs, setClubs] = useState<MyClub[]>([])
   const [groups, setGroups] = useState<GroupChatRow[]>([])
   const [unread, setUnread] = useState<Map<string, number>>(new Map())
-  const [friendsOpen, setFriendsOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!user) return
@@ -76,20 +75,13 @@ export default function IconRail({ active, badges }: IconRailProps) {
   }
 
   return (
-    <>
-      <div
-        style={{
-          width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', gap: 10, padding: '10px 0 16px', overflowY: 'auto',
-          borderRight: '1px solid var(--border)',
-        }}
-      >
-        <RailIcon label="Friends" onClick={() => setFriendsOpen(true)}>
-          <Users size={20} />
-        </RailIcon>
-
-        <div style={{ width: 32, height: 2, borderRadius: 1, background: 'var(--border)', flexShrink: 0 }} />
-
+    <div
+      style={{
+        width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', gap: 10, padding: '10px 0 16px', overflowY: 'auto',
+        borderRight: '1px solid var(--border)',
+      }}
+    >
         <RailIcon label="Global" active={active === 'global'} unread={badges.global} onClick={() => navigate('/chat?tab=global')}>
           <Globe size={20} />
         </RailIcon>
@@ -121,10 +113,7 @@ export default function IconRail({ active, badges }: IconRailProps) {
             </div>
           </RailIcon>
         ))}
-      </div>
-
-      <FriendsPanel open={friendsOpen} onClose={() => setFriendsOpen(false)} />
-    </>
+    </div>
   )
 }
 

@@ -3,7 +3,7 @@
 // then Global/Chats/Clubs quick-nav, then one icon per joined group chat
 // and club) drives which screen shows on the right — no tab bar, no
 // sliding underline. Which screen is active is driven entirely by the
-// `tab` URL param (?tab=global|chats|clubs), so IconRail and FriendsPanel
+// `tab` URL param (?tab=global|chats|clubs), so IconRail
 // can switch screens with a plain navigate() call from anywhere, including
 // while jumping straight into a specific room via `state: { openRoomId }`.
 // Chat.tsx and ClubsList.tsx both open their own realtime subscriptions,

@@ -1808,7 +1808,7 @@ export default function Chat({ roomFilter }: ChatProps = {}) {
 
           {/* Header */}
           <div className="p-0 sm:p-3 md:p-4 pb-2">
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding: isMobile ? '12px 12px 0' : 0 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, padding: isMobile ? '12px 12px 0' : 0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ fontSize:17, fontWeight:700, color:'var(--text)' }}>Messages</span>
                 {totalUnread > 0 && <span style={{ background:'var(--accent)', color:'#fff', fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10 }}>{totalUnread}</span>}
@@ -1830,6 +1830,77 @@ export default function Chat({ roomFilter }: ChatProps = {}) {
                 <button type="button" onClick={() => { setRoomSearchOpen(false); setRoomSearch('') }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
                   <X size={13} />
                 </button>
+              </div>
+            )}
+
+            {/* Add Friends — lives inline with the chat list itself, Discord-style,
+                instead of a separate full-screen overlay. Toggles the same
+                find-players search used inside Global Chat (playerSearchOpen). */}
+            {roomFilter === 'dms' && (
+              <button type="button" onClick={() => setPlayerSearchOpen(o => !o)}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:6, width: isMobile ? 'calc(100% - 24px)' : '100%',
+                  marginInline: isMobile ? 12 : 0, marginBottom:8, padding:'8px 12px', borderRadius:12, cursor:'pointer',
+                  background: playerSearchOpen ? 'var(--accent)' : 'var(--surface2)', border: playerSearchOpen ? 'none' : '1px solid var(--border)',
+                  color: playerSearchOpen ? '#fff' : 'var(--text-dim)', fontSize:12.5, fontWeight:700,
+                }}>
+                <UserPlus size={13} /> Add Friends
+              </button>
+            )}
+
+            {/* Inline find-players — same search UI Global Chat uses, surfaced here too
+                so DMs and "start a new chat" live in one screen instead of a modal
+                that sits on top of (and dims) the icon rail. */}
+            {roomFilter === 'dms' && playerSearchOpen && (
+              <div style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8, marginInline: isMobile ? 12 : 0, overflow:'hidden' }}>
+                {dmStartError && (
+                  <div style={{ margin:'8px 10px 0', padding:'8px 12px', borderRadius:10, background:'rgba(255,107,107,0.1)', border:'1px solid rgba(255,107,107,0.25)', fontSize:12, color:'#ff6b6b' }}>
+                    {dmStartError}
+                  </div>
+                )}
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px' }}>
+                  <Search size={13} style={{ color:'var(--accent)', flexShrink:0 }} />
+                  <input type="text" autoFocus placeholder="Find players by username…" value={playerSearch} onChange={e => setPlayerSearch(e.target.value)}
+                    style={{ flex:1, background:'transparent', border:'none', outline:'none', fontSize:13, color:'var(--text)' }} />
+                  {playerSearch && (
+                    <button type="button" onClick={() => { setPlayerSearch(''); setPlayerResults([]) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, display:'flex' }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {playerSearch.trim() && (
+                  <div style={{ borderTop:'1px solid var(--border)', paddingBottom:6, maxHeight:280, overflowY:'auto' }}>
+                    {playerSearching ? (
+                      <div style={{ display:'flex', justifyContent:'center', padding:16 }}>
+                        <span style={{ width:20, height:20, border:'2px solid var(--surface3)', borderTopColor:'var(--accent)', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                      </div>
+                    ) : playerResults.length === 0 ? (
+                      <div style={{ padding:'8px 16px', fontSize:12, color:'var(--text-muted)' }}>No players found</div>
+                    ) : (
+                      playerResults.map(p => (
+                        <button key={p.id} type="button" onClick={() => openProfilePreview(p.id)}
+                          style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', width:'100%', background:'transparent', border:'none', cursor:'pointer', textAlign:'left', transition:'background 0.12s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                          <Avatar name={p.display_name || p.username} avatarUrl={p.avatar || null} size={36} radius={10} />
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name || p.username}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{p.username}</div>
+                          </div>
+                          <button type="button" onClick={e => { e.stopPropagation(); startDmWith(p.id); setPlayerSearchOpen(false); setPlayerSearch('') }}
+                            disabled={startingDmId === p.id}
+                            title="Start chat"
+                            style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', borderRadius:8, padding:'5px 8px', cursor: startingDmId === p.id ? 'not-allowed' : 'pointer', color:'#4f8ef7', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0, opacity: startingDmId === p.id ? 0.6 : 1 }}>
+                            {startingDmId === p.id
+                              ? <span style={{ width:12, height:12, border:'2px solid rgba(79,142,247,0.3)', borderTopColor:'#4f8ef7', borderRadius:'50%', display:'block', animation:'spin 0.8s linear infinite' }} />
+                              : <MessageCircle size={12} />}
+                            {startingDmId === p.id ? 'Opening…' : 'Chat'}
+                          </button>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
