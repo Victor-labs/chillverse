@@ -10,9 +10,8 @@ import { useFeatureFlags } from '../../shared/lib/featureFlags'
 import { useModRole } from '../moderation/useModRole'
 import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
 import { useHaloDailyFlow } from '../halo-moments/useHaloDailyFlow'
-import HaloChallengeModal from '../halo-moments/HaloChallengeModal'
-import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
-import MysteryBoxFloatingButton from '../halo-moments/MysteryBoxFloatingButton'
+import HaloChallengeIcon from '../halo-moments/HaloChallengeIcon'
+import MysteryBoxIcon from '../halo-moments/MysteryBoxIcon'
 import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
 import haloMascotImg from '../../assets/halo-mascot.png'
 
@@ -139,11 +138,10 @@ export default function HaloAI() {
   const { isStaff: haloIsStaff } = useModRole()
   const { messages, loading, error, messagesLeft, isIncreasedTier, sendMessage, clearError, addLocalMessage } =
     useHaloAI()
-  // Halo Moments — Daily Challenge modal/card and the Mystery Box button
-  // used to live app-wide (AppLayout) and on the Dashboard. They're now
-  // scoped entirely to the Halo AI page: the challenge is offered here,
-  // accepting it shows the progress card here, and the mystery box button
-  // only appears while this page is open.
+  // Halo Moments — Today's Challenge and the Daily Mystery Box are two
+  // icon buttons in the header of this page (see the header row below):
+  // no accept/decline step, no blocking modal — the challenge is active
+  // the moment it's picked, and both icons just reflect today's state.
   const halo = useHaloDailyFlow(userId)
   const [input, setInput] = useState('')
   const [loadingWord, setLoadingWord] = useState(LOADING_WORDS[0])
@@ -237,14 +235,6 @@ export default function HaloAI() {
 
       <HaloMascotBackdrop active={!hasUserMessage} />
 
-      {halo.showChallengeModal && halo.challenge && (
-        <HaloChallengeModal
-          challenge={halo.challenge}
-          onAccept={halo.acceptChallenge}
-          onDecline={halo.declineChallenge}
-        />
-      )}
-
       {/* Header */}
       <div
         style={{
@@ -291,15 +281,22 @@ export default function HaloAI() {
             {badge.text}
           </div>
         )}
+
+        {/* Halo Moments — Today's Challenge + Daily Mystery Box, now two
+            compact icons rather than a modal + a floating button. Each
+            shows a red dot while there's something unclaimed today and
+            greys out once that's done. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <HaloChallengeIcon challenge={halo.challenge} onClaimed={halo.handleChallengeClaimed} />
+          <MysteryBoxIcon box={halo.box} onOpened={halo.handleBoxOpened} />
+        </div>
       </div>
 
-      {/* Halo Moments — Lucky User banner + Daily Challenge card, moved
-          here from the Dashboard. Both render nothing until there's
-          something to show (lucky winner today / challenge accepted), so
-          this adds no visible space otherwise. */}
+      {/* Halo Moments — Lucky User banner, moved here from the Dashboard.
+          Renders nothing until there's something to show (lucky winner
+          today), so this adds no visible space otherwise. */}
       <div style={{ position: 'relative', zIndex: 1, padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <LuckyUserBanner userId={userId} />
-        <HaloChallengeCard userId={userId} />
       </div>
 
       {/* Hero (empty state) */}
@@ -627,11 +624,6 @@ export default function HaloAI() {
         )}
       </div>
 
-      <MysteryBoxFloatingButton
-        visible={halo.boxButtonVisible}
-        box={halo.box}
-        onOpened={halo.handleBoxOpened}
-      />
     </div>
   )
 }
