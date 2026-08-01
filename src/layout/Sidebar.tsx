@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag,
   Settings, Zap, X, ChevronLeft, ChevronRight,
-  Package, ChevronDown, Wallet, GamepadIcon, Compass, Layers, ShieldCheck, LayoutDashboard,
+  Package, ChevronDown, Wallet, GamepadIcon, Layers, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
@@ -41,7 +41,6 @@ const NAV_ITEMS: NavItem[] = [
     badge: null,
     children: [
       { label: 'Play Games',    to: '/games',        icon: GamepadIcon },
-      { label: 'Exploration',   to: '/exploration',  icon: Compass     },
     ],
   },
   {
