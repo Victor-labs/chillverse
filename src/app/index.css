@@ -597,6 +597,29 @@
 .landing-root {
   background: var(--lbg);
   color: var(--ltext);
+  position: relative;
+}
+/* Ambient colour glow scattered down the WHOLE page (hero through footer),
+   not just behind the hero. Fixed positioning means it reads as a constant
+   backdrop as you scroll, the same "glowing orbs in the dark" depth used on
+   app.uniswap.org — this is what makes the page feel transparent/layered
+   instead of flat solid black. */
+.landing-root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(560px circle at 12% 8%,  rgba(108,80,255,0.18), transparent 62%),
+    radial-gradient(480px circle at 88% 22%, rgba(0,229,255,0.13),  transparent 62%),
+    radial-gradient(520px circle at 18% 52%, rgba(255,78,205,0.11), transparent 62%),
+    radial-gradient(480px circle at 82% 68%, rgba(0,255,135,0.10),  transparent 62%),
+    radial-gradient(560px circle at 28% 90%, rgba(255,184,0,0.10),  transparent 62%);
+}
+.landing-root > * {
+  position: relative;
+  z-index: 1;
 }
 .text-gradient {
   background: linear-gradient(135deg, var(--violet-soft) 0%, var(--cyan) 60%, var(--lpink) 100%);
@@ -623,7 +646,7 @@
   filter: blur(40px); pointer-events: none; z-index: 0;
 }
 .glass-panel > * { position: relative; z-index: 1; }
-.glass-panel-strong { background: rgba(10,10,18,0.82); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%); }
+.glass-panel-strong { background: rgba(10,10,18,0.52); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%); }
 .glass-chip { background: rgba(10,10,18,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.10); }
 .glow-violet-tint { --glass-glow: rgba(108,80,255,0.35); }
 .glow-pink-tint   { --glass-glow: rgba(255,78,205,0.30); }
