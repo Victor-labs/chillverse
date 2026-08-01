@@ -23,44 +23,6 @@ const HOME_JSON_LD = [
   },
 ]
 
-const FEATURES = [
-  {
-    icon: '🎮',
-    title: 'Play Games',
-    desc: 'Fast-paced challenges, multiplayer battles, and solo runs. Every win earns you XP and moves you up the board.',
-    pill: 'Multiplayer',
-    accent: 'violet',
-  },
-  {
-    icon: '🔥',
-    title: 'Streak System',
-    desc: "Log in, play, stay hot. Your streak is your reputation. Miss a day and you'll feel it on the leaderboard.",
-    pill: 'Daily XP',
-    accent: 'amber',
-  },
-  {
-    icon: '🏆',
-    title: 'Leaderboards',
-    desc: "Global and friend rankings updated in real time. See who's topping the charts — and decide if it'll be you.",
-    pill: 'Live rankings',
-    accent: 'pink',
-  },
-  {
-    icon: '💬',
-    title: 'Chat & Crew',
-    desc: 'Trash talk, team up, or just vibe. Group chats, direct messages, and live reactions keep the energy going.',
-    pill: 'Real-time',
-    accent: 'cyan',
-  },
-  {
-    icon: '🧑‍🚀',
-    title: 'Your Profile',
-    desc: 'Level, badges, game history, win rate — your profile is your flex. Customise it, build it, show it off.',
-    pill: 'Achievements',
-    accent: 'green',
-  },
-]
-
 // Decorative drift assets — hosted on Supabase storage.
 const DRIFT = {
   willam: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam2.png',
@@ -68,6 +30,63 @@ const DRIFT = {
   feed: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Feed.png',
   controller: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Controller.png',
   chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
+  streak: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Streak.png',
+  mascot: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Mascot.png',
+}
+
+// Static hero character — intentionally NOT part of the DRIFT set. It holds
+// a fixed position beside the hero copy instead of scroll-parallaxing or
+// idle-drifting like the decorative assets below.
+const HERO_CHARACTER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Baseballplayer.png'
+
+const FEATURES = [
+  {
+    icon: DRIFT.controller,
+    title: 'Play Games',
+    desc: 'Fast-paced challenges, multiplayer battles, and solo runs. Every win earns you XP and moves you up the board.',
+    pill: 'Multiplayer',
+    accent: 'violet',
+  },
+  {
+    icon: DRIFT.streak,
+    title: 'Streak System',
+    desc: "Log in, play, stay hot. Your streak is your reputation. Miss a day and you'll feel it on the leaderboard.",
+    pill: 'Daily XP',
+    accent: 'amber',
+  },
+  {
+    icon: DRIFT.feed,
+    title: 'Leaderboards',
+    desc: "Global and friend rankings updated in real time. See who's topping the charts — and decide if it'll be you.",
+    pill: 'Live rankings',
+    accent: 'pink',
+  },
+  {
+    icon: DRIFT.chat,
+    title: 'Chat & Crew',
+    desc: 'Trash talk, team up, or just vibe. Group chats, direct messages, and live reactions keep the energy going.',
+    pill: 'Real-time',
+    accent: 'cyan',
+  },
+  {
+    icon: DRIFT.willam,
+    title: 'Your Profile',
+    desc: 'Level, badges, game history, win rate — your profile is your flex. Customise it, build it, show it off.',
+    pill: 'Achievements',
+    accent: 'green',
+  },
+]
+
+// Real in-app profile pictures (pulled from the Mall's profile_pic catalog)
+// so the leaderboard mock reads as an actual snapshot of the app instead of
+// a placeholder. Only single-person, original-character pics were used —
+// licensed/celebrity-likeness items in the catalog were deliberately
+// skipped since this card is public-facing marketing, not gated in-app UI.
+const LEADERBOARD_AVATARS = {
+  zeroKnight: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Asher2.jpg',
+  neonX: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Jax1.jpg',
+  voidRacer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Rhinna1.jpg',
+  skyKid: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Nolan1.png',
 }
 
 // Tracks scroll position imperatively (no re-renders) and applies a
@@ -212,6 +231,24 @@ export default function Landing() {
               <div className="w-8 sm:w-10 h-px bg-gradient-to-l from-transparent to-chill-borderBright" />
             </div>
           </div>
+
+          {/* Static hero character — fixed in place, no drift/parallax.
+             Anchored to the right edge so it reads as "the player" standing
+             beside the multiplayer/challenges copy. Room left for more
+             callout chips as new talking points get added. */}
+          <div className="hidden lg:block absolute right-[3%] xl:right-[6%] bottom-0 z-[5] w-[260px] xl:w-[300px] pointer-events-none">
+            <img
+              src={HERO_CHARACTER}
+              alt="Chillverse player"
+              className="w-full h-auto drop-shadow-[0_30px_60px_rgba(108,80,255,0.35)]"
+            />
+            <div className="badge-float absolute top-[8%] -left-16 glass-chip border border-chill-violet/40 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-violetSoft shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              ⚔️ Multiplayer battles
+            </div>
+            <div className="badge-float-delay absolute top-[42%] -left-24 glass-chip border border-chill-cyan/35 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              🎯 Daily challenges
+            </div>
+          </div>
         </section>
       </div>
 
@@ -253,8 +290,8 @@ export default function Landing() {
                 className={`reveal glass-panel glow-violet-tint rounded-2xl p-7 transition-all duration-300 hover:-translate-y-[6px] ${a.border} ${a.shadow}`}
                 style={{ transitionDelay: `${i * 0.1}s` }}
               >
-                <div className={`w-[50px] h-[50px] rounded-xl flex items-center justify-center text-2xl mb-[18px] ${a.icon}`}>
-                  {f.icon}
+                <div className={`w-[50px] h-[50px] rounded-xl flex items-center justify-center mb-[18px] ${a.icon}`}>
+                  <img src={f.icon} alt="" className="w-8 h-8 object-contain" loading="lazy" />
                 </div>
                 <div className="text-lg font-semibold mb-2.5">{f.title}</div>
                 <p className="text-sm text-chill-textSecondary leading-relaxed">{f.desc}</p>
@@ -303,14 +340,16 @@ export default function Landing() {
                   </div>
 
                   {[
-                    { rank: '🥇', initials: 'ZK', name: 'ZeroKnight', score: '98,410', streak: 72, bg: 'rgba(255,184,0,0.15)', color: '#ffb800' },
-                    { rank: '🥈', initials: 'NX', name: 'NeonX_', score: '91,870', streak: 58, bg: 'rgba(0,229,255,0.12)', color: '#00e5ff' },
-                    { rank: '🥉', initials: 'VR', name: 'VoidRacer', score: '88,220', streak: 41, bg: 'rgba(255,78,205,0.12)', color: '#ff4ecd' },
-                    { rank: '4', initials: 'SK', name: 'SkyKid', score: '84,100', streak: 35, bg: 'rgba(0,255,135,0.1)', color: '#00ff87' },
+                    { rank: '🥇', avatar: LEADERBOARD_AVATARS.zeroKnight, name: 'ZeroKnight', score: '98,410', streak: 72, ring: 'rgba(255,184,0,0.5)' },
+                    { rank: '🥈', avatar: LEADERBOARD_AVATARS.neonX, name: 'NeonX_', score: '91,870', streak: 58, ring: 'rgba(0,229,255,0.4)' },
+                    { rank: '🥉', avatar: LEADERBOARD_AVATARS.voidRacer, name: 'VoidRacer', score: '88,220', streak: 41, ring: 'rgba(255,78,205,0.4)' },
+                    { rank: '4', avatar: LEADERBOARD_AVATARS.skyKid, name: 'SkyKid', score: '84,100', streak: 35, ring: 'rgba(0,255,135,0.35)' },
                   ].map((row) => (
                     <div key={row.name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-2 hover:bg-chill-surface2 transition-colors">
                       <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-textMuted">{row.rank}</div>
-                      <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: row.bg, color: row.color }}>{row.initials}</div>
+                      <div className="w-[34px] h-[34px] rounded-full flex-shrink-0 overflow-hidden ring-2" style={{ boxShadow: `0 0 0 2px ${row.ring}` }}>
+                        <img src={row.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      </div>
                       <div className="flex-1 text-[13px] font-semibold">{row.name}</div>
                       <div className="text-xs font-bold font-mono text-chill-violetSoft">{row.score}<span className="text-[10px] text-chill-amber ml-1">🔥{row.streak}</span></div>
                     </div>
@@ -368,6 +407,13 @@ export default function Landing() {
           wrapperClassName="hidden md:block right-[3%] top-[10%] w-36 lg:w-44 z-[1]"
           motion="drift-a"
           speed={0.22}
+        />
+        <DriftImg
+          src={DRIFT.mascot}
+          alt="Chillverse crew"
+          wrapperClassName="hidden lg:block left-[1%] bottom-[2%] w-40 xl:w-48 z-[1]"
+          motion="drift-b"
+          speed={0.18}
         />
         <div className="max-w-[1300px] mx-auto px-6 md:px-16 pb-10">
           <div className="reveal font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// the verse speaks</div>
