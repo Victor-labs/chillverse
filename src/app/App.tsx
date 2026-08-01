@@ -19,7 +19,7 @@ import { triggerAchievementCheck } from '../features/achievements/triggerAchieve
 import { subscribeToPush } from '../features/notifications/push'
 import OfflineOverlay from '../shared/components/OfflineOverlay'
 
-const Games               = lazy(() => import('../features/games/Games'))
+const GamesZone            = lazy(() => import('../features/games/GamesZone'))
 const ProfileRedirect    = lazy(() => import('../features/profile/ProfileRedirect'))
 const ChatHub             = lazy(() => import('../features/chat/ChatHub'))
 const Streak             = lazy(() => import('../features/missions/Streak'))
@@ -175,7 +175,7 @@ export default function App() {
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard"        element={<Dashboard />} />
           <Route path="/coming-soon"      element={<ComingSoon />} />
-          <Route path="/games"            element={<Suspense fallback={<Fallback />}><Games /></Suspense>} />
+          <Route path="/games"            element={<Suspense fallback={<Fallback />}><GamesZone /></Suspense>} />
           <Route path="/leaderboards"     element={<Suspense fallback={<Fallback />}><Leaderboards /></Suspense>} />
           <Route path="/exploration"      element={<Suspense fallback={<Fallback />}><Exploration /></Suspense>} />
           <Route path="/mall"             element={<Suspense fallback={<Fallback />}><Mall /></Suspense>} />
