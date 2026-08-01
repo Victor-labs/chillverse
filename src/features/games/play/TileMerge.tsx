@@ -3,9 +3,12 @@
 //
 // You're handed one tile at a time (a color + a number) and tap any empty
 // cell to place it — you never slide the board. Get THREE tiles that share
-// the exact same color AND number anywhere on the board and they start
-// pulsing (a "heartbeat" zoom in/out), while every other cell dims out to
-// show they're not tappable right now. Tap any one of the three pulsing
+// the exact same color AND number AND are sitting together on the board —
+// either 3 in a straight row/column, or 3 of the 4 cells in a 2x2 block
+// (reading as an L) — and they start pulsing (a "heartbeat" zoom in/out),
+// while every other cell dims out to show they're not tappable right now.
+// Matching color+number tiles scattered elsewhere on the board don't count.
+// Tap any one of the three pulsing
 // tiles and all three collapse into a single tile one level higher, sitting
 // wherever you tapped. That new, higher tile can itself complete another
 // triple immediately — if it does, the board re-highlights that new triple
@@ -73,11 +76,39 @@ function tileKey(t: Tile) {
   return `${t.color}:${t.level}`
 }
 
-// Finds every color+level combo that currently has 3+ matching tiles on the
-// board. Each group carries the cell indices involved (capped at the first
-// 3 found, in the rare case a 4th of the same combo is ever on the board at
-// once) so the UI knows exactly which cells to pulse and which merge a tap
-// resolves.
+function idxToRC(i: number) {
+  return { r: Math.floor(i / GRID), c: i % GRID }
+}
+
+// A triple only counts if the 3 cells actually sit together — either 3 in a
+// straight row/column, or 3 of the 4 cells in a 2x2 block (which reads as
+// an L). Matching color+number scattered elsewhere on the board doesn't
+// qualify.
+function isAdjacentTriple(cells: number[]): boolean {
+  const rc = cells.map(idxToRC)
+  const rows = rc.map(p => p.r)
+  const cols = rc.map(p => p.c)
+  const rowSpan = Math.max(...rows) - Math.min(...rows)
+  const colSpan = Math.max(...cols) - Math.min(...cols)
+  if (rowSpan === 0 && colSpan === 2) return true // horizontal line of 3
+  if (colSpan === 0 && rowSpan === 2) return true // vertical line of 3
+  if (rowSpan <= 1 && colSpan <= 1) return true    // fits a 2x2 block → L-shape
+  return false
+}
+
+function combinationsOf3(arr: number[]): number[][] {
+  const out: number[][] = []
+  for (let i = 0; i < arr.length - 2; i++)
+    for (let j = i + 1; j < arr.length - 1; j++)
+      for (let k = j + 1; k < arr.length; k++)
+        out.push([arr[i], arr[j], arr[k]])
+  return out
+}
+
+// Finds every color+level combo that has 3 matching tiles sitting together
+// (straight line or 2x2/L-shape) on the board right now. Each group carries
+// the 3 cell indices involved so the UI knows exactly which cells to pulse
+// and which merge a tap resolves.
 function findGroups(board: Cell[]): { key: string; cells: number[] }[] {
   const byKey = new Map<string, number[]>()
   board.forEach((cell, i) => {
@@ -89,7 +120,13 @@ function findGroups(board: Cell[]): { key: string; cells: number[] }[] {
   })
   const groups: { key: string; cells: number[] }[] = []
   for (const [key, cells] of byKey) {
-    if (cells.length >= 3) groups.push({ key, cells: cells.slice(0, 3) })
+    if (cells.length < 3) continue
+    for (const combo of combinationsOf3(cells)) {
+      if (isAdjacentTriple(combo)) {
+        groups.push({ key, cells: combo })
+        break // one qualifying triple is enough to highlight/resolve for this combo
+      }
+    }
   }
   return groups
 }
@@ -249,7 +286,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
 
   const rules = [
     { icon: '👆', text: 'Tap any empty cell to place your queued tile' },
-    { icon: '🎯', text: 'Get 3 tiles that match both color AND number to trigger a merge' },
+    { icon: '🎯', text: 'Get 3 matching tiles (same color AND number) sitting together — a straight line or an L/2x2 shape — to trigger a merge' },
     { icon: '💓', text: 'Matching triples pulse and highlight — tap any of the three to merge them' },
     { icon: '🔗', text: 'A merge can chain straight into another triple — resolve it before you place again' },
     { icon: '⚡', text: `+${MERGE_XP} XP per merge, added straight to your profile` },
