@@ -1,16 +1,17 @@
 // src/features/clubs/ClubSettingsModal.tsx
 // One modal for everyone: club name/icon/description + a "Members" row that
-// opens ClubMembersPanel. Waiting list + welcome message are president OR
-// VP (matches update_club_settings' permission split in
-// 0090_club_awaiting_list.sql). Everything else below that — name/
-// description, privacy, invite code, mute club, transfer ownership, clear
-// chat, delete club — stays president-only. Reached from a single header
-// icon in ClubChat — no separate members-only icon anymore.
+// opens ClubMembersPanel. Welcome message is president OR VP. Everything
+// else below that — name/description, invite link/code, mute club,
+// transfer ownership, clear chat, delete club — stays president-only.
+// Every club is invite-only now, so there's no privacy toggle and no
+// waiting list. Reached from a single header icon in ClubChat — no
+// separate members-only icon anymore.
 
 import { useState, type CSSProperties } from 'react'
-import { X, Copy, Check, RefreshCw, Users } from 'lucide-react'
+import { X, Copy, Check, RefreshCw, Users, Link2 } from 'lucide-react'
 import {
   updateClubSettings, fetchClub, regenerateClubCode, transferClubOwnership, clearClubChat, deleteClub,
+  buildClubInviteLink,
   type ClubRoom, type ClubMemberRow, type ClubRole,
 } from './clubs'
 import ClubIcon from './clubIcons'
@@ -33,13 +34,12 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
 
   const [name, setName] = useState(club.name)
   const [description, setDescription] = useState(club.description ?? '')
-  const [isPrivate, setIsPrivate] = useState(club.is_private)
-  const [awaitingListEnabled, setAwaitingListEnabled] = useState(club.awaiting_list_enabled)
   const [muted, setMuted] = useState(club.muted)
   const [welcomeMessage, setWelcomeMessage] = useState(club.welcome_message ?? DEFAULT_WELCOME)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [codeCopied, setCodeCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
   const [membersOpen, setMembersOpen] = useState(false)
@@ -51,7 +51,7 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
   const vps = members.filter(m => m.role === 'vp')
 
   async function saveField(patch: Partial<{
-    name: string; isPrivate: boolean; description: string; welcomeMessage: string; muted: boolean; awaitingListEnabled: boolean
+    name: string; description: string; welcomeMessage: string; muted: boolean
   }>) {
     setSaving(true)
     setError('')
@@ -71,6 +71,14 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
     navigator.clipboard.writeText(club.join_code).then(() => {
       setCodeCopied(true)
       setTimeout(() => setCodeCopied(false), 1500)
+    })
+  }
+
+  function copyLink() {
+    if (!club.join_code) return
+    navigator.clipboard.writeText(buildClubInviteLink(club.id, club.join_code)).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1500)
     })
   }
 
@@ -170,22 +178,9 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{members.length}</span>
         </button>
 
-        {/* Waiting list + welcome message — president or VP, per spec */}
+        {/* Welcome message — president or VP, per spec */}
         {(isPresident || myRole === 'vp') && (
           <>
-            {!isPrivate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Waiting list</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>New joiners wait for a VP or president to accept them</div>
-                </div>
-                <button onClick={() => { setAwaitingListEnabled(!awaitingListEnabled); saveField({ awaitingListEnabled: !awaitingListEnabled }) }}
-                  style={{ width: 40, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: awaitingListEnabled ? 'var(--accent)' : 'var(--surface3)', position: 'relative', flexShrink: 0 }}>
-                  <span style={{ position: 'absolute', top: 3, left: awaitingListEnabled ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
-                </button>
-              </div>
-            )}
-
             <div style={sectionTitle}>Welcome message</div>
             <textarea value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} rows={3}
               style={{ ...inputStyle, resize: 'vertical', fontWeight: 400, lineHeight: 1.4 }}
@@ -212,13 +207,17 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
               onBlur={() => { if (description !== (club.description ?? '')) saveField({ description }) }} />
             <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, textAlign: 'right' }}>{description.length}/300</p>
 
-            <div style={sectionTitle}>Privacy</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setIsPrivate(false); saveField({ isPrivate: false }) }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${!isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: !isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: !isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Public</button>
-              <button onClick={() => { setIsPrivate(true); saveField({ isPrivate: true }) }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Invite-only</button>
+            <div style={sectionTitle}>Invite link</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8 }}>
+              <Link2 size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {club.join_code ? buildClubInviteLink(club.id, club.join_code) : ''}
+              </span>
+              <button onClick={copyLink} style={{ background: 'none', border: 'none', cursor: 'pointer', color: linkCopied ? '#3ecf8e' : 'var(--text-dim)', display: 'flex', flexShrink: 0 }}>
+                {linkCopied ? <Check size={14} /> : <Copy size={14} />}
+              </button>
             </div>
 
-            <div style={sectionTitle}>Invite code</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: 2, color: 'var(--text)', flex: 1 }}>{club.join_code}</span>
               <button onClick={copyCode} style={{ background: 'none', border: 'none', cursor: 'pointer', color: codeCopied ? '#3ecf8e' : 'var(--text-dim)', display: 'flex' }}>
@@ -229,7 +228,7 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
               </button>
             </div>
             <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>
-              {isPrivate ? 'Share this code to let someone join instantly.' : "Anyone with this code skips straight to the waiting list (or joins instantly if it's off above)."}
+              Share the link or the code — either gets someone straight in. Regenerating kills the old one immediately.
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
