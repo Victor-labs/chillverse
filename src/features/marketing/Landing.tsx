@@ -1,5 +1,5 @@
 // src/pages/Landing.tsx
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../../layout/Nav'
 import Footer from '../../layout/Footer'
@@ -51,63 +51,6 @@ const LEADERBOARD_AVATARS = {
   neonX: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Jax1.jpg',
   voidRacer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Rhinna1.jpg',
   skyKid: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Nolan1.png',
-}
-
-// Tracks scroll position imperatively (no re-renders) and applies a
-// translateY to the returned ref's element, scaled by `speed`. Positive
-// speed = drifts further down as the page scrolls, matching the layered
-// parallax feel of Discord's marketing page. Kept separate from the
-// ambient drift-a/b/c keyframes below so both motions compose cleanly
-// (scroll transform on the outer wrapper, idle drift on the inner one).
-function useScrollParallax(speed: number) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let ticking = false
-    const apply = () => {
-      if (ref.current) ref.current.style.transform = `translateY(${window.scrollY * speed}px)`
-      ticking = false
-    }
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true
-        requestAnimationFrame(apply)
-      }
-    }
-    apply()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [speed])
-  return ref
-}
-
-// Reusable drifting decorative image — floats bare with just a soft
-// drop-shadow, no card/frame around it. `speed` controls how much it
-// parallaxes against scroll (0 = static; ~0.2–0.35 reads as an obvious
-// Discord-style layered drift as the page scrolls).
-function DriftImg({
-  src,
-  alt,
-  wrapperClassName,
-  imgClassName = 'w-full h-auto',
-  motion = 'drift-a',
-  speed = 0.1,
-}: {
-  src: string
-  alt: string
-  wrapperClassName: string
-  imgClassName?: string
-  motion?: 'drift-a' | 'drift-b' | 'drift-c'
-  speed?: number
-}) {
-  const parallaxRef = useScrollParallax(speed)
-  return (
-    <div ref={parallaxRef} className={`drift-outer ${wrapperClassName}`}>
-      <div className={`drift-item ${motion}`}>
-        <img src={src} alt={alt} className={imgClassName} loading="lazy" />
-      </div>
-    </div>
-  )
 }
 
 // Fixed, viewport-pinned ambient layer — sits behind every section so the
