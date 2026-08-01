@@ -1,121 +1,101 @@
-// src/components/Footer.tsx
-import { Instagram, Youtube, Mail, ArrowUpRight } from 'lucide-react'
+// src/layout/Footer.tsx
+import { Link } from 'react-router-dom'
 import Wordmark from './Wordmark'
 import Logo from './Logo'
 
-// X/Twitter's bird-in-a-box mark isn't in lucide, so it's drawn inline to
-// keep the social row visually consistent with the other icon glyphs.
-function XIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18.9 2H22l-7.6 8.7L23.3 22h-7.1l-5.5-7.2L4.3 22H1.2l8.2-9.3L1 2h7.3l5 6.6L18.9 2Zm-1.2 18h1.9L7.4 4H5.4l12.3 16Z" />
-    </svg>
-  )
-}
+// Items with an href go to a real place. Items with href: null are
+// placeholders — rendered as plain, unclickable text for now (Editorial
+// room / Work at Chillverse / Brand / Reviews don't have pages yet).
+type FooterLink = { label: string; href: string | null; external?: boolean }
 
-const SOCIALS = [
-  { href: 'https://x.com/joinchillverse', label: 'X / Twitter', Icon: XIcon },
-  { href: 'https://www.instagram.com/chillverse001', label: 'Instagram', Icon: Instagram },
-  { href: 'https://www.youtube.com/@chillverse_com', label: 'YouTube', Icon: Youtube },
-  { href: 'mailto:chillverserelationoffice@gmail.com', label: 'Email', Icon: Mail },
-]
-
-const FOOTER_COLUMNS: Array<{ heading: string; links: Array<[href: string, label: string, external?: boolean]> }> = [
+const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
   {
     heading: 'Product',
     links: [
-      ['#features', 'Features'],
-      ['#leaderboard', 'Leaderboard'],
-      ['#community', 'Community'],
-      ['https://cvwtplatform.vercel.app/', 'Learning Platform', true],
+      { label: 'Features', href: '/#features' },
+      { label: 'Leaderboard', href: '/#leaderboard' },
+      { label: 'Learning Platform', href: 'https://cvwtplatform.vercel.app/', external: true },
     ],
   },
   {
     heading: 'Company',
     links: [
-      ['/about', 'About'],
-      ['/faq', 'FAQ'],
-      ['mailto:chillverserelationoffice@gmail.com', 'Contact'],
+      { label: 'About', href: '/about' },
+      { label: 'Contact', href: 'mailto:chillverserelationoffice@gmail.com' },
+      { label: 'Editorial room', href: null },
+      { label: 'Work at Chillverse', href: null },
+      { label: 'Brand', href: null },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { label: 'FAQ', href: '/faq' },
+      { label: 'Reviews', href: null },
     ],
   },
   {
     heading: 'Legal',
     links: [
-      ['/privacy', 'Privacy'],
-      ['/terms', 'Terms'],
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
     ],
   },
 ]
 
+function FooterLinkItem({ link }: { link: FooterLink }) {
+  const cls = 'text-[13px] text-chill-textMuted hover:text-chill-textSecondary transition-colors no-underline'
+
+  if (!link.href) {
+    // Placeholder — not linked anywhere yet, so it shouldn't look
+    // clickable. Slightly dimmer + default cursor communicates that.
+    return <span className={`${cls} opacity-60 cursor-default hover:text-chill-textMuted`}>{link.label}</span>
+  }
+  if (link.external || link.href.startsWith('mailto:')) {
+    return (
+      <a href={link.href} target={link.external ? '_blank' : undefined} rel={link.external ? 'noreferrer' : undefined} className={cls}>
+        {link.label}
+      </a>
+    )
+  }
+  return (
+    <Link to={link.href} className={cls}>
+      {link.label}
+    </Link>
+  )
+}
+
 export default function Footer() {
   return (
-    <footer className="relative px-5 md:px-10 pt-16 pb-8 overflow-hidden">
-      {/* soft ambient glow behind the glass panel, matching the rest of the page's tint language */}
-      <div className="pointer-events-none absolute left-1/2 -top-24 -translate-x-1/2 w-[70%] max-w-[900px] h-64 rounded-full bg-chill-violet/[0.08] blur-[100px]" />
-      <div className="pointer-events-none absolute right-[8%] bottom-0 w-64 h-64 rounded-full bg-chill-cyan/[0.06] blur-[90px]" />
+    <footer className="relative border-t border-chill-border bg-[rgba(5,5,6,0.6)] px-5 md:px-10 pt-14 pb-7">
+      <div className="max-w-[1200px] mx-auto grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-10 mb-12">
+        <div className="col-span-2 sm:col-span-1">
+          <div className="flex items-center gap-2 mb-3">
+            <Logo size={24} />
+            <Wordmark size={19} animated={false} />
+          </div>
+          <p className="text-[13px] text-chill-textMuted leading-relaxed max-w-[220px]">
+            Your universe. Your rules. Play, connect, and climb the leaderboard — all in one social gaming platform.
+          </p>
+        </div>
 
-      <div className="relative glass-panel-strong glow-violet-tint rounded-[28px] px-6 md:px-12 py-10 md:py-12 max-w-[1300px] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 md:gap-8">
-          {/* Brand column */}
-          <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <Logo size={26} />
-              <Wordmark size={19} animated={false} />
-            </div>
-            <p className="text-[13px] text-chill-textSecondary leading-relaxed max-w-[280px] mb-6">
-              Your universe. Your rules. Play, connect, and climb the leaderboard — all in one social gaming platform.
-            </p>
-            <div className="flex items-center gap-2.5">
-              {SOCIALS.map(({ href, label, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target={href.startsWith('http') ? '_blank' : undefined}
-                  rel={href.startsWith('http') ? 'noreferrer' : undefined}
-                  aria-label={label}
-                  className="glass-chip w-9 h-9 rounded-full flex items-center justify-center text-chill-textSecondary hover:text-chill-violetSoft hover:border-chill-violet/40 hover:-translate-y-0.5 transition-all"
-                >
-                  <Icon size={15} />
-                </a>
+        {COLUMNS.map((col) => (
+          <div key={col.heading}>
+            <div className="text-[11px] font-bold tracking-[1.5px] uppercase text-chill-textMuted mb-3.5">{col.heading}</div>
+            <div className="flex flex-col gap-2.5">
+              {col.links.map((link) => (
+                <FooterLinkItem key={link.label} link={link} />
               ))}
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* Link columns */}
-          {FOOTER_COLUMNS.map((col) => (
-            <div key={col.heading}>
-              <div className="font-mono text-[11px] tracking-[2px] uppercase text-chill-violetSoft mb-4">{col.heading}</div>
-              <ul className="flex flex-col gap-3">
-                {col.links.map(([href, label, external]) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      target={external ? '_blank' : undefined}
-                      rel={external ? 'noreferrer' : undefined}
-                      className="group inline-flex items-center gap-1 text-[13px] text-chill-textMuted hover:text-chill-text transition-colors no-underline"
-                    >
-                      {label}
-                      {external && (
-                        <ArrowUpRight size={12} className="opacity-0 -translate-y-0.5 translate-x-0 group-hover:opacity-60 group-hover:translate-y-0 transition-all" />
-                      )}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* divider */}
-        <div className="h-px w-full my-9 bg-gradient-to-r from-transparent via-chill-borderBright to-transparent" />
-
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <span className="text-[12px] text-chill-textMuted">© 2026 Chillverse · All rights reserved</span>
-          <span className="flex items-center gap-2 text-[12px] text-chill-textMuted">
-            <span className="live-dot" />
-            All systems online
-          </span>
-        </div>
+      <div className="max-w-[1200px] mx-auto flex items-center justify-between flex-wrap gap-3 pt-6 border-t border-chill-border">
+        <span className="text-[13px] text-chill-textMuted">© 2026 Chillverse · All rights reserved</span>
+        <span className="flex items-center gap-1.5 text-[11px] text-chill-green font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-chill-green live-dot" /> All systems online
+        </span>
       </div>
     </footer>
   )
