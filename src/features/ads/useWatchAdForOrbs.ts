@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { supabase } from '../../shared/lib/supabase'
 import { showRewardedAd } from './rewardedAd'
 
-type Status = 'idle' | 'loading_ticket' | 'playing' | 'crediting' | 'success' | 'error' | 'capped'
+type Status = 'idle' | 'loading_ticket' | 'playing' | 'crediting' | 'success' | 'error' | 'capped' | 'coming_soon'
 
 interface Result {
   status: Status
@@ -43,13 +43,18 @@ export function useWatchAdForOrbs(onCredited?: (newBalance: number) => void): Re
     })
 
     if (startErr || !startData?.ok) {
-      const msg = (startData as { error?: string } | null)?.error ?? 'Could not start ad — try again shortly.'
-      if (startErr && (startErr as { context?: { status?: number } }).context?.status === 429) {
+      const status = (startErr as { context?: { status?: number } } | null)?.context?.status
+      const msg = (startData as { error?: string } | null)?.error
+
+      if (status === 423) {
+        setStatus('coming_soon')
+        setErrorMessage(msg ?? 'This update is coming sooner than you think — stay tuned!')
+      } else if (status === 429) {
         setStatus('capped')
-        setErrorMessage(msg)
+        setErrorMessage(msg ?? 'Daily limit reached — come back tomorrow!')
       } else {
         setStatus('error')
-        setErrorMessage(msg)
+        setErrorMessage(msg ?? 'Could not start ad — try again shortly.')
       }
       return
     }
