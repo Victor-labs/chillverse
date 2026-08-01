@@ -15,6 +15,7 @@ import { useProfile } from '../profile/useProfile'
 import { isProActive, getSessionLimits } from '../../shared/lib/proPlans'
 import { ProModal } from '../../context/ProModal'
 import { triggerAchievementCheck } from '../achievements/triggerAchievements'
+import { completeReferralIfEligible } from '../referral/referral'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import type { GameRank } from './play/types'
 import { getRankConfig, RankProgressBar } from './play/GameShell'
@@ -124,7 +125,7 @@ function LobbyCard({
 }
 
 // ─── Main component ───────────────────────────────────────────
-export default function Games() {
+export default function Games({ onBack }: { onBack?: () => void } = {}) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { session } = useAuth()
@@ -273,6 +274,10 @@ export default function Games() {
     // Fire achievement check in background
     triggerAchievementCheck(userId).catch(console.error)
 
+    // Referral: pays out the first time this user completes a game — the
+    // server-side function is idempotent, so it's safe to call every time.
+    completeReferralIfEligible(userId).catch(console.error)
+
     // ── Weekly mission progress ──────────────────────────────
     updateMissionProgress(userId, 'sessions_played', 1).catch(console.error)
 
@@ -351,7 +356,7 @@ export default function Games() {
     <div>
       <PageOnboarding pageKey="games" />
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-        <button type="button" onClick={() => navigate('/dashboard')} style={{ width:34, height:34, borderRadius:10, background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'var(--elev-raise-sm)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+        <button type="button" onClick={() => onBack ? onBack() : navigate('/dashboard')} style={{ width:34, height:34, borderRadius:10, background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'var(--elev-raise-sm)', color:'var(--text-dim)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
           <ArrowLeft size={15} />
         </button>
       </div>
