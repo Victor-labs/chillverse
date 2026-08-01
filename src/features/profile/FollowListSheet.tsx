@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom'
 import { Users, X } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import SharedAvatar from '../../shared/components/Avatar'
-import { getUserRankTier } from './ranks'
 
 interface FollowEntry {
   id: string
@@ -86,21 +85,12 @@ export default function FollowListSheet({ profileId, myId, mode, onClose, zIndex
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No {mode} yet</p>
               </div>
             ) : list.map(p => {
-              const rank = getUserRankTier(p.xp)
               return (
                 <button key={p.id} type="button" onClick={() => { close(); navigate(`/profile/${p.id}`) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid var(--border)', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 10 }}>
                   <SharedAvatar src={p.avatar} name={p.display_name || p.username} size={44} radius={13} disabled />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{p.display_name || p.username}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 11 }}>{rank.emoji}</span>
-                      <span style={{ color: rank.color }}>{rank.name}</span>
-                      <span>· @{p.username}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
-                    {p.followers_count.toLocaleString()}
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{p.display_name || p.username}</div>
                   </div>
                 </button>
               )
