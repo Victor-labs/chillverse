@@ -1,13 +1,17 @@
 // src/features/chat/ChatHub.tsx
 // Single Discord-style hub: a persistent left icon rail (Friends shortcut,
-// then Global/Chats/Clubs quick-nav, then one icon per joined group chat
-// and club) drives which screen shows on the right — no tab bar, no
-// sliding underline. Which screen is active is driven entirely by the
-// `tab` URL param (?tab=global|chats|clubs), so IconRail
-// can switch screens with a plain navigate() call from anywhere, including
-// while jumping straight into a specific room via `state: { openRoomId }`.
-// Chat.tsx and ClubsList.tsx both open their own realtime subscriptions,
-// so only the active screen's component is ever mounted.
+// then Chats/Clubs quick-nav, then one icon per joined group chat and
+// club) drives which screen shows on the right — no tab bar, no sliding
+// underline. Which screen is active is driven entirely by the `tab` URL
+// param (?tab=chats|clubs), so IconRail can switch screens with a plain
+// navigate() call from anywhere, including while jumping straight into a
+// specific room via `state: { openRoomId }`. Chat.tsx and ClubsList.tsx
+// both open their own realtime subscriptions, so only the active screen's
+// component is ever mounted.
+//
+// Phase 2 of the Clubs redesign: Global Chat is no longer a dedicated tab.
+// It's invite-link-only now, and once joined it's just another room inside
+// the 'chats' screen (pinned first, same sort as before).
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -18,10 +22,17 @@ import Chat from './Chat'
 import ClubsList from '../clubs/ClubsList'
 import IconRail from './IconRail'
 
-export type HubTab = 'global' | 'chats' | 'clubs'
+export type HubTab = 'chats' | 'clubs'
 
 function isHubTab(v: string | null): v is HubTab {
-  return v === 'global' || v === 'chats' || v === 'clubs'
+  return v === 'chats' || v === 'clubs'
+}
+
+/** Old bookmarked/shared links used ?tab=global — Global Chat now just
+ *  lives inside 'chats', so send those straight there. */
+function normalizeTab(v: string | null): HubTab {
+  if (v === 'global') return 'chats'
+  return isHubTab(v) ? v : 'chats'
 }
 
 export default function ChatHub() {
@@ -29,15 +40,16 @@ export default function ChatHub() {
   const [searchParams] = useSearchParams()
   // Defaults to Chats (the "Messages" list) — no tab param means "just
   // show me who I talk to", which is the common case landing on /chat.
-  const active: HubTab = isHubTab(searchParams.get('tab')) ? (searchParams.get('tab') as HubTab) : 'chats'
-  const [badges, setBadges] = useState<Record<HubTab, number>>({ global: 0, chats: 0, clubs: 0 })
+  const active: HubTab = normalizeTab(searchParams.get('tab'))
+  const [badges, setBadges] = useState<Record<HubTab, number>>({ chats: 0, clubs: 0 })
   // On mobile, once a conversation is open with no list beside it, the rail
   // is dead weight cramping the chat — hide it so the chat gets the full
   // screen, same as Discord. Chat.tsx reports this via onFullScreenChatChange.
   const [hideRailForMobileChat, setHideRailForMobileChat] = useState(false)
 
-  // Icon-rail badges (Global/Chats/Clubs dots) — a lightweight aggregate
-  // pass, independent of whichever screen is actually mounted.
+  // Icon-rail badges (Chats/Clubs dots) — a lightweight aggregate pass,
+  // independent of whichever screen is actually mounted. Global Chat's
+  // unread counts into 'chats' now — it's just another room in that list.
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -49,18 +61,16 @@ export default function ChatHub() {
         .eq('user_id', user!.id)
       if (!memberRooms || cancelled) return
 
-      const globalIds = memberRooms.filter((r: any) => r.chat_rooms.type === 'global').map((r: any) => r.room_id)
-      const dmIds = memberRooms.filter((r: any) => r.chat_rooms.type === 'dm' || r.chat_rooms.type === 'group').map((r: any) => r.room_id)
+      const dmIds = memberRooms.filter((r: any) => ['dm', 'group', 'global'].includes(r.chat_rooms.type)).map((r: any) => r.room_id)
       const clubIds = memberRooms.filter((r: any) => r.chat_rooms.type === 'club').map((r: any) => r.room_id)
 
-      const [globalCounts, dmCounts, clubCounts] = await Promise.all([
-        getUnreadCounts(supabase, globalIds, user!.id),
+      const [dmCounts, clubCounts] = await Promise.all([
         getUnreadCounts(supabase, dmIds, user!.id),
         getUnreadCounts(supabase, clubIds, user!.id),
       ])
       if (cancelled) return
       const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0)
-      setBadges({ global: sum(globalCounts), chats: sum(dmCounts), clubs: sum(clubCounts) })
+      setBadges({ chats: sum(dmCounts), clubs: sum(clubCounts) })
     }
 
     loadBadges()
@@ -84,7 +94,6 @@ export default function ChatHub() {
     <div style={{ display: 'flex', height: '100%' }}>
       {!hideRailForMobileChat && <IconRail active={active} badges={badges} />}
       <div style={{ flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
-        {active === 'global' && <Chat roomFilter="global" onFullScreenChatChange={setHideRailForMobileChat} />}
         {active === 'chats' && <Chat roomFilter="dms" onFullScreenChatChange={setHideRailForMobileChat} />}
         {active === 'clubs' && (
           <div style={{ height: '100%', overflowY: 'auto', padding: '0 12px' }}>

@@ -1,16 +1,22 @@
 // src/features/chat/IconRail.tsx
 //
 // The primary navigation for the Chat hub now — a Discord-style vertical
-// icon strip. Top section is fixed nav: Global, Chats ("all my chats" —
-// the Messages list, which also owns the "Add Friends" / start-new-DM
-// search inline — see Chat.tsx), and Clubs (browse/manage all your
-// clubs). Below a divider: one icon per group chat and one per club
-// you've joined, for one-tap access — exactly like Discord's server
-// list. Tapping a group/club icon jumps straight into that room without
-// going through its list first.
+// icon strip. Top section is fixed nav: Chats ("all my chats" — the
+// Messages list, which also owns the "Add Friends" / start-new-DM search
+// inline — see Chat.tsx) and Clubs (browse/manage all your clubs). Below
+// a divider: one icon per group chat and one per club you've joined, for
+// one-tap access — exactly like Discord's server list. Tapping a
+// group/club icon jumps straight into that room without going through
+// its list first.
+//
+// Phase 2 of the Clubs redesign: Global Chat no longer has its own
+// dedicated nav icon. It's invite-link-only now, same as clubs, and once
+// joined it just shows up inside the Chats tab (pinned first, same as
+// always) rather than getting a permanent top-level slot regardless of
+// membership.
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, MessageSquare, Compass } from 'lucide-react'
+import { MessageSquare, Compass } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getUnreadCounts } from '../../shared/lib/unread'
@@ -82,9 +88,6 @@ export default function IconRail({ active, badges }: IconRailProps) {
         borderRight: '1px solid var(--border)',
       }}
     >
-        <RailIcon label="Global" active={active === 'global'} unread={badges.global} onClick={() => navigate('/chat?tab=global')}>
-          <Globe size={20} />
-        </RailIcon>
         <RailIcon label="Chats" active={active === 'chats'} unread={badges.chats} onClick={() => navigate('/chat?tab=chats')}>
           <MessageSquare size={20} />
         </RailIcon>

@@ -6,7 +6,7 @@ import {
   Smile, Send, X, Trash2, Reply, Flag, Lock,
   MessageCircle, UserPlus, ShieldOff,
   Check, CheckCheck, Pin, PinOff, Phone,
-  Megaphone, BarChart3, Zap, Eye, EyeOff, Star, Paperclip, ChevronDown,
+  Megaphone, BarChart3, Zap, Eye, EyeOff, Star, Paperclip, ChevronDown, Link2,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
@@ -34,6 +34,8 @@ import { starMessage, unstarMessage, fetchMyStarredMessageIds } from './starredM
 import { useProfilePreview } from '../../context/ProfilePreview'
 import { useFeatureFlags } from '../../shared/lib/featureFlags'
 import FeatureGateScreen from '../../shared/components/FeatureGateScreen'
+import GlobalInviteModal from '../clubs/GlobalInviteModal'
+import { joinGlobal } from '../clubs/invites'
 
 // ─── Types ──────────────────────────────────────────────────
 interface RoomMember {
@@ -476,6 +478,7 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
   // "Search chats" for the Chats tab, "Find players by username" for Global.
   const [roomSearchOpen, setRoomSearchOpen] = useState(false)
   const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
+  const [globalInviteOpen, setGlobalInviteOpen] = useState(false)
   useEffect(() => {
     if (!dmStartError) return
     const t = setTimeout(() => setDmStartError(null), 5000)
@@ -679,59 +682,59 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
       .then(({ error }) => { if (error) console.error('Failed to mark room as read:', error.message) })
   }, [myId, ghostReadActive])
 
-  // ── Ensure global chat room exists & user is a member ──────
+  // ── Ensure global chat room exists (Phase 2: no longer auto-joins) ─
+  // Global Chat is invite-link-only now, same as clubs. This used to also
+  // silently insert a room_members row for ANY logged-in user with no
+  // gate at all — that's gone. Users who already had a room_members row
+  // before this change keep it (grandfathered); new users only get in via
+  // joinGlobal(code) / joinGlobalDirect() from the join screen, or the
+  // `?code=` link-landing handled in loadRooms below.
   async function ensureGlobalRoom(): Promise<string | null> {
     if (!myId) return null
 
-    // Find existing global room
     const { data: globalRooms } = await supabase
       .from('chat_rooms')
       .select('id')
       .eq('type', 'global')
       .limit(1)
 
-    let globalRoomId: string
+    if (globalRooms && globalRooms.length > 0) return globalRooms[0].id
 
-    if (!globalRooms || globalRooms.length === 0) {
-      // Try to create — do NOT use created_by (column may not exist in schema)
-      const { data: created, error: createErr } = await supabase
-        .from('chat_rooms')
-        .insert({ type: 'global', name: 'Global Chat' })
-        .select('id')
-        .single()
+    // Room doesn't exist yet at all (fresh environment) — create it, no membership insert.
+    const { data: created, error: createErr } = await supabase
+      .from('chat_rooms')
+      .insert({ type: 'global', name: 'Global Chat' })
+      .select('id')
+      .single()
 
-      if (createErr || !created) {
-        // Another request may have created it simultaneously — retry fetch
-        const { data: retry } = await supabase
-          .from('chat_rooms').select('id').eq('type', 'global').limit(1)
-        if (!retry?.length) return null
-        globalRoomId = retry[0].id
-      } else {
-        globalRoomId = created.id
-      }
-    } else {
-      globalRoomId = globalRooms[0].id
+    if (createErr || !created) {
+      // Another request may have created it simultaneously — retry fetch
+      const { data: retry } = await supabase
+        .from('chat_rooms').select('id').eq('type', 'global').limit(1)
+      return retry?.length ? retry[0].id : null
     }
-
-    // Ensure current user is a member (upsert-safe)
-    const { data: existingMembership } = await supabase
-      .from('room_members')
-      .select('user_id')
-      .eq('room_id', globalRoomId)
-      .eq('user_id', myId)
-      .maybeSingle()
-
-    if (!existingMembership) {
-      await supabase
-        .from('room_members')
-        .insert({ room_id: globalRoomId, user_id: myId })
-    }
-
-    return globalRoomId
+    return created.id
   }
 
   // ── Load rooms ──────────────────────────────────────────────
   useEffect(() => { if (myId) loadRooms() }, [myId])
+
+  // Landing on a real Global Chat invite link (?code=XXX from buildGlobalInviteLink).
+  // Runs once per myId — join, drop the param so it doesn't re-fire on refresh, reload.
+  useEffect(() => {
+    if (!myId) return
+    const code = new URLSearchParams(location.search).get('code')
+    if (!code) return
+    joinGlobal(code)
+      .catch(err => console.error('Failed to join Global Chat via invite link:', err.message))
+      .finally(() => {
+        const params = new URLSearchParams(location.search)
+        params.delete('code')
+        navigate({ pathname: location.pathname, search: params.toString() }, { replace: true })
+        loadRooms()
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId])
   useEffect(() => { if (myId) fetchMyStarredMessageIds(myId).then(setMyStarredIds) }, [myId])
 
   // Room-list-wide realtime: keeps "recent chats move to top" live even for rooms
@@ -809,7 +812,7 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
     let roomsQuery = supabase
       .from('chat_rooms').select('id, type, name, pinned_message_id, spotlight_message_id, spotlight_expires_at').in('id', visibleRoomIds)
     if (roomFilter === 'global') roomsQuery = roomsQuery.eq('type', 'global')
-    else if (roomFilter === 'dms') roomsQuery = roomsQuery.in('type', ['dm', 'group'])
+    else if (roomFilter === 'dms') roomsQuery = roomsQuery.in('type', ['dm', 'group', 'global'])
     const { data: roomRows } = await roomsQuery
 
     if (!roomRows?.length) { setRooms([]); setRoomsLoading(false); return }
@@ -1780,7 +1783,6 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
   }
 
   const scopedRooms = roomFilter === 'global' ? rooms.filter(r => r.type === 'global')
-    : roomFilter === 'dms' ? rooms.filter(r => r.type !== 'global')
     : rooms
   const filteredRooms = scopedRooms.filter(r => !roomSearch || roomLabel(r).toLowerCase().includes(roomSearch.toLowerCase()))
   const totalUnread = scopedRooms.reduce((s, r) => s + r.unread, 0)
@@ -2076,9 +2078,14 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
                     <IBtn onClick={() => { setMsgSearchOpen(o => !o); if (msgSearchOpen) setMsgSearchQuery('') }} style={{ width:32, height:32 }}>
                       <Search size={14} />
                     </IBtn>
-                    {roomFilter === 'global' && activeRoom.type === 'global' && (
+                    {activeRoom.type === 'global' && (
                       <IBtn onClick={() => setPlayerSearchOpen(o => !o)} style={{ width:32, height:32, ...(playerSearchOpen ? { color:'#4f8ef7', borderColor:'rgba(79,142,247,0.4)' } : {}) }} title="Find players by username">
                         <MessageCircle size={14} />
+                      </IBtn>
+                    )}
+                    {isStaff && activeRoom.type === 'global' && (
+                      <IBtn onClick={() => setGlobalInviteOpen(true)} style={{ width:32, height:32 }} title="Manage invite link (staff only)">
+                        <Link2 size={14} />
                       </IBtn>
                     )}
                     {activeRoom.type === 'dm' && (
@@ -2118,8 +2125,8 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
                 </div>
               )}
 
-              {/* Find-players composer — Global tab only, slides in below the header */}
-              {roomFilter === 'global' && activeRoom.type === 'global' && playerSearchOpen && (
+              {/* Find-players composer — Global Chat only, slides in below the header */}
+              {activeRoom.type === 'global' && playerSearchOpen && (
                 <div style={{ borderBottom:'1px solid var(--border)', background:'var(--surface2)', flexShrink:0 }}>
                   {dmStartError && (
                     <div style={{ margin:'8px 14px 0', padding:'8px 12px', borderRadius:10, background:'rgba(255,107,107,0.1)', border:'1px solid rgba(255,107,107,0.25)', fontSize:12, color:'#ff6b6b' }}>
@@ -2770,6 +2777,10 @@ export default function Chat({ roomFilter, onFullScreenChatChange }: ChatProps =
           maxDurationHours={isStaff ? 168 : 48}
           onCreated={() => { scrollModeRef.current = 'bottom' }}
         />
+      )}
+
+      {globalInviteOpen && (
+        <GlobalInviteModal onClose={() => setGlobalInviteOpen(false)} />
       )}
 
       <StarredMessagesPanel
