@@ -411,11 +411,15 @@ export default function Wallet() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Watch an ad</div>
               <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                {watchAd.status === 'success'
-                  ? `+${watchAd.orbsEarned} Orbs credited!`
-                  : watchAd.status === 'error' || watchAd.status === 'capped'
-                    ? watchAd.errorMessage
-                    : 'Earn 15 Orbs, up to 10 times a day'}
+                {watchAd.status === 'playing'
+                  ? watchAd.secondsRemaining !== null
+                    ? `Watching… ${watchAd.secondsRemaining}s left, keep this tab open`
+                    : 'Loading ad…'
+                  : watchAd.status === 'success'
+                    ? `+${watchAd.orbsEarned} Orbs credited!`
+                    : watchAd.status === 'error' || watchAd.status === 'capped'
+                      ? watchAd.errorMessage
+                      : 'Earn 15 Orbs, up to 10 times a day'}
               </div>
             </div>
             <button
@@ -430,7 +434,9 @@ export default function Wallet() {
                 cursor: (watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting') ? 'default' : 'pointer',
               }}
             >
-              {watchAd.status === 'loading_ticket' || watchAd.status === 'playing' || watchAd.status === 'crediting' ? (
+              {watchAd.status === 'playing' ? (
+                <><Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> {watchAd.secondsRemaining !== null ? `${watchAd.secondsRemaining}s` : '…'}</>
+              ) : watchAd.status === 'loading_ticket' || watchAd.status === 'crediting' ? (
                 <><Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> Loading</>
               ) : watchAd.status === 'success' ? (
                 'Done'
