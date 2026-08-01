@@ -15,6 +15,7 @@ interface Result {
   status: Status
   errorMessage: string | null
   orbsEarned: number | null
+  secondsRemaining: number | null
   watchAd: () => Promise<void>
   reset: () => void
 }
@@ -23,11 +24,13 @@ export function useWatchAdForOrbs(onCredited?: (newBalance: number) => void): Re
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [orbsEarned, setOrbsEarned] = useState<number | null>(null)
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
 
   const reset = () => {
     setStatus('idle')
     setErrorMessage(null)
     setOrbsEarned(null)
+    setSecondsRemaining(null)
   }
 
   const watchAd = async () => {
@@ -55,7 +58,8 @@ export function useWatchAdForOrbs(onCredited?: (newBalance: number) => void): Re
 
     // ── 2. Show the ad ──────────────────────────────────────────────────────
     setStatus('playing')
-    const watched = await showRewardedAd()
+    const watched = await showRewardedAd((remaining) => setSecondsRemaining(remaining))
+    setSecondsRemaining(null)
 
     if (!watched) {
       setStatus('error')
@@ -81,5 +85,5 @@ export function useWatchAdForOrbs(onCredited?: (newBalance: number) => void): Re
     onCredited?.(claimData.new_balance)
   }
 
-  return { status, errorMessage, orbsEarned, watchAd, reset }
+  return { status, errorMessage, orbsEarned, secondsRemaining, watchAd, reset }
 }
