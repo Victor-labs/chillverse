@@ -16,13 +16,6 @@ import { getGlobalSessionInfo } from '../games/gameSession'
 import { getSessionLimits } from '../../shared/lib/proPlans'
 import Avatar from '../../shared/components/Avatar'
 import PageOnboarding from '../onboarding/PageOnboarding'
-// TEMP: removed — files missing from repo, causing build failures (2026-08-01).
-// Restore once confirmed intentional/available: ../halo-moments/HaloChallengeCard
-// import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
-import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
-// TEMP: removed — file missing from repo, causing build failures (2026-08-01).
-// Restore once confirmed intentional/available: ./FriendsOnlineWidget
-// import FriendsOnlineWidget from './FriendsOnlineWidget'
 
 interface QuickAction {
   label: string
@@ -282,7 +275,7 @@ export default function Dashboard() {
   const QUICK_ACTIONS: QuickAction[] = [
     { label: 'Play Games',  sub: onlineCount != null ? `${onlineCount} online` : '…', to: '/games',      bg: 'linear-gradient(135deg,#9b6dff,#4f8ef7)', icon: Gamepad2 },
     { label: 'Mall',        sub: 'New drops',    to: '/mall',       bg: 'linear-gradient(135deg,var(--accent),var(--accent2))', icon: ShoppingBag },
-    { label: 'Feed',        sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
+    { label: 'Community',   sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
   ]
 
   return (
@@ -440,17 +433,6 @@ export default function Dashboard() {
           </div>
         </section>
       )}
-
-      {/* ── Halo Moments ── */}
-      <section className="su" style={{ animationDelay: '0.32s' }}>
-        <p className="section-label">Halo Moments</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <LuckyUserBanner userId={userId || null} />
-          {/* TEMP: removed, see import comment above */}
-          {/* <HaloChallengeCard userId={userId || null} /> */}
-          {/* <FriendsOnlineWidget userId={userId || null} /> */}
-        </div>
-      </section>
 
       {/* ── Halo AI ── */}
       <section className="su" style={{ animationDelay: '0.35s', paddingBottom: 8 }}>
