@@ -7,7 +7,14 @@
 // navigator.onLine === false as an instant, trustworthy "offline" signal,
 // but only trust "online" once a real same-origin request has succeeded.
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { WifiOff } from 'lucide-react'
+
+// The landing page and signup flow are the first thing a brand-new,
+// possibly flaky-connection visitor sees. A full-screen "you're offline"
+// takeover there reads as broken rather than helpful — a failed request
+// on those pages should just fail quietly (or retry), not block the page.
+const SUPPRESSED_PATHS = ['/', '/signup']
 
 // Same-origin, tiny, always present — avoids any CORS/third-party concerns.
 const CHECK_URL = '/favicon.ico'
@@ -39,9 +46,11 @@ async function isReachable(): Promise<boolean> {
 }
 
 export default function OfflineOverlay() {
+  const location = useLocation()
   const [isOffline, setIsOffline] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const suppressed = SUPPRESSED_PATHS.includes(location.pathname)
 
   const runCheck = useCallback(async () => {
     const reachable = await isReachable()
@@ -68,7 +77,7 @@ export default function OfflineOverlay() {
     }
   }, [runCheck])
 
-  if (!isOffline) return null
+  if (!isOffline || suppressed) return null
 
   const handleRetry = async () => {
     setRetrying(true)
