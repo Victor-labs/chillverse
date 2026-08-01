@@ -16,9 +16,13 @@ import { getGlobalSessionInfo } from '../games/gameSession'
 import { getSessionLimits } from '../../shared/lib/proPlans'
 import Avatar from '../../shared/components/Avatar'
 import PageOnboarding from '../onboarding/PageOnboarding'
-import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
+// TEMP: removed — files missing from repo, causing build failures (2026-08-01).
+// Restore once confirmed intentional/available: ../halo-moments/HaloChallengeCard
+// import HaloChallengeCard from '../halo-moments/HaloChallengeCard'
 import LuckyUserBanner from '../halo-moments/LuckyUserBanner'
-import FriendsOnlineWidget from './FriendsOnlineWidget'
+// TEMP: removed — file missing from repo, causing build failures (2026-08-01).
+// Restore once confirmed intentional/available: ./FriendsOnlineWidget
+// import FriendsOnlineWidget from './FriendsOnlineWidget'
 
 interface QuickAction {
   label: string
@@ -442,8 +446,9 @@ export default function Dashboard() {
         <p className="section-label">Halo Moments</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <LuckyUserBanner userId={userId || null} />
-          <HaloChallengeCard userId={userId || null} />
-          <FriendsOnlineWidget userId={userId || null} />
+          {/* TEMP: removed, see import comment above */}
+          {/* <HaloChallengeCard userId={userId || null} /> */}
+          {/* <FriendsOnlineWidget userId={userId || null} /> */}
         </div>
       </section>
 
