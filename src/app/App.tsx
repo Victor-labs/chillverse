@@ -53,6 +53,7 @@ const ClubsList           = lazy(() => import('../features/clubs/ClubsList'))
 const ClubChat             = lazy(() => import('../features/clubs/ClubChat'))
 const FeedPage            = lazy(() => import('../features/posts/FeedPage'))
 const SinglePostPage      = lazy(() => import('../features/posts/SinglePostPage'))
+const HighlightsPage      = lazy(() => import('../features/highlights/HighlightsPage'))
 const ReferralPage        = lazy(() => import('../features/referral/Referral'))
 const SearchPage          = lazy(() => import('../features/search/SearchPage'))
 const Support             = lazy(() => import('../features/support/Support'))
@@ -130,7 +131,11 @@ export default function App() {
           subscribeToPush(session.user.id)
         }
 
-        if (AUTH_REDIRECT_PATHS.includes(window.location.pathname)) {
+        const pendingInvite = sessionStorage.getItem('chillverse_pending_invite')
+        if (pendingInvite) {
+          sessionStorage.removeItem('chillverse_pending_invite')
+          navigate(pendingInvite, { replace: true })
+        } else if (AUTH_REDIRECT_PATHS.includes(window.location.pathname)) {
           navigate('/dashboard', { replace: true })
         }
       }
@@ -208,7 +213,7 @@ export default function App() {
           <Route path="/clubs"            element={<Suspense fallback={<Fallback />}><ClubsList /></Suspense>} />
           <Route path="/clubs/:roomId"    element={<Suspense fallback={<Fallback />}><ClubChat /></Suspense>} />
           <Route path="/feed"             element={<Suspense fallback={<Fallback />}><FeedPage /></Suspense>} />
-          <Route path="/feed/highlights"  element={<Suspense fallback={<Fallback />}><FeedPage /></Suspense>} />
+          <Route path="/feed/highlights"  element={<Suspense fallback={<Fallback />}><HighlightsPage /></Suspense>} />
           <Route path="/feed/:postId"     element={<Suspense fallback={<Fallback />}><SinglePostPage /></Suspense>} />
           <Route path="/referral"         element={<Suspense fallback={<Fallback />}><ReferralPage /></Suspense>} />
           <Route path="/search"           element={<Suspense fallback={<Fallback />}><SearchPage /></Suspense>} />
