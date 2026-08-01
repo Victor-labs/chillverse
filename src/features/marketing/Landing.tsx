@@ -32,11 +32,16 @@ const ART = {
   chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
 }
 
-// Single "crew" illustration that peeks from BEHIND a card/section, like
-// the Discord marketing-site reference — half the figure(s) visible above
-// the edge, the rest tucked out of view. Reused in two spots: peeking
-// above the leaderboard card, and peeking above the footer.
+// The baseball player — used ALONE peeking above the leaderboard card.
+// Not paired with any other character.
+const BASEBALL_PLAYER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Baseballplayer.png'
+
+// Ree — the crew illustration that peeks above the footer.
 const REE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Ree.png'
+
+// New cards: movies/entertainment hub, and the community/discussion hub.
+const MOVIES_ART = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Movies.png'
+const EARTH_ART = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Earth.jpg'
 
 // Ambient background art. Exactly THREE images total on the whole page —
 // one per section, not the same 3 pngs repeated over and over. Motion is
@@ -170,7 +175,7 @@ export default function Landing() {
           No parallax art up top anymore — the bomb was sitting right under
           the nav, way too high. Parallax now only kicks in from the flyer's
           position (bottom of hero, where it was originally marked). */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-32 sm:pt-36 pb-16 sm:pb-20">
+      <section className="relative flex flex-col items-center justify-start overflow-hidden px-5 sm:px-6 md:px-16 pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20 min-h-[auto]">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
           <div className="w-[600px] h-[600px] rounded-full bg-[rgba(108,80,255,0.10)] blur-[120px]" />
           <div className="absolute w-[400px] h-[400px] rounded-full bg-[rgba(0,229,255,0.08)] blur-[100px] -translate-x-24 translate-y-16" />
@@ -190,8 +195,8 @@ export default function Landing() {
             <span className="text-gradient">Dominate.</span>
           </h1>
 
-          <p className="text-sm sm:text-base text-[var(--ltext-sec)] max-w-[300px] sm:max-w-sm mx-auto mb-8 leading-relaxed">
-            Compete, build your profile, and keep your streak alive with your crew, all in one platform.
+          <p className="text-sm sm:text-base text-[var(--ltext-sec)] max-w-[320px] sm:max-w-md mx-auto mb-8 leading-relaxed">
+            Chillverse brings movies, anime, games, community, and exclusive experiences together in one seamless platform.
           </p>
 
           <div className="flex flex-col items-center gap-3">
@@ -208,12 +213,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── ARSENAL + HOW IT WORKS, merged ── */}
+      {/* ── ARSENAL + HOW IT WORKS, merged ──
+          Controller now peeks above the card the same way the baseball
+          player peeks above the leaderboard card — consistent treatment
+          across the page instead of being a plain inline image. */}
       <section id="features" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
         <BgArt src={BG_ASSETS.bomb} alt="" speed={0.14} className="block top-[2%] left-[2%] w-16 sm:w-24 lg:w-28 -rotate-6" />
 
-        <div className="reveal glass-panel-strong glow-violet-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
-          <div className="order-2 md:order-1">
+        <div className="relative pt-14 sm:pt-16 md:pt-20">
+          <PeekingCharacter
+            src={ART.controller}
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[130px] sm:w-[160px] md:w-[190px]"
+          />
+
+          <div className="reveal glass-panel-strong glow-violet-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
             <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Built for players.</h2>
             <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed mb-3">
               Fast games, real streaks, a profile that's actually yours. Create it, jump into a match, and start climbing, your first win is seconds away.
@@ -225,15 +238,6 @@ export default function Landing() {
             >
               Jump in, it takes 60 seconds →
             </Link>
-          </div>
-
-          <div className="order-1 md:order-2 flex items-center justify-center">
-            <img
-              src={ART.controller}
-              alt="Chillverse game controller"
-              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto drop-shadow-[0_24px_50px_rgba(108,80,255,0.3)]"
-              loading="lazy"
-            />
           </div>
         </div>
       </section>
@@ -250,8 +254,8 @@ export default function Landing() {
 
         <div className="relative pt-14 sm:pt-16 md:pt-20">
           <PeekingCharacter
-            src={REE}
-            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[160px] sm:w-[200px] md:w-[230px]"
+            src={BASEBALL_PLAYER}
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[150px] sm:w-[190px] md:w-[220px]"
           />
 
           <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
@@ -302,8 +306,53 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── LAST WORD — simple tagline, no buttons, no card ── */}
-      <section className="relative px-6 pt-20 sm:pt-24 pb-28 sm:pb-32 text-center">
+      {/* ── MOVIES / ENTERTAINMENT ── */}
+      <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
+          <div className="order-2 md:order-1">
+            <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Lights. Camera. Chillverse.</h2>
+            <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed">
+              Discover trending blockbusters, timeless classics, anime, TV series, and hidden gems, all carefully organized in one place. Whether you're in the mood for action, romance, comedy, horror, or sci-fi, your next binge-worthy watch is just a click away.
+            </p>
+          </div>
+
+          <div className="order-1 md:order-2 flex items-center justify-center">
+            <img
+              src={MOVIES_ART}
+              alt="Chillverse movies and entertainment hub"
+              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto rounded-2xl drop-shadow-[0_24px_50px_rgba(0,229,255,0.25)]"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMMUNITY ── */}
+      <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <div className="reveal glass-panel-strong glow-green-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
+          <div className="flex items-center justify-center">
+            <img
+              src={EARTH_ART}
+              alt="Chillverse community"
+              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto rounded-2xl drop-shadow-[0_24px_50px_rgba(0,255,135,0.25)]"
+              loading="lazy"
+            />
+          </div>
+
+          <div>
+            <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Stay Connected Beyond Entertainment</h2>
+            <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed">
+              Discover trending discussions, community highlights, announcements, creator updates, and everything happening across Chillverse. Join conversations, share your thoughts, and never miss what's new.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── LAST WORD — simple tagline, no buttons, no card ──
+          Extra bottom padding here is deliberate: it's the clearance the
+          footer-peek image below needs so it doesn't climb up over this
+          text (it was overlapping "universe" before). */}
+      <section className="relative px-6 pt-20 sm:pt-24 pb-40 sm:pb-48 md:pb-56 text-center">
         <p className="reveal text-gradient text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
           Your universe. Your rules.
         </p>
@@ -315,11 +364,13 @@ export default function Landing() {
           renders BEFORE the footer in the DOM so the footer's own
           translucent background paints over its lower half, which is
           what actually sells "peeking from behind" rather than the art
-          just floating above the footer as a separate element. */}
+          just floating above the footer as a separate element. Offset is
+          intentionally smaller than before, paired with the extra
+          padding above, so it clears the tagline text. */}
       <div className="relative">
         <PeekingCharacter
           src={REE}
-          className="left-1/2 -translate-x-1/2 -top-[120px] sm:-top-[150px] md:-top-[175px] w-[180px] sm:w-[220px] md:w-[250px]"
+          className="left-1/2 -translate-x-1/2 -top-[90px] sm:-top-[110px] md:-top-[130px] w-[180px] sm:w-[220px] md:w-[250px]"
         />
         <Footer />
       </div>
