@@ -1,168 +1,97 @@
 // src/pages/games/TileMerge.tsx
-// "Chill Merge" — the classic 2048 slide-and-merge, reskinned for
-// Chillverse, with one hazard twist: frozen tiles.
+// "Chill Merge" — a placement-and-merge puzzle on a 4x4 board.
 //
-// Swipe (or use the arrow buttons) to slide every tile on the board at
-// once in that direction. Two tiles of the SAME value combine into double
-// that value when they collide (1+1=2, 2+2=4, 4+4=8, ...) — only equal
-// values ever merge, exactly like the original. After every legal move a
-// new tile spawns automatically on a random empty cell.
+// You're handed one tile at a time (a color + a number) and tap any empty
+// cell to place it — you never slide the board. Get THREE tiles that share
+// the exact same color AND number anywhere on the board and they start
+// pulsing (a "heartbeat" zoom in/out), while every other cell dims out to
+// show they're not tappable right now. Tap any one of the three pulsing
+// tiles and all three collapse into a single tile one level higher, sitting
+// wherever you tapped. That new, higher tile can itself complete another
+// triple immediately — if it does, the board re-highlights that new triple
+// right away and you resolve it the same way before you're handed your
+// next tile to place. Chains can run as long as the board allows. If more
+// than one triple is on the board at once, all of them highlight together
+// and whichever one you tap first is the one that resolves.
 //
-// Twist: once you've built a big enough tile, cells can randomly freeze —
-// the frozen tile shows its number greyed out and does NOT slide or merge
-// like a normal tile; it just sits there blocking that lane. The only way
-// to clear it is to slide a matching-value tile straight into it, which
-// breaks the ice: the frozen tile thaws, doubles, and behaves normally
-// again from then on.
-import { useState, useRef, useEffect, useMemo } from 'react'
-import type { CSSProperties, TouchEvent as ReactTouchEvent } from 'react'
-import { Layers, Snowflake, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
+// Game over: the board is completely full (16/16) and no triple is left
+// to clear space.
+import { useState, useRef, useMemo } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
+import { Layers, Star, Flag, Heart, Flame as FlameIcon } from 'lucide-react'
 import type { GameRank, GameEndPayload } from './types'
 import { PreGameModal, GameHUD, StatChip, ResultScreen, QuitModal, useRankStreak } from './GameShell'
 import { useGamePresence } from '../useGamePresence'
+import { ripple } from '../../../shared/lib/ripple'
 
 const ACCENT = '#38bdf8'
 const GAME_ID = 'tile-merge' as const
 const GRID = 4
 const CELLS = GRID * GRID
 
-// Flat XP awarded per individual merge event (includes breaking the ice).
-const MERGE_XP = 4
+// Flat XP awarded per individual merge event (a triple collapsing into one).
+const MERGE_XP = 6
 
-// Hazard tuning: cells only start freezing once a tile reaches the lowest
-// tier's threshold below, and at most this many cells can be frozen at once.
-const MAX_FROZEN = 3
-// Freeze chance ramps up as your highest tile grows — mild early on,
-// aggressive late-game, instead of a flat rate for the whole run.
-const FREEZE_TIERS: { min: number; chance: number }[] = [
-  { min: 512, chance: 0.55 },
-  { min: 128, chance: 0.40 },
-  { min: 32, chance: 0.25 },
-  { min: 8, chance: 0.12 },
-]
-function freezeChanceFor(highest: number): number {
-  for (const t of FREEZE_TIERS) if (highest >= t.min) return t.chance
-  return 0
-}
-
-// New-tile spawn split — same 90/10 weighting as the original 2048's 2/4
-// split, just based at 1/2 since this board starts from 1.
+// New tiles are always handed out at level 1 or 2 — every higher level can
+// only be reached by merging a triple, same 90/10 weighting Chill Merge has
+// always used for its low/high spawn split.
 const SPAWN_LOW_CHANCE = 0.9
 
-type Dir = 'left' | 'right' | 'up' | 'down'
+type TileColor = 'yellow' | 'blue' | 'purple' | 'red'
 
-interface Cell {
-  value: number | null
-  frozen: boolean
+const COLORS: TileColor[] = ['yellow', 'blue', 'purple', 'red']
+
+const COLOR_META: Record<TileColor, { base: string; light: string; Icon: typeof Star; filled: boolean }> = {
+  yellow: { base: '#f5c542', light: '#ffe08a', Icon: Star, filled: true },
+  blue:   { base: '#4f8ef7', light: '#8ab4ff', Icon: Flag, filled: true },
+  purple: { base: '#9b6dff', light: '#c3a8ff', Icon: Heart, filled: true },
+  red:    { base: '#ff5f4f', light: '#ff9a8f', Icon: FlameIcon, filled: true },
 }
 
-function emptyCell(): Cell {
-  return { value: null, frozen: false }
+interface Tile {
+  color: TileColor
+  level: number
 }
 
-const LEVEL_COLORS = ['#4f8ef7', '#9b6dff', '#3ecf8e', 'var(--accent2)', '#ff4f4f', '#f5c542', '#ff5fa2', '#00e5ff']
+type Cell = Tile | null
 
-function colorForValue(value: number) {
-  const stage = Math.floor(Math.log2(Math.max(value, 1)))
-  return LEVEL_COLORS[stage % LEVEL_COLORS.length]
+function randomTile(): Tile {
+  return {
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    level: Math.random() < SPAWN_LOW_CHANCE ? 1 : 2,
+  }
 }
 
-function fontSizeForValue(value: number) {
-  const digits = String(value).length
+function fontSizeForLevel(level: number) {
+  const digits = String(level).length
   if (digits <= 2) return 24
   if (digits === 3) return 18
   return 14
 }
 
-function idx(row: number, col: number) {
-  return row * GRID + col
+function tileKey(t: Tile) {
+  return `${t.color}:${t.level}`
 }
 
-// Each line is the 4 board indices in leading→trailing order for that
-// direction — index 0 is the edge tiles slide toward.
-function linesForDir(dir: Dir): number[][] {
-  const lines: number[][] = []
-  if (dir === 'left') for (let r = 0; r < GRID; r++) lines.push([0, 1, 2, 3].map(c => idx(r, c)))
-  else if (dir === 'right') for (let r = 0; r < GRID; r++) lines.push([3, 2, 1, 0].map(c => idx(r, c)))
-  else if (dir === 'up') for (let c = 0; c < GRID; c++) lines.push([0, 1, 2, 3].map(r => idx(r, c)))
-  else for (let c = 0; c < GRID; c++) lines.push([3, 2, 1, 0].map(r => idx(r, c)))
-  return lines
-}
-
-// Collapses one line (4 cells, leading→trailing order) toward index 0.
-// Frozen cells never move and split the line into independent segments —
-// tiles can't slide past a frozen cell into the segment beyond it. The
-// tile closest to a frozen cell (on its trailing side) may merge INTO it
-// if the values match, which thaws it and doubles its value; otherwise the
-// frozen cell just blocks that lane like a wall.
-function collapseLine(line: Cell[]): { result: Cell[]; gained: number; merges: number; mergedPositions: number[] } {
-  const result: Cell[] = new Array(4)
-  let gained = 0
-  let merges = 0
-  const mergedPositions: number[] = []
-
-  const segments: number[][] = []
-  let current: number[] = []
-  for (let i = 0; i < 4; i++) {
-    if (line[i].frozen) {
-      if (current.length) segments.push(current)
-      current = []
-      result[i] = { ...line[i] }
-    } else {
-      current.push(i)
-    }
+// Finds every color+level combo that currently has 3+ matching tiles on the
+// board. Each group carries the cell indices involved (capped at the first
+// 3 found, in the rare case a 4th of the same combo is ever on the board at
+// once) so the UI knows exactly which cells to pulse and which merge a tap
+// resolves.
+function findGroups(board: Cell[]): { key: string; cells: number[] }[] {
+  const byKey = new Map<string, number[]>()
+  board.forEach((cell, i) => {
+    if (!cell) return
+    const k = tileKey(cell)
+    const arr = byKey.get(k) ?? []
+    arr.push(i)
+    byKey.set(k, arr)
+  })
+  const groups: { key: string; cells: number[] }[] = []
+  for (const [key, cells] of byKey) {
+    if (cells.length >= 3) groups.push({ key, cells: cells.slice(0, 3) })
   }
-  if (current.length) segments.push(current)
-
-  for (const seg of segments) {
-    const obstacleIdx = seg[0] > 0 && line[seg[0] - 1].frozen ? seg[0] - 1 : -1
-    const obstacleValue = obstacleIdx >= 0 ? (line[obstacleIdx].value as number) : null
-
-    const values = seg.map(i => line[i].value).filter((v): v is number => v !== null)
-
-    const collapsed: number[] = []
-    const collapsedIsMerge: boolean[] = []
-    let i = 0
-    while (i < values.length) {
-      if (i + 1 < values.length && values[i] === values[i + 1]) {
-        const merged = values[i] * 2
-        collapsed.push(merged)
-        collapsedIsMerge.push(true)
-        gained += merged
-        merges++
-        i += 2
-      } else {
-        collapsed.push(values[i])
-        collapsedIsMerge.push(false)
-        i += 1
-      }
-    }
-
-    // Try breaking the ice: the tile closest to the frozen obstacle merges
-    // into it if the value matches — but only if that tile hasn't already
-    // merged once this move (classic 2048 rule: one merge per tile per swipe).
-    if (obstacleValue !== null && collapsed.length > 0 && collapsed[0] === obstacleValue && !collapsedIsMerge[0]) {
-      const newVal = obstacleValue * 2
-      result[obstacleIdx] = { value: newVal, frozen: false }
-      mergedPositions.push(obstacleIdx)
-      gained += newVal
-      merges++
-      collapsed.shift()
-      collapsedIsMerge.shift()
-    }
-
-    for (let k = 0; k < seg.length; k++) {
-      const pos = seg[k]
-      if (k < collapsed.length) {
-        result[pos] = { value: collapsed[k], frozen: false }
-        if (collapsedIsMerge[k]) mergedPositions.push(pos)
-      } else {
-        result[pos] = emptyCell()
-      }
-    }
-  }
-
-  return { result, gained, merges, mergedPositions }
+  return groups
 }
 
 interface Props {
@@ -178,23 +107,33 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
   useGamePresence(GAME_ID)
   const { rankState } = useRankStreak(GAME_ID, initialRank)
 
-  const [board, setBoard] = useState<Cell[]>(() => Array.from({ length: CELLS }, emptyCell))
+  const [board, setBoard] = useState<Cell[]>(() => Array.from({ length: CELLS }, () => null))
+  const [current, setCurrent] = useState<Tile>(() => randomTile())
+  const [next, setNext] = useState<Tile>(() => randomTile())
   const [score, setScore] = useState(0)
   const [mergeCount, setMergeCount] = useState(0)
-  const [highestValue, setHighestValue] = useState(1)
+  const [highestLevel, setHighestLevel] = useState(1)
+  const [groups, setGroups] = useState<{ key: string; cells: number[] }[]>([])
   const [popPositions, setPopPositions] = useState<number[]>([])
   const [result, setResult] = useState<GameEndPayload | null>(null)
 
   const startRef = useRef(Date.now())
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
 
-  function spawnTile(b: Cell[]): Cell[] {
-    const emptyIdxs = b.map((c, i) => (c.value === null && !c.frozen ? i : -1)).filter(i => i >= 0)
-    if (emptyIdxs.length === 0) return b
-    const pick = emptyIdxs[Math.floor(Math.random() * emptyIdxs.length)]
-    const next = b.map(c => ({ ...c }))
-    next[pick] = { value: Math.random() < SPAWN_LOW_CHANCE ? 1 : 2, frozen: false }
-    return next
+  const highlightedCells = useMemo(() => new Set(groups.flatMap(g => g.cells)), [groups])
+  const resolving = groups.length > 0
+
+  function start() {
+    setScore(0)
+    setMergeCount(0)
+    setHighestLevel(1)
+    setResult(null)
+    setGroups([])
+    setPopPositions([])
+    startRef.current = Date.now()
+    setBoard(Array.from({ length: CELLS }, () => null))
+    setCurrent(randomTile())
+    setNext(randomTile())
+    setPhase('play')
   }
 
   function finish(finalScore: number, finalMerges: number, finalTop: number) {
@@ -211,8 +150,8 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
       total: finalMerges,
       detail: {
         'Merges': finalMerges,
-        'Top Tile': `${finalTop}`,
-        'Result': 'No legal move left — game over',
+        'Top Level': `${finalTop}`,
+        'Result': 'Board full — no triple left to clear',
       },
     }
     setResult(payload)
@@ -220,145 +159,108 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
     onEnd(payload)
   }
 
-  function start() {
-    setScore(0)
-    setMergeCount(0)
-    setHighestValue(1)
-    setResult(null)
-    startRef.current = Date.now()
-    let b = Array.from({ length: CELLS }, emptyCell)
-    b = spawnTile(b)
-    b = spawnTile(b)
-    setBoard(b)
-    setPhase('play')
-  }
+  // Places the queued "current" tile on an empty cell, then checks for a
+  // triple. If one exists, the board enters resolving mode (highlighted,
+  // rest dimmed) instead of handing out the next tile right away.
+  function placeTile(i: number) {
+    if (phase !== 'play' || resolving) return
+    if (board[i] !== null) return
 
-  // Dry-run every direction to see if any legal move remains.
-  function hasLegalMove(b: Cell[]): boolean {
-    return (['left', 'right', 'up', 'down'] as Dir[]).some(dir =>
-      linesForDir(dir).some(line => {
-        const cellsLine = line.map(i => b[i])
-        const { result: r } = collapseLine(cellsLine)
-        return line.some((pos, k) => b[pos].value !== r[k].value || b[pos].frozen !== r[k].frozen)
-      })
-    )
-  }
+    const nb = board.slice()
+    nb[i] = current
+    const foundGroups = findGroups(nb)
+    const newScore = score + 1
 
-  // Plain function (not memoized) — it reads board/score/mergeCount/
-  // highestValue straight from the closure, so it's always working off the
-  // latest render's state. All setState calls happen directly here, never
-  // nested inside another setState's updater, so there's no risk of the
-  // onEnd callback or score/XP updates double-firing under double-invoke.
-  function swipe(dir: Dir) {
-    if (phase !== 'play') return
-    const lines = linesForDir(dir)
-    const nb: Cell[] = board.map(c => ({ ...c }))
-    let totalGained = 0
-    let totalMerges = 0
-    let changed = false
-    const mergedGlobal: number[] = []
-
-    for (const line of lines) {
-      const cellsLine = line.map(i => board[i])
-      const { result: r, gained, merges, mergedPositions } = collapseLine(cellsLine)
-      totalGained += gained
-      totalMerges += merges
-      for (let k = 0; k < 4; k++) {
-        const pos = line[k]
-        if (board[pos].value !== r[k].value || board[pos].frozen !== r[k].frozen) changed = true
-        nb[pos] = r[k]
-      }
-      for (const mp of mergedPositions) mergedGlobal.push(line[mp])
-    }
-
-    if (!changed) return // illegal move — no-op, classic 2048 behavior
-
-    let finalBoard = spawnTile(nb)
-
-    const newScore = score + totalGained
-    const newMergeCount = mergeCount + totalMerges
-    const newHighest = Math.max(highestValue, ...finalBoard.map(c => c.value ?? 0))
-
-    const freezeChance = freezeChanceFor(newHighest)
-    if (freezeChance > 0) {
-      const frozenCount = finalBoard.filter(c => c.frozen).length
-      if (frozenCount < MAX_FROZEN && Math.random() < freezeChance) {
-        const candidates = finalBoard.map((c, i) => (c.value !== null && !c.frozen ? i : -1)).filter(i => i >= 0)
-        if (candidates.length > 0) {
-          const pick = candidates[Math.floor(Math.random() * candidates.length)]
-          finalBoard = finalBoard.map((c, i) => (i === pick ? { ...c, frozen: true } : c))
-        }
-      }
-    }
-
-    setBoard(finalBoard)
+    setBoard(nb)
     setScore(newScore)
-    setMergeCount(newMergeCount)
-    setHighestValue(newHighest)
-    setPopPositions(mergedGlobal)
+    setPopPositions([i])
     setTimeout(() => setPopPositions([]), 260)
 
-    if (!hasLegalMove(finalBoard)) {
+    if (foundGroups.length > 0) {
+      setGroups(foundGroups)
+      return
+    }
+
+    // No triple — hand out the next tile and check for game over.
+    setCurrent(next)
+    setNext(randomTile())
+
+    if (nb.every(c => c !== null)) {
+      finish(newScore, mergeCount, highestLevel)
+    }
+  }
+
+  // Resolves whichever triple the tapped cell belongs to: all three
+  // matching tiles collapse into one, one level higher, at the tapped
+  // position. If that creates a fresh triple, the board stays in
+  // resolving mode and re-highlights it; otherwise placement resumes.
+  function resolveTap(i: number) {
+    const group = groups.find(g => g.cells.includes(i))
+    if (!group) return
+
+    const mergedTile = board[group.cells[0]]
+    if (!mergedTile) return
+    const newLevel = mergedTile.level + 1
+
+    const nb = board.slice()
+    for (const c of group.cells) nb[c] = null
+    nb[i] = { color: mergedTile.color, level: newLevel }
+
+    const gained = newLevel * 5
+    const newScore = score + gained
+    const newMergeCount = mergeCount + 1
+    const newHighest = Math.max(highestLevel, newLevel)
+
+    setBoard(nb)
+    setScore(newScore)
+    setMergeCount(newMergeCount)
+    setHighestLevel(newHighest)
+    setPopPositions([i])
+    setTimeout(() => setPopPositions([]), 260)
+
+    const nextGroups = findGroups(nb)
+    setGroups(nextGroups)
+
+    if (nextGroups.length > 0) return // chain continues, stay in resolving mode
+
+    if (nb.every(c => c !== null)) {
       finish(newScore, newMergeCount, newHighest)
     }
   }
 
-  // swipeRef always points at the latest swipe closure above, so the
-  // window keydown listener (attached once per play session) never reads
-  // stale board/score state.
-  const swipeRef = useRef(swipe)
-  swipeRef.current = swipe
-
-  useEffect(() => {
+  function handleCellClick(e: ReactMouseEvent<HTMLDivElement>, i: number) {
     if (phase !== 'play') return
-    function onKey(e: KeyboardEvent) {
-      const map: Record<string, Dir> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
-      const dir = map[e.key]
-      if (!dir) return
-      e.preventDefault()
-      swipeRef.current(dir)
+    if (resolving) {
+      if (!highlightedCells.has(i)) return
+      ripple(e)
+      resolveTap(i)
+    } else {
+      if (board[i] !== null) return
+      ripple(e)
+      placeTile(i)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [phase])
-
-  function onTouchStart(e: ReactTouchEvent) {
-    const t = e.touches[0]
-    touchStart.current = { x: t.clientX, y: t.clientY }
-  }
-  function onTouchEnd(e: ReactTouchEvent) {
-    if (!touchStart.current) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - touchStart.current.x
-    const dy = t.clientY - touchStart.current.y
-    touchStart.current = null
-    const THRESHOLD = 24
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < THRESHOLD) return
-    if (Math.abs(dx) > Math.abs(dy)) swipe(dx > 0 ? 'right' : 'left')
-    else swipe(dy > 0 ? 'down' : 'up')
   }
 
   function endSessionEarly() {
-    finish(score, mergeCount, highestValue)
+    finish(score, mergeCount, highestLevel)
   }
 
-  const filled = useMemo(() => board.filter(c => c.value !== null).length, [board])
-  const frozenCount = useMemo(() => board.filter(c => c.frozen).length, [board])
+  const filled = useMemo(() => board.filter(c => c !== null).length, [board])
 
   const rules = [
-    { icon: '👆', text: 'Swipe (or use the arrows) to slide every tile at once' },
-    { icon: '➕', text: 'Two equal tiles combine into double the value: 1+1=2, 2+2=4, 4+4=8...' },
-    { icon: '🎲', text: 'A new tile spawns automatically after every legal move' },
+    { icon: '👆', text: 'Tap any empty cell to place your queued tile' },
+    { icon: '🎯', text: 'Get 3 tiles that match both color AND number to trigger a merge' },
+    { icon: '💓', text: 'Matching triples pulse and highlight — tap any of the three to merge them' },
+    { icon: '🔗', text: 'A merge can chain straight into another triple — resolve it before you place again' },
     { icon: '⚡', text: `+${MERGE_XP} XP per merge, added straight to your profile` },
-    { icon: '❄️', text: 'Cells can freeze grey and lock in place — slide a matching tile into one to break the ice' },
-    { icon: '💀', text: 'No legal move left in any direction → game over, session ends' },
+    { icon: '💀', text: 'Board fills up (16/16) with no triple left → game over, session ends' },
     { icon: '🔒', text: `Costs ${sessionCost} sessions per play` },
   ]
 
   if (phase === 'info') return (
     <PreGameModal
       gameName="Chill Merge"
-      tagline="Swipe to merge, chase the high tile, dodge the freeze."
+      tagline="Place tiles, chain the merges, chase the high score."
       accent={ACCENT}
       icon={<Layers size={40} />}
       rules={rules}
@@ -383,7 +285,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
         gameName="Chill Merge"
         accent={ACCENT}
         icon={<Layers size={14} />}
-        streak={highestValue}
+        streak={highestLevel}
         onQuit={() => setPhase('quit')}
         extraRight={
           <div style={{ display: 'flex', gap: 6 }}>
@@ -396,71 +298,96 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, alignItems: 'center', padding: '16px', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{filled}/{CELLS} cells filled</span>
-          {frozenCount > 0 && (
-            <span style={{
-              fontSize: 11, fontWeight: 700, borderRadius: 12, padding: '4px 10px',
-              color: '#7dd3fc', background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.35)',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-              <Snowflake size={11} /> {frozenCount} FROZEN
-            </span>
-          )}
           <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             Session XP: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>+{mergeCount * MERGE_XP}</span>
           </span>
         </div>
 
+        {resolving && (
+          <p style={{
+            fontSize: 12, fontWeight: 800, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.6px',
+            animation: 'tm-textPulse 1.1s ease-in-out infinite',
+          }}>
+            Tap a highlighted tile to merge
+          </p>
+        )}
+
         {/* Board */}
         <div
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
           style={{
             display: 'grid', gridTemplateColumns: `repeat(${GRID}, 74px)`, gridTemplateRows: `repeat(${GRID}, 74px)`,
             gap: 8, background: 'var(--surface2)', padding: 10, borderRadius: 20,
-            boxShadow: 'var(--elev-inset)', touchAction: 'none',
+            boxShadow: 'var(--elev-inset)',
           }}>
-          {board.map((cell, i) => (
-            <div key={i}
-              style={{
-                width: 74, height: 74, borderRadius: 16,
-                background: cell.frozen
-                  ? 'linear-gradient(135deg, rgba(125,211,252,0.35), rgba(56,189,248,0.35))'
-                  : cell.value !== null
-                    ? `linear-gradient(135deg, ${colorForValue(cell.value)}, ${colorForValue(cell.value)}cc)`
+          {board.map((cell, i) => {
+            const isHighlighted = highlightedCells.has(i)
+            const isDimmed = resolving && !isHighlighted
+            const meta = cell ? COLOR_META[cell.color] : null
+            const Icon = meta?.Icon
+            const clickable = !resolving ? cell === null : isHighlighted
+
+            return (
+              <div key={i}
+                onClick={e => handleCellClick(e, i)}
+                style={{
+                  width: 74, height: 74, borderRadius: 16,
+                  background: cell && meta
+                    ? `linear-gradient(135deg, ${meta.light}, ${meta.base})`
                     : 'var(--surface)',
-                boxShadow: cell.frozen
-                  ? '0 0 12px rgba(56,189,248,0.35), inset 0 0 0 1px rgba(125,211,252,0.5)'
-                  : cell.value !== null
-                    ? `0 0 ${popPositions.includes(i) ? 26 : 14}px ${colorForValue(cell.value)}55, 3px 3px 8px var(--neu-dark)`
-                    : '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
-                border: cell.frozen ? '1px solid rgba(125,211,252,0.6)' : '1px solid var(--border)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                transform: popPositions.includes(i) ? 'scale(1.08)' : 'scale(1)',
-                transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s',
-              }}>
-              {cell.frozen && <Snowflake size={14} style={{ color: '#e0f2fe', marginBottom: 2 }} />}
-              {cell.value !== null && (
-                <span style={{
-                  fontSize: fontSizeForValue(cell.value), fontWeight: 800,
-                  color: cell.frozen ? 'rgba(255,255,255,0.55)' : '#fff',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.35)',
-                }}>{cell.value}</span>
-              )}
+                  boxShadow: isHighlighted
+                    ? `0 0 22px ${meta?.base ?? ACCENT}88, inset 0 0 0 2px #fff`
+                    : cell && meta
+                      ? `0 0 ${popPositions.includes(i) ? 26 : 14}px ${meta.base}55, 3px 3px 8px var(--neu-dark)`
+                      : '3px 3px 8px var(--neu-dark), -2px -2px 6px var(--neu-light)',
+                  border: isHighlighted ? '2px solid #fff' : '1px solid var(--border)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  opacity: isDimmed ? 0.32 : 1,
+                  filter: isDimmed ? 'grayscale(0.6)' : 'none',
+                  cursor: clickable ? 'pointer' : 'default',
+                  transform: popPositions.includes(i) ? 'scale(1.08)' : 'scale(1)',
+                  transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, opacity 0.25s, filter 0.25s',
+                  animation: isHighlighted ? 'tm-heartbeat 0.9s ease-in-out infinite' : undefined,
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                {cell && Icon && (
+                  <Icon
+                    size={12}
+                    fill={meta?.filled ? 'rgba(255,255,255,0.85)' : 'none'}
+                    style={{ color: 'rgba(255,255,255,0.85)', position: 'absolute', top: 6, left: 6 }}
+                  />
+                )}
+                {cell && (
+                  <span style={{
+                    fontSize: fontSizeForLevel(cell.level), fontWeight: 800,
+                    color: '#fff',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                  }}>{cell.level}</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Place Now / Next Up queue */}
+        {!resolving && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <div style={{ display: 'flex', gap: 22 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Place Now</span>
+                <QueueTile tile={current} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: 0.65 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Next Up</span>
+                <QueueTile tile={next} small />
+              </div>
             </div>
-          ))}
-        </div>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.6px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Place Anywhere</p>
+          </div>
+        )}
 
-        {/* Directional controls (fallback for/alongside swipe gestures) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gridTemplateRows: 'repeat(2, 36px)', gap: 6, marginTop: 2 }}>
-          <div />
-          <button type="button" onClick={() => swipe('up')} style={arrowBtnStyle}><ArrowUp size={16} /></button>
-          <div />
-          <button type="button" onClick={() => swipe('left')} style={arrowBtnStyle}><ArrowLeft size={16} /></button>
-          <button type="button" onClick={() => swipe('down')} style={arrowBtnStyle}><ArrowDown size={16} /></button>
-          <button type="button" onClick={() => swipe('right')} style={arrowBtnStyle}><ArrowRight size={16} /></button>
-        </div>
-
-        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Swipe the board or tap the arrows — no legal move left ends the session</p>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+          {resolving ? 'A triple is ready — tap one of the pulsing tiles to merge it' : 'Tap an empty cell to place your tile — full board with no triple ends the session'}
+        </p>
 
         <button type="button" onClick={endSessionEarly}
           style={{ padding: '9px 18px', borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
@@ -469,11 +396,39 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
       </div>
 
       {phase === 'quit' && <QuitModal onConfirm={onBack} onCancel={() => setPhase('play')} />}
+
+      <style>{`
+        @keyframes tm-heartbeat {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        @keyframes tm-textPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   )
 }
 
-const arrowBtnStyle: CSSProperties = {
-  width: 40, height: 36, borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)',
-  color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+function QueueTile({ tile, small }: { tile: Tile; small?: boolean }) {
+  const meta = COLOR_META[tile.color]
+  const Icon = meta.Icon
+  const size = small ? 48 : 58
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 14,
+      background: `linear-gradient(135deg, ${meta.light}, ${meta.base})`,
+      boxShadow: `0 0 12px ${meta.base}55, 3px 3px 8px var(--neu-dark)`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      position: 'relative',
+    }}>
+      <Icon
+        size={11}
+        fill={meta.filled ? 'rgba(255,255,255,0.85)' : 'none'}
+        style={{ color: 'rgba(255,255,255,0.85)', position: 'absolute', top: 5, left: 5 }}
+      />
+      <span style={{ fontSize: small ? 18 : 22, fontWeight: 800, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>{tile.level}</span>
+    </div>
+  )
 }
