@@ -6,7 +6,6 @@ import Footer from '../../layout/Footer'
 import { useReveal } from './useReveal'
 import { useAuth } from '../auth/useAuth'
 import Seo from '../../shared/components/Seo'
-import { FAQ_ITEMS } from '../../shared/content/faq'
 
 // NOTE: no SearchAction here. Sitelinks-searchbox schema is only valid if the
 // target URL works for a logged-out visitor — Chillverse's /search is behind
@@ -22,58 +21,24 @@ const HOME_JSON_LD = [
   },
 ]
 
-// Decorative drift assets — hosted on Supabase storage.
+// Decorative / illustrative assets — hosted on Supabase storage.
 const DRIFT = {
   willam: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam2.png',
-  flyer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Flyer.png',
-  feed: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Feed.png',
   controller: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Controller.png',
-  chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
-  streak: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Streak.png',
   mascot: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Mascot.png',
 }
 
-// Static hero character — intentionally NOT part of the DRIFT set. It holds
-// a fixed position beside the hero copy instead of scroll-parallaxing or
-// idle-drifting like the decorative assets below.
+// The static hero character — anchored beside the leaderboard mock on
+// larger screens, and layered in behind it (low-opacity, blurred) on
+// mobile so phones get a "player" presence too instead of nothing.
 const HERO_CHARACTER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Baseballplayer.png'
 
 const FEATURES = [
-  {
-    icon: DRIFT.controller,
-    title: 'Play Games',
-    desc: 'Fast-paced challenges, multiplayer battles, and solo runs. Every win earns you XP and moves you up the board.',
-    pill: 'Multiplayer',
-    accent: 'violet',
-  },
-  {
-    icon: DRIFT.streak,
-    title: 'Streak System',
-    desc: "Log in, play, stay hot. Your streak is your reputation. Miss a day and you'll feel it on the leaderboard.",
-    pill: 'Daily XP',
-    accent: 'amber',
-  },
-  {
-    icon: DRIFT.feed,
-    title: 'Leaderboards',
-    desc: "Global and friend rankings updated in real time. See who's topping the charts — and decide if it'll be you.",
-    pill: 'Live rankings',
-    accent: 'pink',
-  },
-  {
-    icon: DRIFT.chat,
-    title: 'Chat & Crew',
-    desc: 'Trash talk, team up, or just vibe. Group chats, direct messages, and live reactions keep the energy going.',
-    pill: 'Real-time',
-    accent: 'cyan',
-  },
-  {
-    icon: DRIFT.willam,
-    title: 'Your Profile',
-    desc: 'Level, badges, game history, win rate — your profile is your flex. Customise it, build it, show it off.',
-    pill: 'Achievements',
-    accent: 'green',
-  },
+  { icon: DRIFT.controller, title: 'Play Games', accent: 'violet' },
+  { icon: DRIFT.willam, title: 'Streak System', accent: 'amber' },
+  { icon: DRIFT.controller, title: 'Leaderboards', accent: 'pink' },
+  { icon: DRIFT.willam, title: 'Chat & Crew', accent: 'cyan' },
+  { icon: DRIFT.controller, title: 'Your Profile', accent: 'green' },
 ]
 
 // Real in-app profile pictures (pulled from the Mall's profile_pic catalog)
@@ -145,21 +110,33 @@ function DriftImg({
   )
 }
 
-const ACCENT_MAP: Record<string, { icon: string; border: string; shadow: string; pill: string }> = {
-  violet: { icon: 'bg-chill-violet/15', border: 'hover:border-chill-violet/50', shadow: 'hover:shadow-[0_20px_60px_rgba(108,80,255,0.2)]', pill: 'bg-chill-violet/15 text-chill-violetSoft' },
-  amber:  { icon: 'bg-chill-amber/12', border: 'hover:border-chill-amber/35', shadow: 'hover:shadow-[0_20px_60px_rgba(255,184,0,0.12)]', pill: 'bg-chill-amber/10 text-chill-amber' },
-  pink:   { icon: 'bg-chill-pink/12', border: 'hover:border-chill-pink/40', shadow: 'hover:shadow-[0_20px_60px_rgba(255,78,205,0.14)]', pill: 'bg-chill-pink/12 text-chill-pink' },
-  cyan:   { icon: 'bg-chill-cyan/12', border: 'hover:border-chill-cyan/40', shadow: 'hover:shadow-[0_20px_60px_rgba(0,229,255,0.14)]', pill: 'bg-chill-cyan/12 text-chill-cyan' },
-  green:  { icon: 'bg-chill-green/10', border: 'hover:border-chill-green/40', shadow: 'hover:shadow-[0_20px_60px_rgba(0,255,135,0.15)]', pill: 'bg-chill-green/10 text-chill-green' },
+// Fixed, viewport-pinned ambient layer — sits behind every section so the
+// page never reads as flat black. A few softly blurred colour blooms plus
+// a handful of near-invisible glyphs drifting on the existing keyframes
+// give the whole scroll a frosted-glass depth instead of a plain #050506
+// backdrop. Purely decorative: aria-hidden, no pointer events, and backs
+// off entirely under reduced-motion.
+function AmbientBackground() {
+  return (
+    <div aria-hidden className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-chill-violet/[0.08] blur-[140px]" />
+      <div className="absolute top-1/3 -right-20 w-[420px] h-[420px] rounded-full bg-chill-cyan/[0.06] blur-[130px]" />
+      <div className="absolute bottom-0 left-1/4 w-[440px] h-[440px] rounded-full bg-chill-pink/[0.05] blur-[150px]" />
+      <div className="hidden sm:block absolute top-[18%] left-[8%] text-4xl opacity-[0.05] drift-a">🎮</div>
+      <div className="hidden sm:block absolute top-[55%] right-[10%] text-4xl opacity-[0.05] drift-b">🔥</div>
+      <div className="hidden sm:block absolute top-[78%] left-[14%] text-4xl opacity-[0.05] drift-c">💬</div>
+      <div className="hidden sm:block absolute top-[38%] left-[46%] text-4xl opacity-[0.04] drift-b">🏆</div>
+    </div>
+  )
 }
 
-const TESTIMONIALS = [
-  { initials: 'TK', name: 'TrapKing_99', role: 'Top 50 global', text: "My streak is at 87 days. I don't even open other apps anymore. Chillverse is just different.", color: 'rgba(108,80,255,0.2)', text2: '#a78bfa' },
-  { initials: 'FX', name: 'FluxGamer', role: 'Ranked player', text: 'The leaderboard energy is insane. My whole crew is on here competing every day now.', color: 'rgba(0,229,255,0.15)', text2: '#00e5ff' },
-  { initials: 'AY', name: 'Ayomide_', role: 'Badge collector', text: 'I love the profile customisation. My page actually feels like mine. The badge system goes hard.', color: 'rgba(255,78,205,0.15)', text2: '#ff4ecd' },
-  { initials: 'OB', name: 'Obi_Plays', role: 'Community leader', text: 'Chat while you play, trash talk while you win. The vibe in here is unmatched.', color: 'rgba(0,255,135,0.12)', text2: '#00ff87' },
-  { initials: 'ZR', name: 'ZeroRush', role: 'Top 10 player', text: 'Hit top 10 on the global board last week. The competition is real and addictive.', color: 'rgba(255,184,0,0.15)', text2: '#ffb800' },
-]
+const ACCENT_MAP: Record<string, { icon: string; pill: string }> = {
+  violet: { icon: 'bg-chill-violet/15', pill: 'bg-chill-violet/15 text-chill-violetSoft border-chill-violet/25' },
+  amber:  { icon: 'bg-chill-amber/12', pill: 'bg-chill-amber/10 text-chill-amber border-chill-amber/25' },
+  pink:   { icon: 'bg-chill-pink/12', pill: 'bg-chill-pink/12 text-chill-pink border-chill-pink/25' },
+  cyan:   { icon: 'bg-chill-cyan/12', pill: 'bg-chill-cyan/12 text-chill-cyan border-chill-cyan/25' },
+  green:  { icon: 'bg-chill-green/10', pill: 'bg-chill-green/10 text-chill-green border-chill-green/25' },
+}
 
 export default function Landing() {
   useReveal()
@@ -178,144 +155,117 @@ export default function Landing() {
         jsonLd={HOME_JSON_LD}
       />
       <Nav />
+      <AmbientBackground />
 
-      {/* ── HERO ── */}
-      <section className="relative min-h-screen h-screen flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
-          {/* Ambient glow filling the space the cube scene used to occupy
-             behind the headline — keeps the hero from reading as empty. */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
-            <div className="w-[600px] h-[600px] rounded-full bg-chill-violet/[0.10] blur-[120px]" />
-            <div className="absolute w-[400px] h-[400px] rounded-full bg-chill-cyan/[0.08] blur-[100px] -translate-x-24 translate-y-16" />
+      {/* ── HERO ──
+          Big mascot display up top (Discord-style), then a tighter
+          headline + one line of copy + a single CTA underneath. */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-32 sm:pt-36 pb-16 sm:pb-20">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
+          <div className="w-[600px] h-[600px] rounded-full bg-chill-violet/[0.10] blur-[120px]" />
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-chill-cyan/[0.08] blur-[100px] -translate-x-24 translate-y-16" />
+        </div>
+
+        <div className="relative z-[6] flex flex-col items-center text-center max-w-2xl">
+          {/* The big mascot — the whole point of the top of the page.
+             Idle-floats gently; no card, no chrome, just the crew. */}
+          <div className="drift-outer relative mb-4 sm:mb-6 w-[220px] sm:w-[300px] md:w-[360px]">
+            <div className="drift-item drift-a">
+              <img
+                src={DRIFT.mascot}
+                alt="The Chillverse crew"
+                className="w-full h-auto drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
+              />
+            </div>
           </div>
 
-          {/* pointer-events-none so the two links below can opt back in
-             without the wrapper itself intercepting clicks */}
-          <div className="relative z-[6] max-w-3xl text-center pointer-events-none">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-chill-violet/35 bg-chill-violet/10 text-sm font-semibold text-chill-violetSoft tracking-wide mb-7">
-              <span className="live-dot" />
-              Games · Profiles · Streaks · Chat
-            </div>
+          <h1 className="font-bold leading-[1.02] mb-4 text-[clamp(28px,7vw,52px)] tracking-tight">
+            <span className="text-chill-text">Play. Win. </span>
+            <span className="text-gradient">Dominate.</span>
+          </h1>
 
-            <h1 className="font-bold leading-[0.95] mb-6 sm:mb-7 text-[clamp(40px,11vw,100px)] tracking-tight break-words">
-              <span className="block text-chill-text">Play. Win.</span>
-              <span className="block text-gradient">Dominate.</span>
-              <span className="block text-[rgba(238,234,255,0.55)] text-[0.5em] sm:text-[0.55em] font-normal mt-2 sm:mt-2.5 tracking-normal">
-                Your universe. Your rules.
-              </span>
-            </h1>
+          <p className="text-sm sm:text-base text-chill-textSecondary max-w-[300px] sm:max-w-sm mx-auto mb-8 leading-relaxed">
+            Compete, build your profile, and keep your streak alive with your crew — all in one platform.
+          </p>
 
-            <p className="text-base sm:text-lg text-chill-textSecondary max-w-[320px] sm:max-w-md mx-auto mb-9 sm:mb-12 leading-relaxed">
-              Compete, build your profile, keep your streak alive, and chat with your crew — all inside one electrifying platform.
+          <div className="flex flex-col items-center gap-3">
+            <Link
+              to="/signup"
+              className="px-9 sm:px-10 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_8px_36px_rgba(108,80,255,0.5)] hover:-translate-y-1 hover:shadow-[0_14px_48px_rgba(108,80,255,0.7)] transition-all whitespace-nowrap"
+            >
+              Enter Chillverse →
+            </Link>
+            <a href="#features" className="text-xs sm:text-sm font-medium text-chill-textMuted hover:text-chill-violetSoft transition-colors">
+              See what's inside
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── ARSENAL + HOW IT WORKS, merged ──
+          One Discord-style glass card: short copy + a chip row of what
+          the platform does, paired with one big illustration. Replaces
+          the old 5-card feature grid + separate 3-step section. */}
+      <section id="features" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <div className="reveal glass-panel-strong glow-violet-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
+          <div className="order-2 md:order-1">
+            <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
+            <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Built for players.</h2>
+            <p className="text-sm sm:text-base text-chill-textSecondary leading-relaxed mb-3">
+              Fast games, real streaks, a profile that's actually yours. Create it, jump into a match, and start climbing — your first win is seconds away.
             </p>
 
-            <div className="flex items-center justify-center gap-3 sm:gap-3.5 flex-wrap px-2 pointer-events-auto">
-              <Link
-                to="/signup"
-                className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_8px_36px_rgba(108,80,255,0.5)] hover:-translate-y-1 hover:shadow-[0_14px_48px_rgba(108,80,255,0.7)] transition-all whitespace-nowrap"
-              >
-                Enter Chillverse →
-              </Link>
-              <a
-                href="#features"
-                className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-medium text-chill-text border-[1.5px] border-chill-borderBright hover:bg-chill-violet/10 hover:border-chill-violetSoft transition-all whitespace-nowrap"
-              >
-                See what's inside
-              </a>
+            <div className="flex flex-wrap gap-2.5 mt-6">
+              {FEATURES.map((f) => {
+                const a = ACCENT_MAP[f.accent]
+                return (
+                  <span
+                    key={f.title}
+                    className={`inline-flex items-center gap-2 pl-2 pr-3.5 py-1.5 rounded-full border text-xs font-semibold ${a.pill}`}
+                  >
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center ${a.icon}`}>
+                      <img src={f.icon} alt="" className="w-3.5 h-3.5 object-contain" loading="lazy" />
+                    </span>
+                    {f.title}
+                  </span>
+                )
+              })}
             </div>
 
-            <div className="mt-10 sm:mt-12 flex items-center justify-center gap-2 text-[11px] sm:text-xs tracking-[3px] uppercase text-chill-textMuted font-mono">
-              <div className="w-8 sm:w-10 h-px bg-gradient-to-r from-transparent to-chill-borderBright" />
-              scroll to explore
-              <div className="w-8 sm:w-10 h-px bg-gradient-to-l from-transparent to-chill-borderBright" />
-            </div>
+            <Link
+              to="/signup"
+              className="inline-block mt-8 text-sm font-semibold text-chill-violetSoft hover:underline"
+            >
+              Jump in — it takes 60 seconds →
+            </Link>
           </div>
 
-          {/* Static hero character — fixed in place, no drift/parallax.
-             Anchored to the right edge so it reads as "the player" standing
-             beside the multiplayer/challenges copy. Room left for more
-             callout chips as new talking points get added. */}
-          <div className="hidden lg:block absolute right-[3%] xl:right-[6%] bottom-0 z-[5] w-[260px] xl:w-[300px] pointer-events-none">
-            <img
-              src={HERO_CHARACTER}
-              alt="Chillverse player"
-              className="w-full h-auto drop-shadow-[0_30px_60px_rgba(108,80,255,0.35)]"
-            />
-            <div className="badge-float absolute top-[8%] -left-16 glass-chip border border-chill-violet/40 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-violetSoft shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
-              ⚔️ Multiplayer battles
-            </div>
-            <div className="badge-float-delay absolute top-[42%] -left-24 glass-chip border border-chill-cyan/35 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
-              🎯 Daily challenges
-            </div>
-          </div>
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section id="features" className="relative px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
-        <DriftImg
-          src={DRIFT.feed}
-          alt="Chillverse feed preview"
-          wrapperClassName="hidden md:block right-[1%] top-[2%] w-40 lg:w-48 z-[1]"
-          motion="drift-b"
-          speed={0.3}
-        />
-        <DriftImg
-          src={DRIFT.chat}
-          alt="Chillverse chat preview"
-          wrapperClassName="hidden md:block left-[0%] bottom-[4%] w-36 lg:w-44 z-[1]"
-          motion="drift-c"
-          speed={0.2}
-        />
-        <DriftImg
-          src={DRIFT.willam}
-          alt="Chillverse player character"
-          wrapperClassName="hidden lg:block right-[6%] bottom-[3%] w-28 xl:w-32 z-[1]"
-          motion="drift-a"
-          speed={0.24}
-        />
-        <div className="reveal">
-          <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
-          <h2 className="text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight mb-3.5">Built for players.</h2>
-          <p className="text-lg text-chill-textSecondary max-w-md leading-relaxed">Everything you need to compete, connect, and climb — in one place.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[18px] mt-14">
-          {FEATURES.map((f, i) => {
-            const a = ACCENT_MAP[f.accent]
-            return (
-              <div
-                key={f.title}
-                className={`reveal glass-panel glow-violet-tint rounded-2xl p-7 transition-all duration-300 hover:-translate-y-[6px] ${a.border} ${a.shadow}`}
-                style={{ transitionDelay: `${i * 0.1}s` }}
-              >
-                <div className={`w-[50px] h-[50px] rounded-xl flex items-center justify-center mb-[18px] ${a.icon}`}>
-                  <img src={f.icon} alt="" className="w-8 h-8 object-contain" loading="lazy" />
-                </div>
-                <div className="text-lg font-semibold mb-2.5">{f.title}</div>
-                <p className="text-sm text-chill-textSecondary leading-relaxed">{f.desc}</p>
-                <span className={`inline-block mt-4 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${a.pill}`}>
-                  {f.pill}
-                </span>
+          <div className="order-1 md:order-2 flex items-center justify-center">
+            <div className="drift-outer relative w-[220px] sm:w-[280px] md:w-full md:max-w-[320px]">
+              <div className="drift-item drift-b">
+                <img
+                  src={DRIFT.controller}
+                  alt="Chillverse game controller"
+                  className="w-full h-auto drop-shadow-[0_24px_50px_rgba(108,80,255,0.3)]"
+                  loading="lazy"
+                />
               </div>
-            )
-          })}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── LEADERBOARD SCENE ── */}
-      <section id="leaderboard" className="relative px-6 md:px-16 py-20 bg-gradient-to-b from-chill-bg via-chill-bg2 to-chill-bg overflow-hidden">
-        <DriftImg
-          src={DRIFT.controller}
-          alt="Chillverse controller"
-          wrapperClassName="hidden lg:block left-[2%] top-[6%] w-32 z-[1]"
-          motion="drift-c"
-          speed={0.28}
-        />
-        <div className="max-w-[1300px] mx-auto grid lg:grid-cols-2 gap-20 items-center">
-          <div className="reveal">
+      {/* ── LEADERBOARD, merged into one glass card ──
+          Now visible at every breakpoint (not desktop-only), with the
+          player characters layered in behind the mock so phones get
+          that "player" presence too. */}
+      <section id="leaderboard" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center overflow-hidden">
+          <div>
             <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// climb the ranks</div>
-            <h2 className="text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight mb-3.5">The top is within reach.</h2>
-            <p className="text-lg text-chill-textSecondary max-w-md leading-relaxed mb-8">
-              Real-time leaderboards show you exactly where you stand — and what it takes to rise. Every game counts.
+            <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">The top is within reach.</h2>
+            <p className="text-sm sm:text-base text-chill-textSecondary leading-relaxed mb-7">
+              Real-time leaderboards show exactly where you stand — and what it takes to rise. Every game counts.
             </p>
             <Link
               to="/login"
@@ -325,46 +275,62 @@ export default function Landing() {
             </Link>
           </div>
 
-          <div className="reveal hidden lg:flex items-center justify-center" style={{ perspective: '700px', transitionDelay: '0.2s' }}>
-            <div className="relative">
-              <div className="lb-float">
-                <div className="glass-panel-strong glow-violet-tint rounded-[22px] p-7 w-80 shadow-[0_40px_80px_rgba(0,0,0,0.7),0_0_80px_rgba(108,80,255,0.2)]">
-                  <div className="flex items-center justify-between mb-[22px]">
-                    <span className="text-[13px] font-bold tracking-wider text-chill-textMuted uppercase font-mono">Top Players</span>
-                    <span className="flex items-center gap-1.5 text-[11px] text-chill-green font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-chill-green live-dot" /> Live
-                    </span>
-                  </div>
+          <div className="relative flex items-center justify-center py-4" style={{ perspective: '700px' }}>
+            {/* Player characters — layered behind the leaderboard card at
+               every breakpoint, faded/scaled down on phones so they read
+               as background presence rather than clutter. */}
+            <img
+              src={HERO_CHARACTER}
+              alt=""
+              aria-hidden
+              className="absolute left-[2%] sm:left-[6%] bottom-0 w-[110px] sm:w-[150px] md:w-[190px] h-auto opacity-60 sm:opacity-80 blur-[1px] sm:blur-0 z-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+              loading="lazy"
+            />
+            <img
+              src={DRIFT.willam}
+              alt=""
+              aria-hidden
+              className="absolute right-[0%] sm:right-[4%] top-[6%] w-[90px] sm:w-[120px] md:w-[150px] h-auto opacity-50 sm:opacity-70 blur-[1px] sm:blur-0 z-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+              loading="lazy"
+            />
 
-                  {[
-                    { rank: '🥇', avatar: LEADERBOARD_AVATARS.zeroKnight, name: 'ZeroKnight', score: '98,410', streak: 72, ring: 'rgba(255,184,0,0.5)' },
-                    { rank: '🥈', avatar: LEADERBOARD_AVATARS.neonX, name: 'NeonX_', score: '91,870', streak: 58, ring: 'rgba(0,229,255,0.4)' },
-                    { rank: '🥉', avatar: LEADERBOARD_AVATARS.voidRacer, name: 'VoidRacer', score: '88,220', streak: 41, ring: 'rgba(255,78,205,0.4)' },
-                    { rank: '4', avatar: LEADERBOARD_AVATARS.skyKid, name: 'SkyKid', score: '84,100', streak: 35, ring: 'rgba(0,255,135,0.35)' },
-                  ].map((row) => (
-                    <div key={row.name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-2 hover:bg-chill-surface2 transition-colors">
-                      <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-textMuted">{row.rank}</div>
-                      <div className="w-[34px] h-[34px] rounded-full flex-shrink-0 overflow-hidden ring-2" style={{ boxShadow: `0 0 0 2px ${row.ring}` }}>
-                        <img src={row.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                      <div className="flex-1 text-[13px] font-semibold">{row.name}</div>
-                      <div className="text-xs font-bold font-mono text-chill-violetSoft">{row.score}<span className="text-[10px] text-chill-amber ml-1">🔥{row.streak}</span></div>
+            <div className="relative z-10 lb-float">
+              <div className="glass-panel rounded-[22px] p-6 sm:p-7 w-[260px] sm:w-80 shadow-[0_40px_80px_rgba(0,0,0,0.7),0_0_80px_rgba(108,80,255,0.2)]">
+                <div className="flex items-center justify-between mb-[18px] sm:mb-[22px]">
+                  <span className="text-[12px] sm:text-[13px] font-bold tracking-wider text-chill-textMuted uppercase font-mono">Top Players</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-chill-green font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-chill-green live-dot" /> Live
+                  </span>
+                </div>
+
+                {[
+                  { rank: '🥇', avatar: LEADERBOARD_AVATARS.zeroKnight, name: 'ZeroKnight', score: '98,410', streak: 72, ring: 'rgba(255,184,0,0.5)' },
+                  { rank: '🥈', avatar: LEADERBOARD_AVATARS.neonX, name: 'NeonX_', score: '91,870', streak: 58, ring: 'rgba(0,229,255,0.4)' },
+                  { rank: '🥉', avatar: LEADERBOARD_AVATARS.voidRacer, name: 'VoidRacer', score: '88,220', streak: 41, ring: 'rgba(255,78,205,0.4)' },
+                  { rank: '4', avatar: LEADERBOARD_AVATARS.skyKid, name: 'SkyKid', score: '84,100', streak: 35, ring: 'rgba(0,255,135,0.35)' },
+                ].map((row) => (
+                  <div key={row.name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-2 hover:bg-chill-surface2 transition-colors">
+                    <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-textMuted">{row.rank}</div>
+                    <div className="w-[34px] h-[34px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: `0 0 0 2px ${row.ring}` }}>
+                      <img src={row.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
-                  ))}
-
-                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-chill-violet/10">
-                    <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-violetSoft">—</div>
-                    <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-chill-violet/20 text-chill-violetSoft">YOU</div>
-                    <div className="flex-1 text-[13px] font-semibold text-chill-violetSoft">Your spot</div>
-                    <div className="text-xs font-bold font-mono text-chill-violetSoft">???</div>
+                    <div className="flex-1 text-[13px] font-semibold">{row.name}</div>
+                    <div className="text-xs font-bold font-mono text-chill-violetSoft">{row.score}<span className="text-[10px] text-chill-amber ml-1">🔥{row.streak}</span></div>
                   </div>
+                ))}
+
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-chill-violet/10">
+                  <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-violetSoft">—</div>
+                  <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-chill-violet/20 text-chill-violetSoft">YOU</div>
+                  <div className="flex-1 text-[13px] font-semibold text-chill-violetSoft">Your spot</div>
+                  <div className="text-xs font-bold font-mono text-chill-violetSoft">???</div>
                 </div>
               </div>
 
-              <div className="badge-float absolute -top-4.5 -right-12 glass-chip border border-chill-pink/40 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-pink shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              <div className="badge-float absolute -top-4.5 -right-6 sm:-right-12 glass-chip border border-chill-pink/40 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-pink shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
                 ⚡ +2,400 XP gained!
               </div>
-              <div className="badge-float-delay absolute bottom-2.5 -left-16 glass-chip border border-chill-cyan/35 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              <div className="badge-float-delay absolute bottom-2.5 -left-4 sm:-left-16 glass-chip border border-chill-cyan/35 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
                 👥 4 friends online
               </div>
             </div>
@@ -372,140 +338,11 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
-        <div className="reveal text-center">
-          <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// jump in</div>
-          <h2 className="text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight">Start in 60 seconds.</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7 mt-14 relative">
-          {[
-            { n: '01', title: 'Create your profile', desc: 'Pick your username, avatar, and set your game preferences. Your identity in the verse starts here.' },
-            { n: '02', title: 'Jump into a game', desc: 'Browse active lobbies, challenge friends, or drop into a quick match. Your first win is seconds away.' },
-            { n: '03', title: 'Climb & dominate', desc: 'Earn XP, protect your streak, and climb the leaderboard. Every session pushes you higher.' },
-          ].map((step, i) => (
-            <div key={step.n} className="reveal glass-step text-center p-7 transition-all duration-300 hover:-translate-y-1" style={{ transitionDelay: `${i * 0.12}s` }}>
-              <div className="w-[68px] h-[68px] rounded-full border-[1.5px] border-chill-borderBright bg-chill-surface flex items-center justify-center text-xl font-bold font-mono mx-auto mb-[18px] text-chill-violetSoft hover:bg-chill-violet/15 hover:border-chill-violet transition-all">
-                {step.n}
-              </div>
-              <div className="text-base font-semibold mb-2">{step.title}</div>
-              <p className="text-[13px] text-chill-textSecondary leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── COMMUNITY ── */}
-      <section id="community" className="relative py-20 bg-chill-bg2 border-y border-chill-border overflow-hidden">
-        <DriftImg
-          src={DRIFT.flyer}
-          alt="Chillverse promo flyer"
-          wrapperClassName="hidden md:block right-[3%] top-[10%] w-36 lg:w-44 z-[1]"
-          motion="drift-a"
-          speed={0.22}
-        />
-        <DriftImg
-          src={DRIFT.mascot}
-          alt="Chillverse crew"
-          wrapperClassName="hidden lg:block left-[1%] bottom-[2%] w-40 xl:w-48 z-[1]"
-          motion="drift-b"
-          speed={0.18}
-        />
-        <div className="max-w-[1300px] mx-auto px-6 md:px-16 pb-10">
-          <div className="reveal font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// the verse speaks</div>
-          <h2 className="reveal text-[clamp(36px,4.5vw,54px)] font-bold leading-tight tracking-tight">Players love it here.</h2>
-        </div>
-
-        <div className="t-scroll px-6 md:px-16">
-          {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
-            <div key={i} className="glass-panel glow-violet-tint rounded-2xl p-6 w-[290px] flex-shrink-0">
-              <div className="text-chill-amber text-[11px] mb-2.5">★★★★★</div>
-              <p className="text-[13px] leading-relaxed text-chill-textSecondary mb-3.5">"{t.text}"</p>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: t.color, color: t.text2 }}>{t.initials}</div>
-                <div>
-                  <div className="text-[13px] font-semibold">{t.name}</div>
-                  <div className="text-[11px] text-chill-textMuted">{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── BRANCH CALLOUT ── */}
-      <section className="px-6 md:px-16 py-20 max-w-[1300px] mx-auto">
-        <div className="reveal glass-panel-strong glow-cyan-tint rounded-2xl p-8 md:p-12 flex items-center justify-between gap-12 flex-wrap relative overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-chill-cyan/[0.06] blur-3xl" />
-          <div className="relative z-10">
-            <span className="inline-block mb-3.5 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-chill-cyan/10 text-chill-cyan border border-chill-cyan/25">
-              Branch Feature
-            </span>
-            <h3 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">There's a learning side too.</h3>
-            <p className="text-base text-chill-textSecondary max-w-md leading-relaxed">
-              Chillverse isn't just games. There's a dedicated knowledge platform branch — for players who want to level up their mind alongside their rank. Explore it when you're ready.
-            </p>
-          </div>
-          <a
-            href="https://cvwtplatform.vercel.app/"
-            target="_blank"
-            rel="noreferrer"
-            className="relative z-10 px-8 py-3.5 rounded-full text-[15px] font-semibold text-chill-cyan border-[1.5px] border-chill-cyan/45 hover:bg-chill-cyan/10 hover:-translate-y-0.5 transition-all whitespace-nowrap"
-          >
-            Explore the branch →
-          </a>
-        </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section className="px-6 md:px-16 py-24 max-w-3xl mx-auto" id="faq">
-        <div className="reveal text-center mb-14">
-          <span className="inline-block mb-3.5 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-chill-violet/10 text-chill-violetSoft border border-chill-violet/25">
-            FAQ
-          </span>
-          <h2 className="text-[clamp(32px,5vw,48px)] font-bold tracking-tight">Frequently asked questions</h2>
-        </div>
-
-        <div className="reveal flex flex-col gap-3.5">
-          {FAQ_ITEMS.slice(0, 7).map((item, i) => (
-            <details
-              key={i}
-              className="group glass-panel rounded-2xl px-6 py-5 open:pb-5 transition-all"
-            >
-              <summary className="cursor-pointer list-none flex items-center justify-between gap-4 font-semibold text-[16px] text-chill-text">
-                {item.q}
-                <span className="shrink-0 text-chill-textMuted transition-transform group-open:rotate-45 text-xl leading-none">+</span>
-              </summary>
-              <p className="mt-3 text-[15px] leading-relaxed text-chill-textSecondary">{item.a}</p>
-            </details>
-          ))}
-        </div>
-        <div className="reveal text-center mt-8">
-          <Link to="/faq" className="text-sm font-semibold text-chill-violetSoft hover:underline">
-            See all FAQs →
-          </Link>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="px-6 md:px-16 py-28 text-center max-w-3xl mx-auto">
-        <div className="reveal">
-          <h2 className="text-[clamp(42px,6vw,68px)] font-bold leading-none tracking-tight mb-[18px]">Your verse is waiting.</h2>
-          <p className="text-lg text-chill-textSecondary mb-11">Drop in, build your profile, and start your streak today. The leaderboard won't climb itself.</p>
-          <div className="flex items-center justify-center gap-3.5 flex-wrap">
-            <Link
-              to="/signup"
-              className="px-11 py-[18px] rounded-full text-[17px] font-bold text-white bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_10px_40px_rgba(108,80,255,0.55)] hover:-translate-y-1 hover:shadow-[0_18px_56px_rgba(108,80,255,0.7)] transition-all"
-            >
-              Enter Chillverse →
-            </Link>
-            <a href="#features" className="px-11 py-[18px] rounded-full text-[17px] font-medium text-chill-text border-[1.5px] border-chill-borderBright hover:bg-chill-violet/10 transition-all">
-              See features
-            </a>
-          </div>
-          <p className="mt-[18px] text-[13px] text-chill-textMuted">Free to join · No credit card</p>
-        </div>
+      {/* ── LAST WORD — simple tagline, no buttons, no card ── */}
+      <section className="relative px-6 py-20 sm:py-24 text-center">
+        <p className="reveal text-gradient text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
+          Your universe. Your rules.
+        </p>
       </section>
 
       <Footer />
