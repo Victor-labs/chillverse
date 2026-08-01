@@ -41,7 +41,7 @@ const REE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/A
 
 // New cards: movies/entertainment hub, and the community/discussion hub.
 const MOVIES_ART = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Movies.png'
-const EARTH_ART = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Earth.jpg'
+const EARTH_ART = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Earth.png'
 
 // Ambient background art. Exactly THREE images total on the whole page —
 // one per section, not the same 3 pngs repeated over and over. Motion is
@@ -175,7 +175,7 @@ export default function Landing() {
           No parallax art up top anymore — the bomb was sitting right under
           the nav, way too high. Parallax now only kicks in from the flyer's
           position (bottom of hero, where it was originally marked). */}
-      <section className="relative flex flex-col items-center justify-start overflow-hidden px-5 sm:px-6 md:px-16 pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20 min-h-[auto]">
+      <section className="relative flex flex-col items-center justify-start overflow-hidden px-5 sm:px-6 md:px-16 pt-14 sm:pt-16 md:pt-20 pb-16 sm:pb-20 min-h-[auto]">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
           <div className="w-[600px] h-[600px] rounded-full bg-[rgba(108,80,255,0.10)] blur-[120px]" />
           <div className="absolute w-[400px] h-[400px] rounded-full bg-[rgba(0,229,255,0.08)] blur-[100px] -translate-x-24 translate-y-16" />
@@ -187,10 +187,13 @@ export default function Landing() {
           <img
             src={ART.mascot}
             alt="The Chillverse crew"
-            className="block w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] h-auto mb-6 sm:mb-8 drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
+            className="block w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] h-auto mb-5 sm:mb-7 drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
           />
 
-          <h1 className="font-bold leading-[1.02] mb-4 text-[clamp(28px,7vw,52px)] tracking-tight">
+          <h1
+            className="leading-[1.02] mb-4 text-[clamp(30px,7vw,54px)] tracking-wide uppercase"
+            style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800 }}
+          >
             <span>Play. Win. </span>
             <span className="text-gradient">Dominate.</span>
           </h1>
@@ -255,7 +258,7 @@ export default function Landing() {
         <div className="relative pt-14 sm:pt-16 md:pt-20">
           <PeekingCharacter
             src={BASEBALL_PLAYER}
-            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[150px] sm:w-[190px] md:w-[220px]"
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[190px] sm:w-[250px] md:w-[300px] lg:w-[340px]"
           />
 
           <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
@@ -306,40 +309,36 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── MOVIES / ENTERTAINMENT ── */}
+      {/* ── MOVIES / ENTERTAINMENT ──
+          Camera art peeks in from ABOVE the card, same treatment as the
+          controller/baseball player — not boxed inside a grid column. */}
       <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
-        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
-          <div className="order-2 md:order-1">
+        <div className="relative pt-14 sm:pt-16 md:pt-20">
+          <PeekingCharacter
+            src={MOVIES_ART}
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[140px] sm:w-[175px] md:w-[205px]"
+          />
+
+          <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
             <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Lights. Camera. Chillverse.</h2>
             <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed">
               Discover trending blockbusters, timeless classics, anime, TV series, and hidden gems, all carefully organized in one place. Whether you're in the mood for action, romance, comedy, horror, or sci-fi, your next binge-worthy watch is just a click away.
             </p>
           </div>
-
-          <div className="order-1 md:order-2 flex items-center justify-center">
-            <img
-              src={MOVIES_ART}
-              alt="Chillverse movies and entertainment hub"
-              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto rounded-2xl drop-shadow-[0_24px_50px_rgba(0,229,255,0.25)]"
-              loading="lazy"
-            />
-          </div>
         </div>
       </section>
 
-      {/* ── COMMUNITY ── */}
+      {/* ── COMMUNITY ──
+          Earth art peeks in from ABOVE the card, same treatment as the
+          movies section above — not boxed inside a grid column. */}
       <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
-        <div className="reveal glass-panel-strong glow-green-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
-          <div className="flex items-center justify-center">
-            <img
-              src={EARTH_ART}
-              alt="Chillverse community"
-              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto rounded-2xl drop-shadow-[0_24px_50px_rgba(0,255,135,0.25)]"
-              loading="lazy"
-            />
-          </div>
+        <div className="relative pt-14 sm:pt-16 md:pt-20">
+          <PeekingCharacter
+            src={EARTH_ART}
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[140px] sm:w-[175px] md:w-[205px]"
+          />
 
-          <div>
+          <div className="reveal glass-panel-strong glow-green-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
             <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Stay Connected Beyond Entertainment</h2>
             <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed">
               Discover trending discussions, community highlights, announcements, creator updates, and everything happening across Chillverse. Join conversations, share your thoughts, and never miss what's new.
