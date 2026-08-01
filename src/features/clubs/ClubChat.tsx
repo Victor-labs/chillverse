@@ -6,7 +6,7 @@
 // (header, banners, composer, club-specific realtime) is Clubs-specific.
 
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
@@ -18,7 +18,7 @@ import {
   groupMessages, MessageBurst,
 } from '../chat/MessageBubble'
 import {
-  fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage,
+  fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage, joinClub,
   type ClubRoom, type ClubMemberRow, type ClubRole,
 } from './clubs'
 import ClubMembersPanel from './ClubMembersPanel'
@@ -51,6 +51,8 @@ function formatTime(iso: string) {
 
 export default function ClubChat() {
   const { roomId } = useParams<{ roomId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const inviteCode = searchParams.get('code')
   const navigate = useNavigate()
   const { user } = useAuth()
   const { openProfilePreview } = useProfilePreview()
@@ -136,8 +138,28 @@ export default function ClubChat() {
     setLoading(true)
     setError('')
     try {
-      const [c, mem] = await Promise.all([fetchClub(roomId), fetchClubMembers(roomId)])
+      let c = await fetchClub(roomId)
+
+      // Not a member yet (RLS hides the row) — if the link carried a code,
+      // join automatically instead of showing "not found".
+      if (!c && inviteCode) {
+        try {
+          await joinClub({ roomId, code: inviteCode })
+          c = await fetchClub(roomId)
+        } catch (joinErr: any) {
+          setError(joinErr.message)
+          setLoading(false)
+          return
+        }
+      }
+
       if (!c) { setError('Club not found, or you left it.'); setLoading(false); return }
+
+      // Code did its job — drop it from the URL so a refresh/share doesn't
+      // re-trigger a join attempt.
+      if (inviteCode) setSearchParams({}, { replace: true })
+
+      const mem = await fetchClubMembers(roomId)
       setClub(c)
       setMembers(mem)
       membersRef.current = mem
@@ -156,7 +178,7 @@ export default function ClubChat() {
     } finally {
       setLoading(false)
     }
-  }, [roomId])
+  }, [roomId, inviteCode, setSearchParams])
 
   useEffect(() => { load() }, [load])
 

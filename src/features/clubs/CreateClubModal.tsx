@@ -14,7 +14,6 @@ interface CreateClubModalProps {
 export default function CreateClubModal({ onClose, onCreated }: CreateClubModalProps) {
   const { user } = useAuth()
   const [name, setName] = useState('')
-  const [isPrivate, setIsPrivate] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [isPro, setIsPro] = useState(false) // display only — real gating happens server-side in create_club
@@ -33,7 +32,7 @@ export default function CreateClubModal({ onClose, onCreated }: CreateClubModalP
     setCreating(true)
     setError('')
     try {
-      const roomId = await createClub({ name: name.trim(), isPrivate })
+      const roomId = await createClub({ name: name.trim() })
       onCreated(roomId)
     } catch (e: any) {
       setError(e.message)
@@ -71,13 +70,8 @@ export default function CreateClubModal({ onClose, onCreated }: CreateClubModalP
           style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border-strong)', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, fontWeight: 600, color: 'var(--text)', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }}
         />
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Privacy</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button onClick={() => setIsPrivate(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${!isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: !isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: !isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Public</button>
-          <button onClick={() => setIsPrivate(true)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${isPrivate ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`, background: isPrivate ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--bg)', color: isPrivate ? 'var(--accent)' : 'var(--text-dim)' }}>Invite-only</button>
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -10, marginBottom: 18 }}>
-          {isPrivate ? 'Only people with the join code can join.' : 'Anyone can find and join from the Clubs browse list, or use the code.'}
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 18 }}>
+          Every club is invite-only — you'll get a join link right after creating it.
         </p>
 
         <button

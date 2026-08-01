@@ -1,12 +1,12 @@
 // src/features/clubs/ClubsList.tsx
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Users, Lock, RefreshCw, Flag, Archive, KeyRound, X } from 'lucide-react'
+import { ArrowLeft, Plus, Lock, RefreshCw, Flag, Archive, KeyRound, X } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { getUnreadCounts } from '../../shared/lib/unread'
-import { listPublicClubs, fetchMyClubs, joinClub, type ClubSummary, type MyClub } from './clubs'
+import { fetchMyClubs, joinClub, type MyClub } from './clubs'
 import ClubIcon from './clubIcons'
 import CreateClubModal from './CreateClubModal'
 
@@ -33,23 +33,20 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [myClubs, setMyClubs] = useState<MyClub[]>([])
-  const [publicClubs, setPublicClubs] = useState<ClubSummary[]>([])
   const [unreadByClub, setUnreadByClub] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const [joinOpen, setJoinOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
-  const [pendingNotice, setPendingNotice] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!user) return
     setLoading(true)
     try {
-      const [mine, pub] = await Promise.all([fetchMyClubs(user.id), listPublicClubs()])
+      const mine = await fetchMyClubs(user.id)
       setMyClubs(mine)
-      setPublicClubs(pub)
       setUnreadByClub(await getUnreadCounts(supabase, mine.map(c => c.id), user.id))
     } catch (e: any) {
       setError(e.message)
@@ -69,41 +66,17 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
     return () => { supabase.removeChannel(ch) }
   }, [load, user])
 
-  const myClubIds = new Set(myClubs.map(c => c.id))
-
   async function handleJoinByCode() {
     if (!codeInput.trim()) return
     setJoining(true)
     setError('')
-    setPendingNotice('')
     try {
-      const { roomId, status } = await joinClub({ code: codeInput.trim() })
-      if (status === 'pending') {
-        setPendingNotice("You're on the waiting list — a president or VP needs to accept you before you can chat.")
-        setCodeInput('')
-        setJoinOpen(false)
-      } else {
-        navigate(`/clubs/${roomId}`)
-      }
+      const roomId = await joinClub({ code: codeInput.trim() })
+      navigate(`/clubs/${roomId}`)
     } catch (e: any) {
       setError(e.message)
     } finally {
       setJoining(false)
-    }
-  }
-
-  async function handleJoinPublic(club: ClubSummary) {
-    setError('')
-    setPendingNotice('')
-    try {
-      const { roomId, status } = await joinClub({ roomId: club.id })
-      if (status === 'pending') {
-        setPendingNotice(`You're on the waiting list for "${club.name}" — a president or VP needs to accept you.`)
-      } else {
-        navigate(`/clubs/${roomId}`)
-      }
-    } catch (e: any) {
-      setError(e.message)
     }
   }
 
@@ -137,10 +110,6 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
 
       {error && (
         <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12.5, marginBottom: 14 }}>{error}</div>
-      )}
-
-      {pendingNotice && (
-        <div style={{ padding: '10px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 12.5, marginBottom: 14 }}>{pendingNotice}</div>
       )}
 
       {/* Join with a code — icon above reveals this inline, no more permanent bar */}
@@ -196,26 +165,6 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
                   {unreadByClub.get(club.id)! > 99 ? '99+' : unreadByClub.get(club.id)}
                 </span>
               )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Browse public clubs */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Browse public clubs</div>
-      {!loading && publicClubs.length === 0 ? (
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No public clubs right now. Start one!</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {publicClubs.filter(c => !myClubIds.has(c.id)).map(club => (
-            <div key={club.id} onClick={() => handleJoinPublic(club)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer' }}>
-              <ClubBadge iconKey={club.icon_key} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Users size={11} /> {club.member_count} member{club.member_count === 1 ? '' : 's'}
-                </div>
-              </div>
             </div>
           ))}
         </div>

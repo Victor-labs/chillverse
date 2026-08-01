@@ -1,21 +1,18 @@
 // src/features/clubs/clubs.ts
-// Thin typed layer over the Clubs RPCs (see supabase/migrations/0083_clubs_schema_and_rpcs.sql).
-// Clubs are `chat_rooms` with type = 'club'. All mutations go through
-// these RPCs — direct table writes to chat_rooms are blocked by RLS for
-// this room type. Reading rooms/members/messages still goes straight to
-// the tables, same as everywhere else in the app.
+// Thin typed layer over the Clubs RPCs (see supabase/migrations/0083 +
+// 0092). Clubs are `chat_rooms` with type = 'club'. All mutations go
+// through these RPCs — direct table writes to chat_rooms are blocked by
+// RLS for this room type. Reading rooms/members/messages still goes
+// straight to the tables, same as everywhere else in the app.
+//
+// Phase 1 of the redesign (see /areas/chillverse-clubs-redesign.md):
+// every club is invite-only, always. There's no public browse list and
+// no DM-invite/awaiting-list feature anymore — join_club always needs a
+// code, and it either lets you straight in or it doesn't.
 
 import { supabase } from '../../shared/lib/supabase'
 
 export type ClubRole = 'member' | 'vp' | 'president'
-
-export interface ClubSummary {
-  id: string
-  name: string
-  member_count: number
-  icon_key: string | null
-  created_at: string
-}
 
 export interface ClubRoom {
   id: string
@@ -32,7 +29,6 @@ export interface ClubRoom {
   description: string | null
   welcome_message: string | null
   muted: boolean
-  awaiting_list_enabled: boolean
 }
 
 export interface MyClub extends ClubRoom {
@@ -52,46 +48,17 @@ export interface ClubMemberRow {
   muted_until: string | null
 }
 
-// A recent DM partner shown in "Add members" — someone the caller already
-// has a chat thread with. The RPC already excludes existing members and
-// anyone already on the awaiting list, so every row here is inviteable.
-export interface ClubInviteCandidate {
-  user_id: string
-  username: string
-  display_name: string | null
-  avatar: string
-  last_message_at: string | null
-}
-
-// A person added via chat by a regular member — sits here until a
-// president/VP accepts or rejects them.
-export interface ClubPendingMember {
-  user_id: string
-  username: string
-  display_name: string | null
-  avatar: string
-  invited_by: string | null
-  created_at: string
-}
-
-export interface ClubJoinResult {
-  roomId: string
-  status: 'joined' | 'pending'
-}
-
 // Errors raised by the RPCs come through as e.message straight from
 // Postgres' `raise exception`. A couple are worth surfacing with
 // friendlier copy; everything else passes through as-is.
 const FRIENDLY_ERRORS: Record<string, string> = {
   club_limit_reached: "You've reached the 2-club limit for free accounts. Go Pro to create more.",
   club_vp_limit_reached: 'This club already has 2 VPs — demote one before promoting another.',
-  'this club is invite-only': 'This club is invite-only — ask a member for the join code.',
+  'this club is invite-only': 'This club is invite-only — you need a join code or link.',
   'club is full': 'This club is full.',
   'club not found': "That club doesn't exist, or the code is wrong.",
   'already a member of this club': "They're already a member of this club.",
-  'not on the awaiting list': "That request isn't on the awaiting list anymore.",
   'not authorized': "Only the president or VP can do that.",
-  'cannot invite yourself': "You can't add yourself.",
 }
 
 function friendlyError(e: any): Error {
@@ -99,16 +66,18 @@ function friendlyError(e: any): Error {
   return new Error(FRIENDLY_ERRORS[msg] ?? msg)
 }
 
-export async function listPublicClubs(): Promise<ClubSummary[]> {
-  const { data, error } = await supabase.rpc('list_public_clubs')
-  if (error) throw friendlyError(error)
-  return (data ?? []) as ClubSummary[]
+/** The invite link for a club — tapping it from anywhere (WhatsApp, SMS,
+ *  etc.) opens the app and, if the person is a member already or joins
+ *  successfully, drops them straight into the club. See ClubChat.tsx for
+ *  the auto-join-on-load side of this. */
+export function buildClubInviteLink(roomId: string, joinCode: string): string {
+  return `${window.location.origin}/clubs/${roomId}?code=${joinCode}`
 }
 
 export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,awaiting_list_enabled)')
+    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted)')
     .eq('user_id', userId)
     .eq('chat_rooms.type', 'club')
   if (error) throw new Error(error.message)
@@ -138,7 +107,7 @@ export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
 export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,awaiting_list_enabled')
+    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted')
     .eq('id', roomId)
     .eq('type', 'club')
     .maybeSingle()
@@ -170,23 +139,22 @@ export async function fetchClubMembers(roomId: string): Promise<ClubMemberRow[]>
     .sort((a, b) => roleOrder[a.role] - roleOrder[b.role])
 }
 
-export async function createClub(opts: { name: string; isPrivate: boolean }): Promise<string> {
+export async function createClub(opts: { name: string }): Promise<string> {
   const { data, error } = await supabase.rpc('create_club', {
     p_name: opts.name,
-    p_is_private: opts.isPrivate,
+    p_is_private: true,
   })
   if (error) throw friendlyError(error)
   return data as string
 }
 
-export async function joinClub(opts: { roomId?: string; code?: string }): Promise<ClubJoinResult> {
+export async function joinClub(opts: { roomId?: string; code: string }): Promise<string> {
   const { data, error } = await supabase.rpc('join_club', {
     p_room_id: opts.roomId ?? null,
-    p_code: opts.code ?? null,
+    p_code: opts.code,
   })
   if (error) throw friendlyError(error)
-  const result = data as { room_id: string; status: 'joined' | 'pending' }
-  return { roomId: result.room_id, status: result.status }
+  return data as string
 }
 
 export async function leaveClub(roomId: string): Promise<void> {
@@ -220,17 +188,14 @@ export async function unmuteClubMember(roomId: string, userId: string): Promise<
 }
 
 export async function updateClubSettings(roomId: string, opts: {
-  name?: string; isPrivate?: boolean; description?: string; welcomeMessage?: string;
-  muted?: boolean; awaitingListEnabled?: boolean;
+  name?: string; description?: string; welcomeMessage?: string; muted?: boolean;
 }): Promise<void> {
   const { error } = await supabase.rpc('update_club_settings', {
     p_room_id: roomId,
     p_name: opts.name ?? null,
-    p_is_private: opts.isPrivate ?? null,
     p_description: opts.description ?? null,
     p_welcome_message: opts.welcomeMessage ?? null,
     p_muted: opts.muted ?? null,
-    p_awaiting_list_enabled: opts.awaitingListEnabled ?? null,
   })
   if (error) throw friendlyError(error)
 }
@@ -263,38 +228,5 @@ export async function clubUnpinMessage(roomId: string): Promise<void> {
 
 export async function clubDeleteMessage(messageId: string): Promise<void> {
   const { error } = await supabase.rpc('club_delete_message', { p_message_id: messageId })
-  if (error) throw friendlyError(error)
-}
-
-// ── Add members via chat + awaiting list ──────────────────────────────
-
-export async function fetchClubInviteCandidates(roomId: string): Promise<ClubInviteCandidate[]> {
-  const { data, error } = await supabase.rpc('list_recent_dm_partners', { p_room_id: roomId, p_limit: 20 })
-  if (error) throw friendlyError(error)
-  return (data ?? []) as ClubInviteCandidate[]
-}
-
-// President/VP -> the person joins immediately ('added'). Regular member
-// -> the person lands on the awaiting list ('pending') until a
-// president/VP accepts them.
-export async function inviteClubMember(roomId: string, userId: string): Promise<'added' | 'pending'> {
-  const { data, error } = await supabase.rpc('invite_or_add_club_member', { p_room_id: roomId, p_user_id: userId })
-  if (error) throw friendlyError(error)
-  return data as 'added' | 'pending'
-}
-
-export async function fetchClubPendingMembers(roomId: string): Promise<ClubPendingMember[]> {
-  const { data, error } = await supabase.rpc('list_club_pending_members', { p_room_id: roomId })
-  if (error) throw friendlyError(error)
-  return (data ?? []) as ClubPendingMember[]
-}
-
-export async function acceptClubPendingMember(roomId: string, userId: string): Promise<void> {
-  const { error } = await supabase.rpc('accept_club_pending_member', { p_room_id: roomId, p_user_id: userId })
-  if (error) throw friendlyError(error)
-}
-
-export async function rejectClubPendingMember(roomId: string, userId: string): Promise<void> {
-  const { error } = await supabase.rpc('reject_club_pending_member', { p_room_id: roomId, p_user_id: userId })
   if (error) throw friendlyError(error)
 }
