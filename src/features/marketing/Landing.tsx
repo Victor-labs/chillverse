@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../../layout/Nav'
 import Footer from '../../layout/Footer'
-import CubeScene from './CubeScene'
 import { useReveal } from './useReveal'
 import { useAuth } from '../auth/useAuth'
 import Seo from '../../shared/components/Seo'
@@ -166,7 +165,6 @@ export default function Landing() {
   useReveal()
   const navigate = useNavigate()
   const { session, loading } = useAuth()
-  const heroContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!loading && session) navigate('/dashboard', { replace: true })
@@ -181,17 +179,17 @@ export default function Landing() {
       />
       <Nav />
 
-      {/* ── HERO ──
-          Outer div is the tall "pinned" scroll container ControllerScene
-          measures progress against; the inner section stays sticky at the
-          top of the viewport while the user scrolls through the extra
-          height, driving the 3D controller's recede/fade + parallax. */}
-      <div ref={heroContainerRef} className="relative h-[150vh] sm:h-[180vh] md:h-[200vh] lg:h-[220vh]">
-        <section className="sticky top-0 min-h-screen h-screen relative flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
-          <CubeScene />
+      {/* ── HERO ── */}
+      <section className="relative min-h-screen h-screen flex items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-28 sm:pt-32 pb-20 sm:pb-24">
+          {/* Ambient glow filling the space the cube scene used to occupy
+             behind the headline — keeps the hero from reading as empty. */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
+            <div className="w-[600px] h-[600px] rounded-full bg-chill-violet/[0.10] blur-[120px]" />
+            <div className="absolute w-[400px] h-[400px] rounded-full bg-chill-cyan/[0.08] blur-[100px] -translate-x-24 translate-y-16" />
+          </div>
 
-          {/* pointer-events-none so drag/tilt on the controller works right
-             through this wrapper; the two links below opt back in. */}
+          {/* pointer-events-none so the two links below can opt back in
+             without the wrapper itself intercepting clicks */}
           <div className="relative z-[6] max-w-3xl text-center pointer-events-none">
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-chill-violet/35 bg-chill-violet/10 text-sm font-semibold text-chill-violetSoft tracking-wide mb-7">
               <span className="live-dot" />
@@ -227,7 +225,7 @@ export default function Landing() {
 
             <div className="mt-10 sm:mt-12 flex items-center justify-center gap-2 text-[11px] sm:text-xs tracking-[3px] uppercase text-chill-textMuted font-mono">
               <div className="w-8 sm:w-10 h-px bg-gradient-to-r from-transparent to-chill-borderBright" />
-              scroll to explore · drag the controller
+              scroll to explore
               <div className="w-8 sm:w-10 h-px bg-gradient-to-l from-transparent to-chill-borderBright" />
             </div>
           </div>
@@ -249,8 +247,7 @@ export default function Landing() {
               🎯 Daily challenges
             </div>
           </div>
-        </section>
-      </div>
+      </section>
 
       {/* ── FEATURES ── */}
       <section id="features" className="relative px-6 md:px-16 py-24 max-w-[1300px] mx-auto">
