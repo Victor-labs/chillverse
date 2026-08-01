@@ -1,5 +1,8 @@
 // src/layout/Footer.tsx
 import { Link } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
+import Logo from './Logo'
+import Wordmark from './Wordmark'
 
 // Items with an href go to a real place. Items with href: null are
 // placeholders — rendered as plain, unclickable text for now (Editorial
@@ -64,22 +67,45 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 }
 
 export default function Footer() {
-  // The logo/wordmark/tagline block and the bottom copyright + status bar
-  // were both marked for removal (ref screenshot) — gone. What's left is
-  // just the four link columns.
   return (
     <footer className="relative border-t border-[rgba(124,102,255,0.14)] bg-[rgba(5,5,6,0.6)] px-5 md:px-10 pt-14 pb-10">
-      <div className="max-w-[1200px] mx-auto grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-10">
-        {COLUMNS.map((col) => (
-          <div key={col.heading}>
-            <div className="text-[11px] font-bold tracking-[1.5px] uppercase text-[var(--ltext-muted)] mb-3.5">{col.heading}</div>
-            <div className="flex flex-col gap-2.5">
-              {col.links.map((link) => (
-                <FooterLinkItem key={link.label} link={link} />
-              ))}
+      <div className="max-w-[1200px] mx-auto">
+        <Link to="/" className="flex items-center gap-2 no-underline mb-10">
+          <Logo size={26} />
+          <Wordmark size={16} animated={false} />
+        </Link>
+
+        {/* Phone: collapsible accordion (native <details>, no JS state
+           needed — each column starts closed and expands independently). */}
+        <div className="sm:hidden divide-y divide-white/[0.08] border-t border-white/[0.08]">
+          {COLUMNS.map((col) => (
+            <details key={col.heading} className="group py-4">
+              <summary className="flex items-center justify-between cursor-pointer list-none text-[11px] font-bold tracking-[1.5px] uppercase text-[var(--ltext-muted)] [&::-webkit-details-marker]:hidden">
+                {col.heading}
+                <ChevronDown className="w-4 h-4 text-[var(--ltext-muted)] transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="flex flex-col gap-2.5 mt-3.5">
+                {col.links.map((link) => (
+                  <FooterLinkItem key={link.label} link={link} />
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+
+        {/* sm and up: normal static grid, nothing collapsible. */}
+        <div className="hidden sm:grid sm:grid-cols-4 gap-x-6 gap-y-10">
+          {COLUMNS.map((col) => (
+            <div key={col.heading}>
+              <div className="text-[11px] font-bold tracking-[1.5px] uppercase text-[var(--ltext-muted)] mb-3.5">{col.heading}</div>
+              <div className="flex flex-col gap-2.5">
+                {col.links.map((link) => (
+                  <FooterLinkItem key={link.label} link={link} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </footer>
   )
