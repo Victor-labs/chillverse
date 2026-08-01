@@ -410,16 +410,21 @@ export default function Wallet() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Watch an ad</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              <div style={{
+                fontSize: 11.5, marginTop: 2,
+                color: watchAd.status === 'coming_soon' ? '#f5c542' : 'var(--text-muted)',
+              }}>
                 {watchAd.status === 'playing'
                   ? watchAd.secondsRemaining !== null
                     ? `Watching… ${watchAd.secondsRemaining}s left, keep this tab open`
                     : 'Loading ad…'
                   : watchAd.status === 'success'
                     ? `+${watchAd.orbsEarned} Orbs credited!`
-                    : watchAd.status === 'error' || watchAd.status === 'capped'
-                      ? watchAd.errorMessage
-                      : 'Earn 15 Orbs, up to 10 times a day'}
+                    : watchAd.status === 'coming_soon'
+                      ? (watchAd.errorMessage ?? 'This update is coming sooner than you think — stay tuned!')
+                      : watchAd.status === 'error' || watchAd.status === 'capped'
+                        ? watchAd.errorMessage
+                        : 'Earn 15 Orbs, up to 10 times a day'}
               </div>
             </div>
             <button
@@ -442,6 +447,8 @@ export default function Wallet() {
                 'Done'
               ) : watchAd.status === 'capped' ? (
                 'Come back later'
+              ) : watchAd.status === 'coming_soon' ? (
+                'Coming Soon'
               ) : (
                 <><Play size={13} /> Watch</>
               )}
