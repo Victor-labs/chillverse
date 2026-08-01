@@ -38,7 +38,6 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
   const [welcomeMessage, setWelcomeMessage] = useState(club.welcome_message ?? DEFAULT_WELCOME)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [codeCopied, setCodeCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -64,14 +63,6 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
     } finally {
       setSaving(false)
     }
-  }
-
-  function copyCode() {
-    if (!club.join_code) return
-    navigator.clipboard.writeText(club.join_code).then(() => {
-      setCodeCopied(true)
-      setTimeout(() => setCodeCopied(false), 1500)
-    })
   }
 
   function copyLink() {
@@ -208,7 +199,7 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
             <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, textAlign: 'right' }}>{description.length}/300</p>
 
             <div style={sectionTitle}>Invite link</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Link2 size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {club.join_code ? buildClubInviteLink(club.id, club.join_code) : ''}
@@ -216,14 +207,7 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
               <button onClick={copyLink} style={{ background: 'none', border: 'none', cursor: 'pointer', color: linkCopied ? '#3ecf8e' : 'var(--text-dim)', display: 'flex', flexShrink: 0 }}>
                 {linkCopied ? <Check size={14} /> : <Copy size={14} />}
               </button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: 2, color: 'var(--text)', flex: 1 }}>{club.join_code}</span>
-              <button onClick={copyCode} style={{ background: 'none', border: 'none', cursor: 'pointer', color: codeCopied ? '#3ecf8e' : 'var(--text-dim)', display: 'flex' }}>
-                {codeCopied ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-              <button onClick={handleRegenerate} disabled={regenerating} title="Generate a new code — the old one stops working immediately" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', opacity: regenerating ? 0.5 : 1 }}>
+              <button onClick={handleRegenerate} disabled={regenerating} title="Generate a new link — the old one stops working immediately" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', flexShrink: 0, opacity: regenerating ? 0.5 : 1 }}>
                 <RefreshCw size={14} />
               </button>
             </div>
