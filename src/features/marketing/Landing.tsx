@@ -32,41 +32,46 @@ const ART = {
   chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
 }
 
-// The two static figures that now stand close together, centered, behind
-// the leaderboard copy card (see PeekingCharacter below). No mock list, no
-// floating badges — just the pair of characters as the section's visual.
-const HERO_CHARACTER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Baseballplayer.png'
+// Single "crew" illustration that peeks from BEHIND a card/section, like
+// the Discord marketing-site reference — half the figure(s) visible above
+// the edge, the rest tucked out of view. Reused in two spots: peeking
+// above the leaderboard card, and peeking above the footer.
+const REE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Ree.png'
 
-// TODO(Richard): swap this src for the exact png you want dropped into the
-// empty slot between the closing tagline and the footer (marked in your
-// screenshot). Using ART.mascot as a placeholder for now so the slot isn't
-// empty — point it at the real asset URL once you've got it in Supabase.
-const CLOSING_ART = ART.mascot
-
-// Ambient background art — the ONLY things on this page that move, and
-// only in direct response to scroll position (translateY tied to
-// window.scrollY). Hold perfectly still the instant scrolling stops.
-// These now run the full length of the page (both sides, every section)
-// instead of stopping after the second card.
+// Ambient background art. Exactly THREE images total on the whole page —
+// one per section, not the same 3 pngs repeated over and over. Motion is
+// bounded now too (see useScrollParallax): each drifts a little as its own
+// section passes through the viewport, then holds at a capped offset — it
+// no longer keeps drifting further the longer/lower the page gets.
 const BG_ASSETS = {
   bomb: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Bomb.png',
   game: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Game.png',
   flyer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Flyer.png',
 }
 
-// Tracks scroll position imperatively (no re-renders) and applies a
-// translateY to the returned ref's element, scaled by `speed`. This is
-// the ONLY motion these background images get — no idle keyframes — so
-// they sit perfectly still until the page actually scrolls. Positive
-// speed drifts an image down as you scroll down (and back up as you
-// scroll up); that's the whole "parallax" effect.
-function useScrollParallax(speed: number) {
+// Tracks the element's OWN position relative to the viewport (not raw,
+// ever-growing window.scrollY) and applies a translateY scaled by `speed`,
+// clamped to +/-maxOffset. Because it's relative to the element's own
+// position, the drift naturally settles near 0 once the element is well
+// off-screen in either direction, and it never exceeds maxOffset no matter
+// how long the page is — this is the "stop at a limit" behaviour, instead
+// of the old version where translateY = scrollY * speed grew without
+// bound the further down a long page you scrolled.
+function useScrollParallax(speed: number, maxOffset = 50) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     let ticking = false
     const apply = () => {
-      if (ref.current) ref.current.style.transform = `translateY(${window.scrollY * speed}px)`
+      const el = ref.current
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        const viewportCenter = window.innerHeight / 2
+        const elementCenter = rect.top + rect.height / 2
+        const raw = (viewportCenter - elementCenter) * speed
+        const clamped = Math.max(-maxOffset, Math.min(maxOffset, raw))
+        el.style.transform = `translateY(${clamped}px)`
+      }
       ticking = false
     }
     const onScroll = () => {
@@ -77,8 +82,12 @@ function useScrollParallax(speed: number) {
     }
     apply()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [speed])
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [speed, maxOffset])
   return ref
 }
 
@@ -115,7 +124,7 @@ function PeekingCharacter({ src, className }: { src: string; className: string }
       alt=""
       aria-hidden
       loading="lazy"
-      className={`absolute z-0 h-auto drop-shadow-[0_20px_40px_rgba(0,0,0,0.55)] ${className}`}
+      className={`absolute h-auto drop-shadow-[0_20px_40px_rgba(0,0,0,0.55)] ${className}`}
       style={{
         WebkitMaskImage: 'linear-gradient(to bottom, black 58%, transparent 82%)',
         maskImage: 'linear-gradient(to bottom, black 58%, transparent 82%)',
@@ -123,18 +132,6 @@ function PeekingCharacter({ src, className }: { src: string; className: string }
     />
   )
 }
-
-// Scroll-triggered "lazy load bounce up". useReveal() queries every
-// `.reveal` element on mount and adds `.in` once it's in view (see
-// useReveal.ts) — so this piggybacks on that same observer by ALSO
-// carrying the `.reveal` class (required, or useReveal never finds it),
-// then overrides the motion with a spring-eased translate instead of the
-// standard fade used everywhere else. Scoped inline so it works without
-// touching the global stylesheet.
-const BOUNCE_STYLE = `
-  .reveal-bounce { opacity: 0; transform: translateY(48px); transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .reveal-bounce.in { opacity: 1; transform: translateY(0); }
-`
 
 // Pill accents for the small feature tags — colors pulled from the real
 // marketing tokens in index.css (--amber / --cyan), not the old dead
@@ -167,7 +164,6 @@ export default function Landing() {
         description="Play fast-paced games, build streaks, climb the leaderboard, and chat with your crew — all in one social gaming universe. Join Chillverse free."
         jsonLd={HOME_JSON_LD}
       />
-      <style>{BOUNCE_STYLE}</style>
       <Nav />
 
       {/* ── HERO ──
@@ -186,7 +182,7 @@ export default function Landing() {
           <img
             src={ART.mascot}
             alt="The Chillverse crew"
-            className="block w-[280px] sm:w-[400px] md:w-[480px] h-auto mb-6 sm:mb-8 drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
+            className="block w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] h-auto mb-6 sm:mb-8 drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
           />
 
           <h1 className="font-bold leading-[1.02] mb-4 text-[clamp(28px,7vw,52px)] tracking-tight">
@@ -215,7 +211,6 @@ export default function Landing() {
       {/* ── ARSENAL + HOW IT WORKS, merged ── */}
       <section id="features" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
         <BgArt src={BG_ASSETS.bomb} alt="" speed={0.14} className="block top-[2%] left-[2%] w-16 sm:w-24 lg:w-28 -rotate-6" />
-        <BgArt src={BG_ASSETS.game} alt="" speed={0.16} className="block -top-6 right-[4%] w-20 sm:w-28 lg:w-36 rotate-6" />
 
         <div className="reveal glass-panel-strong glow-violet-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
           <div className="order-2 md:order-1">
@@ -244,16 +239,22 @@ export default function Landing() {
       </section>
 
       {/* ── LEADERBOARD ──
-          Mock "Top Players" card and the floating XP/friends badges are
-          gone entirely, so this doesn't read as junked-up anymore. The two
-          characters no longer flank a card at the edges, they now stand
-          close together, centered, roughly mid-section. */}
+          Ree peeks in from ABOVE the card — outside its bounds, like the
+          Discord reference (crew half-visible over the top edge of the
+          card, rest tucked behind it) — not sitting inside the card's
+          own grid like before. The wrapping div here (not the card) is
+          what needs the top padding + overflow-visible, so the art has
+          room to poke up past the card's edge without getting clipped. */}
       <section id="leaderboard" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
-        <BgArt src={BG_ASSETS.flyer} alt="" speed={0.15} className="block top-[10%] left-[3%] w-16 sm:w-24 lg:w-28 -rotate-3" />
         <BgArt src={BG_ASSETS.game} alt="" speed={0.2} className="block bottom-[8%] right-[3%] w-16 sm:w-24 lg:w-28 rotate-6" />
 
-        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center overflow-visible">
-          <div>
+        <div className="relative pt-14 sm:pt-16 md:pt-20">
+          <PeekingCharacter
+            src={REE}
+            className="left-1/2 -translate-x-1/2 top-0 z-[2] w-[160px] sm:w-[200px] md:w-[230px]"
+          />
+
+          <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 text-center max-w-xl mx-auto overflow-visible">
             <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">The top is within reach.</h2>
             <p className="text-sm sm:text-base text-[var(--ltext-sec)] leading-relaxed mb-7">
               Real-time leaderboards show exactly where you stand, and what it takes to rise. Every game counts.
@@ -265,19 +266,6 @@ export default function Landing() {
               Check your rank →
             </Link>
           </div>
-
-          <div className="relative flex items-center justify-center py-10 min-h-[220px]">
-            {/* The two characters, close together and centered, standing
-               in for the section's visual now that the mock list is gone. */}
-            <PeekingCharacter
-              src={HERO_CHARACTER}
-              className="left-1/2 -translate-x-[92%] sm:-translate-x-[100%] top-0 w-[110px] sm:w-[140px] md:w-[170px]"
-            />
-            <PeekingCharacter
-              src={ART.willam}
-              className="left-1/2 -translate-x-[8%] sm:-translate-x-0 top-1 w-[100px] sm:w-[125px] md:w-[150px]"
-            />
-          </div>
         </div>
       </section>
 
@@ -285,9 +273,6 @@ export default function Landing() {
           Streak/Chat art is fixed at the card's corners, hanging off the
           edge like stickers, not inside the copy, not drifting. */}
       <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
-        <BgArt src={BG_ASSETS.bomb} alt="" speed={0.17} className="block top-[6%] right-[2%] w-16 sm:w-24 lg:w-28 rotate-6" />
-        <BgArt src={BG_ASSETS.flyer} alt="" speed={0.13} className="block bottom-[4%] left-[2%] w-16 sm:w-24 lg:w-28 -rotate-6" />
-
         <div className="reveal glass-panel-strong glow-pink-tint rounded-[28px] p-7 sm:p-10 md:p-14 relative overflow-visible">
           <img
             src={ART.streak}
@@ -317,29 +302,27 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── CLOSING ART ──
-          New slot for the piece you want dropped in between the tagline
-          and the footer. Bounces up on scroll-in rather than fading like
-          the rest of the "reveal" elements. Swap CLOSING_ART's src at the
-          top of the file once you've got the real asset uploaded. */}
-      <section className="relative flex items-center justify-center py-8 sm:py-10">
-        <img
-          src={CLOSING_ART}
-          alt=""
-          aria-hidden
-          loading="lazy"
-          className="reveal reveal-bounce w-[160px] sm:w-[200px] md:w-[240px] h-auto drop-shadow-[0_20px_45px_rgba(108,80,255,0.35)]"
-        />
-      </section>
-
       {/* ── LAST WORD — simple tagline, no buttons, no card ── */}
-      <section className="relative px-6 py-20 sm:py-24 text-center">
+      <section className="relative px-6 pt-20 sm:pt-24 pb-28 sm:pb-32 text-center">
         <p className="reveal text-gradient text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
           Your universe. Your rules.
         </p>
       </section>
 
-      <Footer />
+      {/* ── FOOTER PEEK ──
+          Ree peeks up from behind the footer — head-to-stomach visible,
+          legs tucked out of sight below the footer's top edge. The image
+          renders BEFORE the footer in the DOM so the footer's own
+          translucent background paints over its lower half, which is
+          what actually sells "peeking from behind" rather than the art
+          just floating above the footer as a separate element. */}
+      <div className="relative">
+        <PeekingCharacter
+          src={REE}
+          className="left-1/2 -translate-x-1/2 -top-[120px] sm:-top-[150px] md:-top-[175px] w-[180px] sm:w-[220px] md:w-[250px]"
+        />
+        <Footer />
+      </div>
     </div>
   )
 }
