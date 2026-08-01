@@ -27,14 +27,23 @@ const GRID = 4
 const CELLS = GRID * GRID
 
 // Flat XP awarded per individual merge event (includes breaking the ice).
-const MERGE_XP = 8
+const MERGE_XP = 4
 
-// Hazard tuning: cells only start freezing once a tile this big has been
-// reached, at most this many cells can be frozen at once, and each legal
-// swipe has this chance of freezing one more (occupied, non-frozen) cell.
-const FREEZE_MIN_HIGHEST = 8
-const MAX_FROZEN = 2
-const FREEZE_CHANCE = 0.12
+// Hazard tuning: cells only start freezing once a tile reaches the lowest
+// tier's threshold below, and at most this many cells can be frozen at once.
+const MAX_FROZEN = 3
+// Freeze chance ramps up as your highest tile grows — mild early on,
+// aggressive late-game, instead of a flat rate for the whole run.
+const FREEZE_TIERS: { min: number; chance: number }[] = [
+  { min: 512, chance: 0.55 },
+  { min: 128, chance: 0.40 },
+  { min: 32, chance: 0.25 },
+  { min: 8, chance: 0.12 },
+]
+function freezeChanceFor(highest: number): number {
+  for (const t of FREEZE_TIERS) if (highest >= t.min) return t.chance
+  return 0
+}
 
 // New-tile spawn split — same 90/10 weighting as the original 2048's 2/4
 // split, just based at 1/2 since this board starts from 1.
@@ -270,9 +279,10 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
     const newMergeCount = mergeCount + totalMerges
     const newHighest = Math.max(highestValue, ...finalBoard.map(c => c.value ?? 0))
 
-    if (newHighest >= FREEZE_MIN_HIGHEST) {
+    const freezeChance = freezeChanceFor(newHighest)
+    if (freezeChance > 0) {
       const frozenCount = finalBoard.filter(c => c.frozen).length
-      if (frozenCount < MAX_FROZEN && Math.random() < FREEZE_CHANCE) {
+      if (frozenCount < MAX_FROZEN && Math.random() < freezeChance) {
         const candidates = finalBoard.map((c, i) => (c.value !== null && !c.frozen ? i : -1)).filter(i => i >= 0)
         if (candidates.length > 0) {
           const pick = candidates[Math.floor(Math.random() * candidates.length)]
