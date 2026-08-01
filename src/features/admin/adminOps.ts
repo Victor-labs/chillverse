@@ -157,3 +157,69 @@ export async function fetchRecentClientErrors(limit = 40): Promise<{ data: Clien
   if (error) return { data: [], error: friendlyAdminError(error.message) }
   return { data: (data ?? []) as ClientErrorLogRow[], error: null }
 }
+
+// ── Game Goal Reward Control (Activity Goals) ──────────────────────────
+export interface GameGoalMallItem {
+  id: string
+  name: string
+  image_url: string | null
+  category: string
+}
+
+export interface GameGoalCycle {
+  id: string
+  status: 'draft' | 'live' | 'ended'
+  thresholds: [number, number, number, number]
+  xp_rewards: [number, number, number]
+  final_reward_item_id: string | null
+  final_item: GameGoalMallItem | null
+  rolled_out_at: string | null
+  ends_at: string | null
+  created_at: string
+  players_progressed: number
+  players_completed: number
+}
+
+/** Staff-only — draft/live/ended cycles with final-item + participation stats. */
+export async function fetchGameGoalCycles(): Promise<{ data: GameGoalCycle[]; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_get_game_goal_cycles')
+  if (error) return { data: [], error: friendlyAdminError(error.message) }
+  return { data: (data ?? []) as GameGoalCycle[], error: null }
+}
+
+/** Creates the draft cycle if none exists yet, otherwise updates the pending one. */
+export async function saveGameGoalDraft(
+  thresholds: [number, number, number, number],
+  xpRewards: [number, number, number],
+  finalItemId: string | null,
+  cycleId?: string,
+): Promise<{ data: GameGoalCycle | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_save_game_goal_draft', {
+    p_thresholds: thresholds,
+    p_xp_rewards: xpRewards,
+    p_final_item_id: finalItemId,
+    p_cycle_id: cycleId ?? null,
+  })
+  if (error) return { data: null, error: friendlyAdminError(error.message) }
+  return { data: data as GameGoalCycle, error: null }
+}
+
+/** Publishes a draft cycle live — ends whatever cycle is currently live. */
+export async function rolloutGameGoalCycle(cycleId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('admin_rollout_game_goal_cycle', { p_cycle_id: cycleId })
+  return { error: error ? friendlyAdminError(error.message) : null }
+}
+
+/** Mall-item name autosuggest for the final-reward picker — active items only. */
+export async function searchMallItems(query: string): Promise<{ data: GameGoalMallItem[]; error: string | null }> {
+  if (!query.trim()) return { data: [], error: null }
+  const { data, error } = await supabase
+    .from('mall_items')
+    .select('id, name, image_url, category')
+    .eq('is_active', true)
+    .ilike('name', `%${query.trim()}%`)
+    .order('name')
+    .limit(8)
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as GameGoalMallItem[], error: null }
+}

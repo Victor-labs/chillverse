@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 import {
   Power, Megaphone, Download, Activity, AlertTriangle,
   Gamepad2, Map as MapIcon, Settings2, Clock, Send, X, MessageSquare,
-  Copy, Check, ChevronDown, ChevronUp, RefreshCw,
+  Copy, Check, ChevronDown, ChevronUp, RefreshCw, Target, Zap, Gift, Search,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { Row, ToggleRow, SectionTitle } from '../settings/settingsShared'
@@ -21,7 +21,8 @@ import {
   fetchAppConfig, setMaintenanceMode, broadcastNotification,
   fetchFeatureFlags, setFeatureFlag, exportUsersCsv, exportTransactionsCsv,
   fetchSystemHealth, fetchRecentClientErrors,
-  type FeatureFlag, type SystemHealth, type ClientErrorLogRow,
+  fetchGameGoalCycles, saveGameGoalDraft, rolloutGameGoalCycle, searchMallItems,
+  type FeatureFlag, type SystemHealth, type ClientErrorLogRow, type GameGoalCycle, type GameGoalMallItem,
 } from './adminOps'
 
 // ── Shared modal shell (mirrors Settings.tsx's Log out / Microphone popovers) ──
@@ -484,9 +485,244 @@ function SystemHealthModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Game Goal Reward Control (Activity Goals) ──────────────────────────
+
+function timeLeft(endsAt: string | null): string {
+  if (!endsAt) return '—'
+  const ms = new Date(endsAt).getTime() - Date.now()
+  if (ms <= 0) return 'ended'
+  const days = Math.floor(ms / 86_400_000)
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000)
+  return `${days}d ${hours}h left`
+}
+
+function MallItemAutosuggest({ value, onChange }: {
+  value: GameGoalMallItem | null
+  onChange: (item: GameGoalMallItem | null) => void
+}) {
+  const [query, setQuery] = useState(value?.name ?? '')
+  const [results, setResults] = useState<GameGoalMallItem[]>([])
+  const [open, setOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+
+  useEffect(() => {
+    if (value) { setQuery(value.name); return }
+  }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    if (query.trim().length < 2) { setResults([]); return }
+    setSearching(true)
+    const t = setTimeout(() => {
+      searchMallItems(query).then(({ data }) => { setResults(data); setSearching(false) })
+    }, 220)
+    return () => clearTimeout(t)
+  }, [query, open])
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); if (value) onChange(null) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Type a Mall item name…"
+          style={{ ...inputStyle, paddingLeft: 30 }}
+        />
+      </div>
+      {open && query.trim().length >= 2 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 5, background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--elev-popover)', maxHeight: 220, overflowY: 'auto' }}>
+          {searching ? (
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '10px 12px' }}>Searching…</p>
+          ) : results.length === 0 ? (
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '10px 12px' }}>No matching Mall items.</p>
+          ) : results.map(item => (
+            <div
+              key={item.id}
+              onClick={() => { onChange(item); setQuery(item.name); setOpen(false) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer' }}
+            >
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {item.image_url ? <img src={item.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Gift size={13} style={{ color: 'var(--text-muted)' }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--text)', margin: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: 0, textTransform: 'capitalize' }}>{item.category.replace('_', ' ')}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GameGoalModal({ onClose }: { onClose: () => void }) {
+  const [cycles, setCycles] = useState<GameGoalCycle[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [rollingOut, setRollingOut] = useState(false)
+  const [confirmRollout, setConfirmRollout] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const [thresholds, setThresholds] = useState<[number, number, number, number]>([15, 30, 45, 60])
+  const [xpRewards, setXpRewards] = useState<[number, number, number]>([50, 250, 350])
+  const [finalItem, setFinalItem] = useState<GameGoalMallItem | null>(null)
+
+  const live = cycles.find(c => c.status === 'live') ?? null
+  const draft = cycles.find(c => c.status === 'draft') ?? null
+  const history = cycles.filter(c => c.status === 'ended').slice(0, 5)
+  const liveExpired = live && (!live.ends_at || new Date(live.ends_at).getTime() <= Date.now())
+
+  function load() {
+    setLoading(true)
+    setError('')
+    fetchGameGoalCycles().then(({ data, error }) => {
+      if (error) { setError(error); setLoading(false); return }
+      setCycles(data)
+      const d = data.find(c => c.status === 'draft')
+      if (d) {
+        setThresholds(d.thresholds)
+        setXpRewards(d.xp_rewards)
+        setFinalItem(d.final_item)
+      }
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => { load() }, [])
+
+  function setThreshold(i: number, v: number) {
+    setThresholds(prev => { const next = [...prev] as typeof prev; next[i] = v; return next })
+  }
+  function setXp(i: number, v: number) {
+    setXpRewards(prev => { const next = [...prev] as typeof prev; next[i] = v; return next })
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    setSaved(false)
+    const { error } = await saveGameGoalDraft(thresholds, xpRewards, finalItem?.id ?? null, draft?.id)
+    setSaving(false)
+    if (error) { setError(error); return }
+    setSaved(true)
+    load()
+  }
+
+  async function handleRollout() {
+    if (!draft) return
+    setRollingOut(true)
+    setError('')
+    const { error } = await rolloutGameGoalCycle(draft.id)
+    setRollingOut(false)
+    setConfirmRollout(false)
+    if (error) { setError(error); return }
+    load()
+  }
+
+  return (
+    <Modal title="Game Goal Reward Control" onClose={onClose} width={440}>
+      {loading ? (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Loading…</p>
+      ) : (
+        <>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>Live cycle</p>
+          {!live || liveExpired ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,79,79,0.08)', border: '1px solid rgba(255,79,79,0.25)', marginBottom: 18 }}>
+              <AlertTriangle size={13} style={{ color: 'var(--red)', flexShrink: 0 }} />
+              <span style={{ fontSize: 11.5, color: 'var(--red)', fontWeight: 600 }}>
+                No live cycle — players see "Activity goal is being reset". Roll out the draft below to publish one.
+              </span>
+            </div>
+          ) : (
+            <div style={{ padding: 12, borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--border)', marginBottom: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Thresholds {live.thresholds.join(' / ')}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{timeLeft(live.ends_at)}</span>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 4px' }}>XP: {live.xp_rewards.join(', ')} · Final: {live.final_item?.name ?? '—'}</p>
+              <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0 }}>{live.players_progressed} playing · {live.players_completed} completed</p>
+            </div>
+          )}
+
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>Draft (next cycle)</p>
+
+          <p style={fieldLabel}>Games-played thresholds</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
+            {thresholds.map((t, i) => (
+              <input key={i} type="number" min={1} value={t} onChange={e => setThreshold(i, Number(e.target.value))} style={{ ...inputStyle, padding: '8px 8px', textAlign: 'center' }} />
+            ))}
+          </div>
+
+          <p style={fieldLabel}>XP rewards (milestones 1–3)</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
+            {xpRewards.map((x, i) => (
+              <div key={i} style={{ position: 'relative' }}>
+                <Zap size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--gold)' }} />
+                <input type="number" min={0} value={x} onChange={e => setXp(i, Number(e.target.value))} style={{ ...inputStyle, padding: '8px 8px 8px 24px', textAlign: 'center' }} />
+              </div>
+            ))}
+          </div>
+
+          <p style={fieldLabel}>Final reward (milestone 4) — Mall item</p>
+          <div style={{ marginBottom: 16 }}>
+            <MallItemAutosuggest value={finalItem} onChange={setFinalItem} />
+          </div>
+
+          {error && <p style={{ fontSize: 11.5, color: 'var(--red)', marginBottom: 12 }}>{error}</p>}
+          {saved && !error && <p style={{ fontSize: 11.5, color: '#4fd18a', fontWeight: 700, marginBottom: 12 }}>Draft saved.</p>}
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+            <button onClick={handleSave} disabled={saving} className="btn-secondary" style={{ flex: 1, padding: '10px 0', fontSize: 13, opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save draft'}
+            </button>
+            {!confirmRollout ? (
+              <button
+                onClick={() => finalItem && setConfirmRollout(true)}
+                disabled={!draft || !finalItem}
+                className="btn-primary"
+                style={{ flex: 1, padding: '10px 0', fontSize: 13, opacity: (draft && finalItem) ? 1 : 0.5 }}
+              >
+                Roll out
+              </button>
+            ) : (
+              <button onClick={handleRollout} disabled={rollingOut} className="btn-primary" style={{ flex: 1, padding: '10px 0', fontSize: 13, background: 'var(--gold)', opacity: rollingOut ? 0.6 : 1 }}>
+                {rollingOut ? 'Rolling out…' : 'Confirm roll out'}
+              </button>
+            )}
+          </div>
+          {confirmRollout && (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '-10px 0 16px' }}>
+              This publishes the draft live to every player{live ? ' and ends the current cycle' : ''} immediately.
+              {' '}<span onClick={() => setConfirmRollout(false)} style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 700 }}>Cancel</span>
+            </p>
+          )}
+
+          {history.length > 0 && (
+            <>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }}>Past cycles</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {history.map(c => (
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '6px 8px', borderRadius: 8, background: 'var(--surface2)' }}>
+                    <span style={{ color: 'var(--text-dim)' }}>{c.final_item?.name ?? '—'}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{c.players_completed} completed</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </Modal>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────
 
-type ModalKind = 'maintenance-message' | 'broadcast' | 'health' | { category: string } | null
+type ModalKind = 'maintenance-message' | 'broadcast' | 'health' | 'game-goal' | { category: string } | null
 
 export default function AdminOpsPanel() {
   const maint = useMaintenance()
@@ -588,6 +824,15 @@ export default function AdminOpsPanel() {
         })}
       </div>
 
+      <SectionTitle>Games Zone</SectionTitle>
+      <div className="settings-card">
+        <Row
+          icon={<Target size={15} />} iconBg="rgba(245,197,66,0.12)" iconColor="var(--gold)"
+          label="Game Goal Reward Control" sub="Activity Goals cycle — thresholds, XP, final reward"
+          onClick={(e) => { ripple(e); setModal('game-goal') }}
+        />
+      </div>
+
       <SectionTitle>Data export</SectionTitle>
       <div className="settings-card">
         <Row
@@ -622,6 +867,7 @@ export default function AdminOpsPanel() {
       )}
       {modal === 'broadcast' && <BroadcastModal onClose={() => setModal(null)} />}
       {modal === 'health' && <SystemHealthModal onClose={() => setModal(null)} />}
+      {modal === 'game-goal' && <GameGoalModal onClose={() => setModal(null)} />}
       {modal && typeof modal === 'object' && (
         <FlagCategoryModal
           category={modal.category}
