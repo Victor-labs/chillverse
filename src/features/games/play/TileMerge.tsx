@@ -188,7 +188,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
     return next
   }
 
-  function finish(finalBoard: Cell[], finalScore: number, finalMerges: number, finalTop: number) {
+  function finish(finalScore: number, finalMerges: number, finalTop: number) {
     const dur = Math.floor((Date.now() - startRef.current) / 1000)
     const payload: GameEndPayload = {
       gameId: GAME_ID,
@@ -289,7 +289,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
     setTimeout(() => setPopPositions([]), 260)
 
     if (!hasLegalMove(finalBoard)) {
-      finish(finalBoard, newScore, newMergeCount, newHighest)
+      finish(newScore, newMergeCount, newHighest)
     }
   }
 
@@ -329,7 +329,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
   }
 
   function endSessionEarly() {
-    finish(board, score, mergeCount, highestValue)
+    finish(score, mergeCount, highestValue)
   }
 
   const filled = useMemo(() => board.filter(c => c.value !== null).length, [board])
