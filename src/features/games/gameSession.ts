@@ -155,6 +155,13 @@ export async function saveGameSession(userId: string, input: SessionInput) {
   checkXpMilestoneHighlight(userId, input.game).catch(console.error)
   checkLeaderboardRankHighlight(userId, input.game).catch(console.error)
 
+  // ── Activity Goals (Games Zone) ──────────────────────────────
+  // Advances the live game-goal cycle's games-played counter by 1 for this
+  // completed session. No-ops server-side if no cycle is currently live.
+  supabase.rpc('record_game_goal_progress', { p_increment: 1 }).then(({ error }) => {
+    if (error) console.error('record_game_goal_progress error:', error)
+  })
+
   // ── Weekly mission hooks ─────────────────────────────────────
   // xp_days: track days where XP was earned (1 per calendar day, de-duped by absolute mode)
   // We use the date string as a proxy — absolute=true means we only advance, never regress
