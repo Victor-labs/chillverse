@@ -5,6 +5,7 @@ import type React from 'react'
 import {
   X, Check, ImageIcon, ChevronDown, Lock, Heart,
   UserRound, Sunrise, Moon, Circle, EyeOff,
+  Package, Star, Pin,
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
@@ -339,6 +340,160 @@ function WishlistEditor({ profileId }: { profileId: string }) {
   )
 }
 
+// ── Artifact equip + showcase ────────────────────────────────────
+// Artifacts are unlocked through Exploration (see src/features/exploration
+// /artifacts.ts, table player_artifacts). This section is the write path
+// for the two flags added in migration 0096: exactly one equipped
+// artifact at a time (the "primary" one shown big in ArtifactQuickSheet),
+// plus up to three additional showcased artifacts, distinct from the
+// equipped one. Both writes go through security-definer RPCs so this
+// component never touches player_artifacts directly.
+interface OwnedArtifact {
+  artifact_id: string
+  is_equipped: boolean
+  is_showcased: boolean
+  name: string
+  media_url: string | null
+  tier: string
+}
+
+const ARTIFACT_TIER_COLOR: Record<string, string> = {
+  common: '#888899', rare: '#4f8ef7', epic: '#9b6dff', mythic: '#f5c542',
+}
+
+const ARTIFACT_SHOWCASE_MAX = 3
+
+function ArtifactEquipSection({ profileId }: { profileId: string }) {
+  const [items, setItems] = useState<OwnedArtifact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => { load() }, [profileId])
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('player_artifacts')
+      .select('artifact_id, is_equipped, is_showcased, unlocked_at, artifacts(name, media_url, tier)')
+      .eq('user_id', profileId)
+      .order('unlocked_at', { ascending: false })
+    const rows: OwnedArtifact[] = (data ?? []).map((r: Record<string, unknown>) => {
+      const a = r.artifacts as { name?: string; media_url?: string | null; tier?: string } | null
+      return {
+        artifact_id: r.artifact_id as string,
+        is_equipped: !!r.is_equipped,
+        is_showcased: !!r.is_showcased,
+        name: a?.name ?? 'Artifact',
+        media_url: a?.media_url ?? null,
+        tier: a?.tier ?? 'common',
+      }
+    })
+    setItems(rows)
+    setLoading(false)
+  }
+
+  const showcasedCount = items.filter(i => i.is_showcased).length
+
+  async function equip(artifactId: string) {
+    setError('')
+    setBusyId(artifactId)
+    const { error: err } = await supabase.rpc('set_equipped_artifact', { p_artifact_id: artifactId })
+    if (err) {
+      setError(err.message)
+      setBusyId(null)
+      return
+    }
+    setItems(prev => prev.map(i => ({
+      ...i,
+      is_equipped: i.artifact_id === artifactId,
+      is_showcased: i.artifact_id === artifactId ? false : i.is_showcased,
+    })))
+    setBusyId(null)
+  }
+
+  async function toggleShowcase(artifactId: string) {
+    setError('')
+    setBusyId(artifactId)
+    const { data, error: err } = await supabase.rpc('toggle_artifact_showcase', { p_artifact_id: artifactId })
+    if (err) {
+      setError(err.message)
+      setBusyId(null)
+      return
+    }
+    setItems(prev => prev.map(i => i.artifact_id === artifactId ? { ...i, is_showcased: !!data } : i))
+    setBusyId(null)
+  }
+
+  return (
+    <div>
+      <SectionLabel>Artifacts</SectionLabel>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, marginTop: -4 }}>
+        Equip one primary artifact, and showcase up to {ARTIFACT_SHOWCASE_MAX} others. Unlock more by exploring.
+      </p>
+      {loading ? (
+        <div style={{ padding: '20px 0', textAlign: 'center' }}>
+          <span style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--surface3)', borderTopColor: 'var(--accent)', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ padding: '20px 0', textAlign: 'center', background: 'var(--surface)', borderRadius: 14, border: '1px dashed rgba(255,255,255,0.1)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No artifacts unlocked yet</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+          {items.map(item => {
+            const color = ARTIFACT_TIER_COLOR[item.tier] ?? '#888899'
+            const busy = busyId === item.artifact_id
+            const showcaseDisabled = busy || item.is_equipped || (!item.is_showcased && showcasedCount >= ARTIFACT_SHOWCASE_MAX)
+            return (
+              <div key={item.artifact_id} style={{ padding: 10, borderRadius: 14, background: 'var(--surface)', border: `1px solid ${item.is_equipped ? color + '55' : 'var(--border)'}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, overflow: 'hidden', flexShrink: 0, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.media_url ? <img src={item.media_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={14} color={color} />}
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.name}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    disabled={busy || item.is_equipped}
+                    onClick={() => equip(item.artifact_id)}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 4px', borderRadius: 9,
+                      background: item.is_equipped ? color + '22' : 'var(--surface2)',
+                      border: `1px solid ${item.is_equipped ? color + '55' : 'var(--border)'}`,
+                      color: item.is_equipped ? color : 'var(--text-dim)',
+                      fontSize: 10, fontWeight: 700, cursor: item.is_equipped ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                    }}
+                  >
+                    <Pin size={11} /> {item.is_equipped ? 'Equipped' : 'Equip'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={showcaseDisabled}
+                    onClick={() => toggleShowcase(item.artifact_id)}
+                    title={item.is_equipped ? 'Already equipped' : (!item.is_showcased && showcasedCount >= ARTIFACT_SHOWCASE_MAX) ? `You can only showcase ${ARTIFACT_SHOWCASE_MAX} artifacts` : undefined}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 4px', borderRadius: 9,
+                      background: item.is_showcased ? '#f5c54222' : 'var(--surface2)',
+                      border: `1px solid ${item.is_showcased ? '#f5c54255' : 'var(--border)'}`,
+                      color: item.is_showcased ? '#f5c542' : 'var(--text-dim)',
+                      fontSize: 10, fontWeight: 700, cursor: showcaseDisabled ? 'default' : 'pointer', opacity: showcaseDisabled && !item.is_showcased ? 0.5 : 1,
+                    }}
+                  >
+                    <Star size={11} fill={item.is_showcased ? '#f5c542' : 'none'} /> {item.is_showcased ? 'Showcased' : 'Showcase'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {error && <p style={{ fontSize: 11.5, color: '#ff6b6b', marginTop: 8 }}>{error}</p>}
+    </div>
+  )
+}
+
 // ── Discard confirmation ───────────────────────────────────────
 function DiscardConfirm({ onDiscard, onKeepEditing }: { onDiscard: () => void; onKeepEditing: () => void }) {
   return (
@@ -567,6 +722,9 @@ export default function EditProfileModal({
 
           {/* Wishlist */}
           <WishlistEditor profileId={profile.id} />
+
+          {/* Artifacts — equip one primary, showcase up to 3 others */}
+          <ArtifactEquipSection profileId={profile.id} />
 
           {error && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 16 }}>{error}</p>}
         </div>

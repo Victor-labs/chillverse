@@ -2,11 +2,21 @@
 //
 // Followers/Following list sheet — originally built inline in Profile.tsx
 // for viewing your OWN list; extracted here so PlayerProfile.tsx (viewing
-// someone else) can open the exact same list instead of a second,
-// inconsistent implementation. Also closes a gap the original didn't
-// have: blocked accounts (either direction) are now excluded from the
-// list, matching how blocks are already treated everywhere else (Chat,
-// PlayerProfile's own follow-status check, etc).
+// someone else) and ProfilePreviewModal.tsx (the profile popup) can all
+// open the exact same list instead of separate, inconsistent
+// implementations.
+//
+// Backed by the get_follow_list() RPC (see migration 0096), which does
+// three things server-side in one round trip: excludes blocked accounts
+// (either direction, same rule as everywhere else — Chat, PlayerProfile's
+// follow-status check, etc), sorts by each entry's OWN follower count
+// (most-followed first), and caps the result at 50.
+//
+// zIndex: callers that already have a sheet of their own open (like
+// ProfilePreviewModal, whose profile-popup portal renders around 20000)
+// pass a zIndex prop so this list stacks correctly above it. Defaults to
+// the 505/510 pair used by the older full-page Profile.tsx / PlayerProfile.tsx,
+// which don't sit inside another portal.
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, X } from 'lucide-react'
@@ -20,20 +30,26 @@ interface FollowEntry {
   display_name: string | null
   xp: number
   avatar: string | null
+  followers_count: number
 }
 
 type ListMode = 'followers' | 'following'
 
-export default function FollowListSheet({ profileId, myId, mode, onClose }: {
+export default function FollowListSheet({ profileId, myId, mode, onClose, zIndex }: {
   profileId: string
   myId: string
   mode: ListMode
   onClose: () => void
+  /** Backdrop z-index; the sheet itself renders 5 above this. Defaults to 505. */
+  zIndex?: number
 }) {
   const navigate = useNavigate()
   const [visible, setVisible] = useState(false)
   const [list, setList] = useState<FollowEntry[]>([])
   const [loading, setLoading] = useState(true)
+
+  const backdropZ = zIndex ?? 505
+  const sheetZ = backdropZ + 5
 
   useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
   function close() { setVisible(false); setTimeout(onClose, 320) }
@@ -41,33 +57,19 @@ export default function FollowListSheet({ profileId, myId, mode, onClose }: {
   useEffect(() => {
     let active = true
     setLoading(true)
-    async function load() {
-      const query = mode === 'followers'
-        ? supabase.from('follows').select('profiles!follower_id(id, username, display_name, xp, avatar)').eq('following_id', profileId)
-        : supabase.from('follows').select('profiles!following_id(id, username, display_name, xp, avatar)').eq('follower_id', profileId)
-      const { data } = await query
-      let entries = (data ?? []).map((r: Record<string, unknown>) => r.profiles as FollowEntry).filter(Boolean)
-
-      const [{ data: blockedByMe }, { data: blockedMe }] = await Promise.all([
-        supabase.from('blocks').select('blocked_id').eq('blocker_id', myId),
-        supabase.from('blocks').select('blocker_id').eq('blocked_id', myId),
-      ])
-      const hiddenIds = new Set([
-        ...(blockedByMe ?? []).map(b => b.blocked_id),
-        ...(blockedMe ?? []).map(b => b.blocker_id),
-      ])
-      entries = entries.filter(p => !hiddenIds.has(p.id))
-
-      if (active) { setList(entries); setLoading(false) }
-    }
-    load()
+    supabase.rpc('get_follow_list', { p_profile_id: profileId, p_mode: mode, p_viewer_id: myId })
+      .then(({ data }) => {
+        if (!active) return
+        setList((data ?? []) as FollowEntry[])
+        setLoading(false)
+      })
     return () => { active = false }
   }, [profileId, myId, mode])
 
   return (
     <>
-      <div className="overlay-backdrop" onClick={close} style={{ zIndex: 505 }} />
-      <div className="sheet-or-modal" style={{ zIndex: 510 }}>
+      <div className="overlay-backdrop" onClick={close} style={{ zIndex: backdropZ }} />
+      <div className="sheet-or-modal" style={{ zIndex: sheetZ }}>
         <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '24px 20px 36px', maxHeight: '75vh', display: 'flex', flexDirection: 'column', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{mode === 'followers' ? 'Followers' : 'Following'}</p>
@@ -96,6 +98,9 @@ export default function FollowListSheet({ profileId, myId, mode, onClose }: {
                       <span style={{ color: rank.color }}>{rank.name}</span>
                       <span>· @{p.username}</span>
                     </div>
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {p.followers_count.toLocaleString()}
                   </div>
                 </button>
               )

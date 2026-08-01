@@ -46,6 +46,9 @@ import { useCall } from '../chat/calling/CallContext'
 import SendGiftModal, { giftResultMessage, type GiftSendResult } from '../economy/SendGiftModal'
 import { MOD_AVATAR_URL } from '../moderation/modShowcase'
 import EditProfileModal from './EditProfileModal'
+import FollowListSheet from './FollowListSheet'
+import AvatarQuickSheet from './AvatarQuickSheet'
+import ArtifactQuickSheet, { type ArtifactTileData } from './ArtifactQuickSheet'
 import type { Profile } from '../../shared/types'
 import { isProActive } from '../../shared/lib/proPlans'
 
@@ -219,8 +222,14 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   const [lbPosition, setLbPosition] = useState<number | null>(null)
   const [equippedArtifact, setEquippedArtifact] = useState<string | null>(null)
   const [equippedArtifactImage, setEquippedArtifactImage] = useState<string | null>(null)
+  const [equippedArtifactTier, setEquippedArtifactTier] = useState<string | null>(null)
+  const [showcasedArtifacts, setShowcasedArtifacts] = useState<ArtifactTileData[]>([])
   const [favoriteGameRank, setFavoriteGameRank] = useState<string | null>(null)
   const [showEdit, setShowEdit] = useState(false)
+  // Followers/Following list — which mode is open, or null when closed.
+  const [followSheetMode, setFollowSheetMode] = useState<'followers' | 'following' | null>(null)
+  const [showAvatarQuickSheet, setShowAvatarQuickSheet] = useState(false)
+  const [showArtifactQuickSheet, setShowArtifactQuickSheet] = useState(false)
   const [showLiveEffect, setShowLiveEffect] = useState(false)
   // (editAlbumPics state removed along with the banner-picker fetch above)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -425,16 +434,30 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
     return () => { active = false }
   }, [userId, profile?.grid_cards])
 
-  // Equipped artifact — shown alongside equipped avatar in the Stats tab.
+  // Equipped + showcased artifacts — the equipped one shown alongside
+  // equipped avatar in the Stats tab, both surfaced together in
+  // ArtifactQuickSheet. See migration 0096 for is_equipped/is_showcased.
   useEffect(() => {
     let active = true
-    supabase.from('user_items').select('item_name, item_image').eq('user_id', userId)
-      .eq('item_type', 'artifact').eq('is_equipped', true).maybeSingle()
-      .then(({ data }) => {
-        if (!active) return
-        setEquippedArtifact((data?.item_name as string) ?? null)
-        setEquippedArtifactImage((data?.item_image as string) ?? null)
-      })
+    supabase.rpc('get_player_artifact_showcase', { p_user_id: userId }).then(({ data }) => {
+      if (!active) return
+      const rows = (data ?? []) as Array<{
+        artifact_id: string; is_equipped: boolean; is_showcased: boolean
+        name: string; media_url: string | null; tier: string
+      }>
+      const equipped = rows.find(r => r.is_equipped)
+      setEquippedArtifact(equipped?.name ?? null)
+      setEquippedArtifactImage(equipped?.media_url ?? null)
+      setEquippedArtifactTier(equipped?.tier ?? null)
+      setShowcasedArtifacts(
+        rows.filter(r => r.is_showcased).slice(0, 3).map(r => ({
+          id: r.artifact_id,
+          name: r.name,
+          mediaUrl: r.media_url,
+          tier: r.tier,
+        }))
+      )
+    })
     return () => { active = false }
   }, [userId])
 
@@ -593,7 +616,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
     height: sheetHeight,
     borderRadius: '20px 20px 0 0',
     marginTop: 'auto',
-    transform: entered && !closing && !showBadgesModal && !showBadgeQuickSheet ? 'translateY(0)' : 'translateY(100%)',
+    transform: entered && !closing && !showBadgesModal && !showBadgeQuickSheet && !followSheetMode && !showAvatarQuickSheet && !showArtifactQuickSheet ? 'translateY(0)' : 'translateY(100%)',
     transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
   }
 
@@ -949,14 +972,26 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
               {activeTab === 'main' ? (
                 <div className="pv-panel" style={{ marginTop: 12, background: 'var(--surface)', borderRadius: 12, padding: '2px 12px' }}>
                   <div className="pv-section" style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      className="pv-btn"
+                      disabled={!profile.show_follow_counts}
+                      onClick={() => setFollowSheetMode('followers')}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)', cursor: profile.show_follow_counts ? 'pointer' : 'default', fontFamily: 'inherit' }}
+                    >
                       <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{profile.show_follow_counts ? followers.toLocaleString() : '—'}</span>
                       <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Followers</span>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+                    </button>
+                    <button
+                      type="button"
+                      className="pv-btn"
+                      disabled={!profile.show_follow_counts}
+                      onClick={() => setFollowSheetMode('following')}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '10px 8px', borderRadius: 13, background: 'var(--surface2)', border: '1px solid var(--border)', cursor: profile.show_follow_counts ? 'pointer' : 'default', fontFamily: 'inherit' }}
+                    >
                       <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{profile.show_follow_counts ? following.toLocaleString() : '—'}</span>
                       <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Following</span>
-                    </div>
+                    </button>
                   </div>
 
                   {profile.bio && (
@@ -1110,9 +1145,14 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                     )
                   })()}
 
-                  {/* Equipped avatar + artifact */}
+                  {/* Equipped avatar + artifact — tap either to open its quick sheet */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      className="pv-btn"
+                      onClick={() => setShowAvatarQuickSheet(true)}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
                       <div style={{ width: 44, height: 44, borderRadius: 11, background: profile.equipped_avatar ? `${rank?.color ?? '#888899'}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: profile.equipped_avatar ? `1px solid ${rank?.color ?? '#888899'}33` : '1px solid rgba(255,255,255,0.06)' }}>
                         {profile.equipped_avatar && profile.equipped_avatar.startsWith('http')
                           ? <img src={profile.equipped_avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -1122,8 +1162,13 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                       <span style={{ fontSize: 10, fontWeight: 700, color: profile.equipped_avatar ? 'var(--text)' : 'var(--text-muted)', textAlign: 'center' }}>
                         {profile.equipped_avatar ? 'Avatar' : 'No avatar'}
                       </span>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    </button>
+                    <button
+                      type="button"
+                      className="pv-btn"
+                      onClick={() => setShowArtifactQuickSheet(true)}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 13, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
                       <div style={{ width: 44, height: 44, borderRadius: 11, background: equippedArtifact ? `${rank?.color ?? '#888899'}18` : 'var(--surface2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: equippedArtifact ? `1px solid ${rank?.color ?? '#888899'}33` : '1px solid rgba(255,255,255,0.06)' }}>
                         {equippedArtifactImage && equippedArtifactImage.startsWith('http')
                           ? <img src={equippedArtifactImage} alt="artifact" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1133,7 +1178,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                       <span style={{ fontSize: 10, fontWeight: 700, color: equippedArtifact ? 'var(--text)' : 'var(--text-muted)', textAlign: 'center' }}>
                         {equippedArtifact || 'No artifact'}
                       </span>
-                    </div>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1258,6 +1303,48 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
             originalUsername={profile.original_username ?? profile.username}
             pro={proInfo}
             onClose={() => setShowBadgesModal(false)}
+          />
+        </div>
+      )}
+
+      {followSheetMode && profile && (
+        <div onClick={e => e.stopPropagation()}>
+          <FollowListSheet
+            profileId={profile.id}
+            myId={user?.id ?? profile.id}
+            mode={followSheetMode}
+            onClose={() => setFollowSheetMode(null)}
+            zIndex={20100}
+          />
+        </div>
+      )}
+
+      {showAvatarQuickSheet && profile && (
+        <div onClick={e => e.stopPropagation()}>
+          <AvatarQuickSheet
+            displayName={displayName}
+            profileAvatarUrl={profile.avatar}
+            equippedAvatarUrl={profile.equipped_avatar}
+            rankColor={rank?.color}
+            onClose={() => setShowAvatarQuickSheet(false)}
+          />
+        </div>
+      )}
+
+      {showArtifactQuickSheet && profile && (
+        <div onClick={e => e.stopPropagation()}>
+          <ArtifactQuickSheet
+            displayName={displayName}
+            isOwnProfile={isMe}
+            equipped={equippedArtifact ? {
+              id: 'equipped',
+              name: equippedArtifact,
+              mediaUrl: equippedArtifactImage,
+              tier: equippedArtifactTier ?? 'common',
+            } : null}
+            showcased={showcasedArtifacts}
+            onClose={() => setShowArtifactQuickSheet(false)}
+            onManage={isMe ? () => { setShowArtifactQuickSheet(false); setShowEdit(true) } : undefined}
           />
         </div>
       )}
