@@ -48,7 +48,14 @@ export default function Login() {
     }
 
     showToast('Logged in! Welcome back 🔥', 'success')
-    setTimeout(() => navigate('/dashboard'), 1200)
+    // App.tsx's central onAuthStateChange handler already redirects
+    // immediately on SIGNED_IN — including resuming a pending club invite
+    // link. This is just a fallback in case that hasn't happened yet by
+    // the time the toast finishes; if it already navigated us away from
+    // /login, don't stomp it by forcing /dashboard.
+    setTimeout(() => {
+      if (window.location.pathname === '/login') navigate('/dashboard')
+    }, 1200)
   }
 
   async function handleResend() {

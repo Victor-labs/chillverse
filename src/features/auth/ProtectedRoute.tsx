@@ -116,6 +116,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!session) {
+    // A club invite link (/clubs/:roomId?code=...) hit while logged out —
+    // stash it so the post-login redirect in App.tsx can resume the join
+    // instead of dropping the person on /dashboard.
+    if (window.location.pathname.startsWith('/clubs/') && window.location.search.includes('code=')) {
+      sessionStorage.setItem('chillverse_pending_invite', window.location.pathname + window.location.search)
+    }
     return <Navigate to="/login" replace />
   }
 
