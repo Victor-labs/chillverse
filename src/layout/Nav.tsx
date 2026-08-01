@@ -16,7 +16,7 @@ export default function Nav() {
 
       <Link
         to="/login"
-        className="px-6 py-[9px] rounded-full text-sm font-semibold text-white no-underline bg-gradient-to-br from-chill-violet to-[#3d1fb5] shadow-[0_4px_24px_rgba(108,80,255,0.45)] hover:-translate-y-px hover:shadow-[0_6px_30px_rgba(108,80,255,0.6)] transition-all"
+        className="px-6 py-[9px] rounded-full text-sm font-semibold text-white no-underline bg-gradient-to-br from-[var(--violet)] to-[#3d1fb5] shadow-[0_2px_10px_rgba(108,80,255,0.22)] hover:-translate-y-px hover:shadow-[0_3px_14px_rgba(108,80,255,0.3)] transition-all"
       >
         Open Chillverse
       </Link>
