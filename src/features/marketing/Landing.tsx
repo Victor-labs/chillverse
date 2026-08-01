@@ -1,5 +1,5 @@
 // src/pages/Landing.tsx
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../../layout/Nav'
 import Footer from '../../layout/Footer'
@@ -21,29 +21,39 @@ const HOME_JSON_LD = [
   },
 ]
 
-// Decorative / illustrative assets — hosted on Supabase storage.
-const DRIFT = {
+// Character / feature illustrations — hosted on Supabase storage. These
+// are STATIC — no drift, no idle animation. They only ever move if
+// explicitly wired to scroll (see BG_ASSETS below).
+const ART = {
   willam: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Willam2.png',
   controller: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Controller.png',
   mascot: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Mascot.png',
+  streak: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Streak.png',
+  chat: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Chat.png',
 }
 
-// The static hero character — anchored beside the leaderboard mock on
-// larger screens, and layered in behind it (low-opacity, blurred) on
-// mobile so phones get a "player" presence too instead of nothing.
+// The static hero character — one of the two figures anchored behind the
+// leaderboard card (see PeekingCharacter below).
 const HERO_CHARACTER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Baseballplayer.png'
 
+// Ambient background art — the ONLY things on this page that move, and
+// only in direct response to scroll position (translateY tied to
+// window.scrollY). Hold perfectly still the instant scrolling stops.
+const BG_ASSETS = {
+  bomb: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Bomb.png',
+  game: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Game.png',
+  flyer: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Flyer.png',
+}
+
 const FEATURES = [
-  { icon: DRIFT.controller, title: 'Play Games', accent: 'violet' },
-  { icon: DRIFT.willam, title: 'Streak System', accent: 'amber' },
-  { icon: DRIFT.controller, title: 'Leaderboards', accent: 'pink' },
-  { icon: DRIFT.willam, title: 'Chat & Crew', accent: 'cyan' },
-  { icon: DRIFT.controller, title: 'Your Profile', accent: 'green' },
+  { icon: ART.controller, title: 'Play Games', accent: 'violet' },
+  { icon: ART.willam, title: 'Leaderboards', accent: 'pink' },
+  { icon: ART.controller, title: 'Your Profile', accent: 'green' },
 ]
 
 // Real in-app profile pictures (pulled from the Mall's profile_pic catalog)
-// so the leaderboard mock reads as an actual snapshot of the app instead of
-// a placeholder. Only single-person, original-character pics were used —
+// so the leaderboard preview reads as an actual snapshot of the app instead
+// of a placeholder. Only single-person, original-character pics were used —
 // licensed/celebrity-likeness items in the catalog were deliberately
 // skipped since this card is public-facing marketing, not gated in-app UI.
 const LEADERBOARD_AVATARS = {
@@ -53,23 +63,82 @@ const LEADERBOARD_AVATARS = {
   skyKid: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/By%20owning%20avatar/Nolan1.png',
 }
 
-// Fixed, viewport-pinned ambient layer — sits behind every section so the
-// page never reads as flat black. A few softly blurred colour blooms plus
-// a handful of near-invisible glyphs drifting on the existing keyframes
-// give the whole scroll a frosted-glass depth instead of a plain #050506
-// backdrop. Purely decorative: aria-hidden, no pointer events, and backs
-// off entirely under reduced-motion.
-function AmbientBackground() {
+// Rank colour matches the real Leaderboards page's convention (top 3 get
+// the game's accent colour, everyone else stays neutral) — plain numbers,
+// not medal emoji, so this reads as the actual product instead of a
+// invented mock.
+const LEADERBOARD_ROWS = [
+  { rank: 1, avatar: LEADERBOARD_AVATARS.zeroKnight, name: 'ZeroKnight', score: '98,410', streak: 72, accent: '#ffb800' },
+  { rank: 2, avatar: LEADERBOARD_AVATARS.neonX, name: 'NeonX_', score: '91,870', streak: 58, accent: '#00e5ff' },
+  { rank: 3, avatar: LEADERBOARD_AVATARS.voidRacer, name: 'VoidRacer', score: '88,220', streak: 41, accent: '#ff4ecd' },
+  { rank: 4, avatar: LEADERBOARD_AVATARS.skyKid, name: 'SkyKid', score: '84,100', streak: 35, accent: 'var(--chill-textMuted, #8a8a94)' },
+]
+
+// Tracks scroll position imperatively (no re-renders) and applies a
+// translateY to the returned ref's element, scaled by `speed`. This is
+// the ONLY motion these background images get — no idle keyframes — so
+// they sit perfectly still until the page actually scrolls.
+function useScrollParallax(speed: number) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let ticking = false
+    const apply = () => {
+      if (ref.current) ref.current.style.transform = `translateY(${window.scrollY * speed}px)`
+      ticking = false
+    }
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(apply)
+      }
+    }
+    apply()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [speed])
+  return ref
+}
+
+// A single background illustration, positioned absolutely inside whatever
+// `relative` section wraps it. Visible enough to actually break up the
+// black (no blur, no near-zero opacity) but never in front of copy.
+function BgArt({
+  src,
+  alt,
+  className,
+  speed = 0.15,
+}: {
+  src: string
+  alt: string
+  className: string
+  speed?: number
+}) {
+  const ref = useScrollParallax(speed)
   return (
-    <div aria-hidden className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-chill-violet/[0.08] blur-[140px]" />
-      <div className="absolute top-1/3 -right-20 w-[420px] h-[420px] rounded-full bg-chill-cyan/[0.06] blur-[130px]" />
-      <div className="absolute bottom-0 left-1/4 w-[440px] h-[440px] rounded-full bg-chill-pink/[0.05] blur-[150px]" />
-      <div className="hidden sm:block absolute top-[18%] left-[8%] text-4xl opacity-[0.05] drift-a">🎮</div>
-      <div className="hidden sm:block absolute top-[55%] right-[10%] text-4xl opacity-[0.05] drift-b">🔥</div>
-      <div className="hidden sm:block absolute top-[78%] left-[14%] text-4xl opacity-[0.05] drift-c">💬</div>
-      <div className="hidden sm:block absolute top-[38%] left-[46%] text-4xl opacity-[0.04] drift-b">🏆</div>
+    <div ref={ref} aria-hidden className={`absolute pointer-events-none z-0 ${className}`}>
+      <img src={src} alt={alt} className="w-full h-auto opacity-80 drop-shadow-[0_20px_50px_rgba(0,0,0,0.55)]" loading="lazy" />
     </div>
+  )
+}
+
+// One of the two static characters "standing behind" the leaderboard
+// card, like it's a wall — only head-to-stomach shows above the card's
+// top edge. Achieved with a bottom mask-fade on the image itself so the
+// cutoff is clean regardless of the glass card's own transparency.
+function PeekingCharacter({ src, className }: { src: string; className: string }) {
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      loading="lazy"
+      className={`absolute z-0 h-auto drop-shadow-[0_20px_40px_rgba(0,0,0,0.55)] ${className}`}
+      style={{
+        WebkitMaskImage: 'linear-gradient(to bottom, black 58%, transparent 82%)',
+        maskImage: 'linear-gradient(to bottom, black 58%, transparent 82%)',
+      }}
+    />
   )
 }
 
@@ -98,29 +167,28 @@ export default function Landing() {
         jsonLd={HOME_JSON_LD}
       />
       <Nav />
-      <AmbientBackground />
 
       {/* ── HERO ──
-          Big mascot display up top (Discord-style), then a tighter
-          headline + one line of copy + a single CTA underneath. */}
+          Everything below is normal document flow now — the mascot is a
+          plain block-level image, not absolutely positioned, so it can
+          never overlap the headline or paragraph under it again. */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-5 sm:px-6 md:px-16 pt-32 sm:pt-36 pb-16 sm:pb-20">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[1]">
           <div className="w-[600px] h-[600px] rounded-full bg-chill-violet/[0.10] blur-[120px]" />
           <div className="absolute w-[400px] h-[400px] rounded-full bg-chill-cyan/[0.08] blur-[100px] -translate-x-24 translate-y-16" />
         </div>
 
-        <div className="relative z-[6] flex flex-col items-center text-center max-w-2xl">
-          {/* The big mascot — the whole point of the top of the page.
-             Idle-floats gently; no card, no chrome, just the crew. */}
-          <div className="drift-outer relative mb-4 sm:mb-6 w-[220px] sm:w-[300px] md:w-[360px]">
-            <div className="drift-item drift-a">
-              <img
-                src={DRIFT.mascot}
-                alt="The Chillverse crew"
-                className="w-full h-auto drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
-              />
-            </div>
-          </div>
+        <BgArt src={BG_ASSETS.bomb} alt="" speed={0.18} className="hidden sm:block top-[8%] left-[4%] w-24 md:w-32 -rotate-6" />
+        <BgArt src={BG_ASSETS.flyer} alt="" speed={0.24} className="hidden sm:block bottom-[6%] right-[5%] w-28 md:w-36 rotate-3" />
+
+        <div className="relative z-[6] flex flex-col items-center text-center max-w-2xl w-full">
+          {/* The big mascot — genuinely big now, sits in normal flow with
+             its own margin so nothing after it can ride up underneath. */}
+          <img
+            src={ART.mascot}
+            alt="The Chillverse crew"
+            className="block w-[280px] sm:w-[400px] md:w-[480px] h-auto mb-6 sm:mb-8 drop-shadow-[0_30px_70px_rgba(108,80,255,0.4)]"
+          />
 
           <h1 className="font-bold leading-[1.02] mb-4 text-[clamp(28px,7vw,52px)] tracking-tight">
             <span className="text-chill-text">Play. Win. </span>
@@ -145,11 +213,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── ARSENAL + HOW IT WORKS, merged ──
-          One Discord-style glass card: short copy + a chip row of what
-          the platform does, paired with one big illustration. Replaces
-          the old 5-card feature grid + separate 3-step section. */}
+      {/* ── ARSENAL + HOW IT WORKS, merged ── */}
       <section id="features" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <BgArt src={BG_ASSETS.game} alt="" speed={0.16} className="hidden md:block -top-6 right-[6%] w-28 lg:w-36 rotate-6" />
+
         <div className="reveal glass-panel-strong glow-violet-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid md:grid-cols-2 gap-10 md:gap-14 items-center overflow-hidden">
           <div className="order-2 md:order-1">
             <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// your arsenal</div>
@@ -184,26 +251,22 @@ export default function Landing() {
           </div>
 
           <div className="order-1 md:order-2 flex items-center justify-center">
-            <div className="drift-outer relative w-[220px] sm:w-[280px] md:w-full md:max-w-[320px]">
-              <div className="drift-item drift-b">
-                <img
-                  src={DRIFT.controller}
-                  alt="Chillverse game controller"
-                  className="w-full h-auto drop-shadow-[0_24px_50px_rgba(108,80,255,0.3)]"
-                  loading="lazy"
-                />
-              </div>
-            </div>
+            <img
+              src={ART.controller}
+              alt="Chillverse game controller"
+              className="w-[220px] sm:w-[280px] md:w-full md:max-w-[320px] h-auto drop-shadow-[0_24px_50px_rgba(108,80,255,0.3)]"
+              loading="lazy"
+            />
           </div>
         </div>
       </section>
 
       {/* ── LEADERBOARD, merged into one glass card ──
-          Now visible at every breakpoint (not desktop-only), with the
-          player characters layered in behind the mock so phones get
-          that "player" presence too. */}
+          Static characters peek up from behind the card like it's a
+          wall — head-to-stomach only, no drift. Row list uses plain
+          numbered ranks (no medal emoji) to match the real product. */}
       <section id="leaderboard" className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
-        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center overflow-hidden">
+        <div className="reveal glass-panel-strong glow-cyan-tint rounded-[28px] p-7 sm:p-10 md:p-14 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center overflow-visible">
           <div>
             <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// climb the ranks</div>
             <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">The top is within reach.</h2>
@@ -218,27 +281,21 @@ export default function Landing() {
             </Link>
           </div>
 
-          <div className="relative flex items-center justify-center py-4" style={{ perspective: '700px' }}>
-            {/* Player characters — layered behind the leaderboard card at
-               every breakpoint, faded/scaled down on phones so they read
-               as background presence rather than clutter. */}
-            <img
+          <div className="relative flex items-center justify-center py-6">
+            {/* Characters behind the card — like it's a wall they're
+               standing behind. Positioned so only the top ~40% (head to
+               stomach) clears the card's top edge; mask-fades the rest. */}
+            <PeekingCharacter
               src={HERO_CHARACTER}
-              alt=""
-              aria-hidden
-              className="absolute left-[2%] sm:left-[6%] bottom-0 w-[110px] sm:w-[150px] md:w-[190px] h-auto opacity-60 sm:opacity-80 blur-[1px] sm:blur-0 z-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
-              loading="lazy"
+              className="left-[6%] sm:left-[10%] -top-2 sm:top-0 w-[100px] sm:w-[130px] md:w-[160px]"
             />
-            <img
-              src={DRIFT.willam}
-              alt=""
-              aria-hidden
-              className="absolute right-[0%] sm:right-[4%] top-[6%] w-[90px] sm:w-[120px] md:w-[150px] h-auto opacity-50 sm:opacity-70 blur-[1px] sm:blur-0 z-0 drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
-              loading="lazy"
+            <PeekingCharacter
+              src={ART.willam}
+              className="right-[6%] sm:right-[10%] -top-4 sm:-top-2 w-[90px] sm:w-[115px] md:w-[140px]"
             />
 
-            <div className="relative z-10 lb-float">
-              <div className="glass-panel rounded-[22px] p-6 sm:p-7 w-[260px] sm:w-80 shadow-[0_40px_80px_rgba(0,0,0,0.7),0_0_80px_rgba(108,80,255,0.2)]">
+            <div className="relative z-10 w-[260px] sm:w-80">
+              <div className="glass-panel rounded-[22px] p-6 sm:p-7 shadow-[0_40px_80px_rgba(0,0,0,0.7),0_0_80px_rgba(108,80,255,0.2)]">
                 <div className="flex items-center justify-between mb-[18px] sm:mb-[22px]">
                   <span className="text-[12px] sm:text-[13px] font-bold tracking-wider text-chill-textMuted uppercase font-mono">Top Players</span>
                   <span className="flex items-center gap-1.5 text-[11px] text-chill-green font-semibold">
@@ -246,15 +303,15 @@ export default function Landing() {
                   </span>
                 </div>
 
-                {[
-                  { rank: '🥇', avatar: LEADERBOARD_AVATARS.zeroKnight, name: 'ZeroKnight', score: '98,410', streak: 72, ring: 'rgba(255,184,0,0.5)' },
-                  { rank: '🥈', avatar: LEADERBOARD_AVATARS.neonX, name: 'NeonX_', score: '91,870', streak: 58, ring: 'rgba(0,229,255,0.4)' },
-                  { rank: '🥉', avatar: LEADERBOARD_AVATARS.voidRacer, name: 'VoidRacer', score: '88,220', streak: 41, ring: 'rgba(255,78,205,0.4)' },
-                  { rank: '4', avatar: LEADERBOARD_AVATARS.skyKid, name: 'SkyKid', score: '84,100', streak: 35, ring: 'rgba(0,255,135,0.35)' },
-                ].map((row) => (
+                {LEADERBOARD_ROWS.map((row) => (
                   <div key={row.name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-2 hover:bg-chill-surface2 transition-colors">
-                    <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-textMuted">{row.rank}</div>
-                    <div className="w-[34px] h-[34px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: `0 0 0 2px ${row.ring}` }}>
+                    <div
+                      className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold font-mono"
+                      style={{ background: row.rank <= 3 ? `${row.accent}22` : 'transparent', color: row.accent }}
+                    >
+                      {row.rank}
+                    </div>
+                    <div className="w-[30px] h-[30px] rounded-full flex-shrink-0 overflow-hidden">
                       <img src={row.avatar} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="flex-1 text-[13px] font-semibold">{row.name}</div>
@@ -263,19 +320,53 @@ export default function Landing() {
                 ))}
 
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-chill-violet/10">
-                  <div className="w-[22px] text-center text-xs font-bold font-mono text-chill-violetSoft">—</div>
-                  <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-chill-violet/20 text-chill-violetSoft">YOU</div>
+                  <div className="w-6 h-6 text-center text-xs font-bold font-mono text-chill-violetSoft flex items-center justify-center">—</div>
+                  <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 bg-chill-violet/20 text-chill-violetSoft">YOU</div>
                   <div className="flex-1 text-[13px] font-semibold text-chill-violetSoft">Your spot</div>
                   <div className="text-xs font-bold font-mono text-chill-violetSoft">???</div>
                 </div>
               </div>
 
-              <div className="badge-float absolute -top-4.5 -right-6 sm:-right-12 glass-chip border border-chill-pink/40 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-pink shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              <div className="badge-float absolute -top-4.5 -right-4 sm:-right-10 glass-chip border border-chill-pink/40 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-pink shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2 z-20">
                 ⚡ +2,400 XP gained!
               </div>
-              <div className="badge-float-delay absolute bottom-2.5 -left-4 sm:-left-16 glass-chip border border-chill-cyan/35 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2">
+              <div className="badge-float-delay absolute bottom-2.5 -left-2 sm:-left-12 glass-chip border border-chill-cyan/35 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold text-chill-cyan shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap flex items-center gap-2 z-20">
                 👥 4 friends online
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STREAK & CHAT — third glass card ──
+          Streak/Chat art is fixed at the card's corners, hanging off the
+          edge like stickers — not inside the copy, not drifting. */}
+      <section className="relative px-5 sm:px-6 md:px-16 py-20 sm:py-24 max-w-[1200px] mx-auto">
+        <div className="reveal glass-panel-strong glow-pink-tint rounded-[28px] p-7 sm:p-10 md:p-14 relative overflow-visible">
+          <img
+            src={ART.streak}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            className="absolute -top-6 -left-4 sm:-top-8 sm:-left-8 w-16 sm:w-24 md:w-28 h-auto z-20 drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)]"
+          />
+          <img
+            src={ART.chat}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            className="absolute -bottom-6 -right-4 sm:-bottom-8 sm:-right-8 w-16 sm:w-24 md:w-28 h-auto z-20 drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)]"
+          />
+
+          <div className="max-w-lg mx-auto text-center">
+            <div className="font-mono text-[11px] tracking-[2.5px] uppercase text-chill-violet mb-3.5">// stay in it</div>
+            <h2 className="text-[clamp(28px,4vw,42px)] font-bold leading-tight tracking-tight mb-4">Never miss a beat.</h2>
+            <p className="text-sm sm:text-base text-chill-textSecondary leading-relaxed mb-6">
+              Log in, play, stay hot — your streak is your reputation. Then trash talk, team up, or just vibe with your crew in real time.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold ${ACCENT_MAP.amber.pill}`}>Daily XP</span>
+              <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold ${ACCENT_MAP.cyan.pill}`}>Real-time chat</span>
             </div>
           </div>
         </div>
