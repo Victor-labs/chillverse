@@ -15,7 +15,6 @@ import { useProfile } from '../profile/useProfile'
 import { isProActive, getSessionLimits } from '../../shared/lib/proPlans'
 import { ProModal } from '../../context/ProModal'
 import { triggerAchievementCheck } from '../achievements/triggerAchievements'
-import { completeReferralIfEligible } from '../referral/referral'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import type { GameRank } from './play/types'
 import { getRankConfig, RankProgressBar } from './play/GameShell'
@@ -274,9 +273,10 @@ export default function Games({ onBack }: { onBack?: () => void } = {}) {
     // Fire achievement check in background
     triggerAchievementCheck(userId).catch(console.error)
 
-    // Referral: pays out the first time this user completes a game — the
-    // server-side function is idempotent, so it's safe to call every time.
-    completeReferralIfEligible(userId).catch(console.error)
+    // NOTE: referral crediting used to happen here (first completed game),
+    // but that was replaced by immediate server-side crediting at account
+    // creation — see handle_new_user() in migration 0093. This call is
+    // dead code now, removed to fix the build.
 
     // ── Weekly mission progress ──────────────────────────────
     updateMissionProgress(userId, 'sessions_played', 1).catch(console.error)
