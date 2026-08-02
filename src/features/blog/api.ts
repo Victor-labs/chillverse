@@ -1,6 +1,9 @@
 // src/features/blog/api.ts
 import { supabase } from '../../shared/lib/supabase'
-import type { BlogAuthor, BlogCategory, BlogLocale, BlogPost, BlogPostInput, BlogSearchResult } from '../../shared/types'
+import type {
+  BlogAuthor, BlogCategory, BlogCategoryRow, BlogLocale, BlogMediaItem, BlogPost,
+  BlogPostInput, BlogPostRevision, BlogSearchResult, BlogTagRow,
+} from '../../shared/types'
 
 const BLOG_IMAGES_BUCKET = 'blog-images'
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
@@ -156,14 +159,25 @@ export async function searchBlogPosts(query: string, locale: BlogLocale = 'en'):
   return (data as BlogSearchResult[]) ?? []
 }
 
-// ── Admin ─────────────────────────────────────────────────────────────────
+// ── Admin: friendly errors for the CV_BLOG_* codes raised by migration 0096 ─
 
-/** Fetches every post (published or not) for the admin management list, newest-first. */
+export function friendlyBlogError(error: { message: string } | null | undefined): string {
+  const msg = error?.message ?? ''
+  if (msg.includes('CV_BLOG_FORBIDDEN')) return "You don't have staff access to the blog CMS."
+  if (msg.includes('CV_BLOG_OWN_ONLY')) return 'Writers can only create or edit their own posts.'
+  if (msg.includes('CV_BLOG_WRITER_DRAFT_ONLY')) return 'Writers can save drafts only — ask an editor to publish, schedule, or archive this post.'
+  if (msg.includes('CV_BLOG_SCHEDULE_REQUIRED')) return 'Choose a publish date and time before scheduling.'
+  return error?.message || 'Something went wrong. Please try again.'
+}
+
+// ── Admin: articles ──────────────────────────────────────────────────────
+
+/** Fetches every post (any status) for the admin management list, newest-first. */
 export async function fetchAllBlogPostsForAdmin(): Promise<BlogPost[]> {
   const { data, error } = await supabase
     .from('blog_posts')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (error) throw error
   return (data as BlogPost[]) ?? []
@@ -182,12 +196,14 @@ function inputToRow(input: BlogPostInput) {
     locale: input.locale,
     translation_group_id: input.translationGroupId,
     author_id: input.authorId,
-    is_published: input.isPublished,
-    published_at: input.isPublished ? new Date().toISOString() : null,
+    status: input.status,
+    scheduled_at: input.status === 'scheduled' ? input.scheduledAt : null,
+    seo_title: input.seoTitle.trim() || null,
+    meta_description: input.metaDescription.trim() || null,
   }
 }
 
-/** Creates a new post. */
+/** Creates a new post. `is_published`/`published_at`/`archived_at` are stamped server-side by the status-sync trigger (migration 0096). */
 export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
   const { data, error } = await supabase
     .from('blog_posts')
@@ -199,20 +215,11 @@ export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
   return data as BlogPost
 }
 
-/**
- * Updates an existing post. `published_at` is only (re)stamped the moment a
- * post transitions from unpublished to published — re-saving an already
- * published post must not bump its date to "now" and jump the feed order.
- */
-export async function updateBlogPost(id: string, input: BlogPostInput, wasPublished: boolean): Promise<BlogPost> {
-  const row = inputToRow(input)
-  if (wasPublished && input.isPublished) {
-    delete (row as { published_at?: string | null }).published_at
-  }
-
+/** Updates an existing post. Publish-date stamping / unstamping is handled server-side, not here. */
+export async function updateBlogPost(id: string, input: BlogPostInput): Promise<BlogPost> {
   const { data, error } = await supabase
     .from('blog_posts')
-    .update(row)
+    .update(inputToRow(input))
     .eq('id', id)
     .select('*')
     .single()
@@ -221,9 +228,203 @@ export async function updateBlogPost(id: string, input: BlogPostInput, wasPublis
   return data as BlogPost
 }
 
+/** Flips a post's status only (used for Archive / Restore / one-click publish from the table view). */
+export async function setBlogPostStatus(id: string, status: BlogPost['status'], scheduledAt?: string | null): Promise<BlogPost> {
+  const patch: Record<string, unknown> = { status }
+  if (status === 'scheduled') patch.scheduled_at = scheduledAt
+  const { data, error } = await supabase.from('blog_posts').update(patch).eq('id', id).select('*').single()
+  if (error) throw error
+  return data as BlogPost
+}
+
+/** Hard delete — Administrator only (enforced server-side by RLS). */
 export async function deleteBlogPost(id: string): Promise<void> {
   const { error } = await supabase.from('blog_posts').delete().eq('id', id)
   if (error) throw error
+}
+
+/** Duplicates a post as a new draft under the current user's byline, with a unique slug. */
+export async function duplicateBlogPost(post: BlogPost, currentUserId: string): Promise<BlogPost> {
+  const baseSlug = `${post.slug}-copy`
+  const slug = `${baseSlug}-${Date.now().toString(36)}`
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .insert({
+      slug,
+      title: `${post.title} (Copy)`,
+      excerpt: post.excerpt,
+      content: post.content,
+      hero_image_url: post.hero_image_url,
+      category: post.category,
+      series: post.series,
+      tags: post.tags,
+      locale: post.locale,
+      translation_group_id: null,
+      author_id: currentUserId,
+      status: 'draft',
+      seo_title: post.seo_title,
+      meta_description: post.meta_description,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data as BlogPost
+}
+
+// ── Admin: dashboard ─────────────────────────────────────────────────────
+
+export interface BlogDashboardStats {
+  total: number
+  published: number
+  drafts: number
+  scheduled: number
+  archived: number
+  recentlyEdited: BlogPost[]
+}
+
+export async function fetchBlogDashboardStats(): Promise<BlogDashboardStats> {
+  const countFor = async (status?: BlogPost['status']) => {
+    let query = supabase.from('blog_posts').select('*', { count: 'exact', head: true })
+    if (status) query = query.eq('status', status)
+    const { count, error } = await query
+    if (error) throw error
+    return count ?? 0
+  }
+
+  const [total, published, drafts, scheduled, archived, recentRes] = await Promise.all([
+    countFor(),
+    countFor('published'),
+    countFor('draft'),
+    countFor('scheduled'),
+    countFor('archived'),
+    supabase.from('blog_posts').select('*').order('updated_at', { ascending: false }).limit(5),
+  ])
+
+  if (recentRes.error) throw recentRes.error
+
+  return { total, published, drafts, scheduled, archived, recentlyEdited: (recentRes.data as BlogPost[]) ?? [] }
+}
+
+// ── Admin: categories ────────────────────────────────────────────────────
+
+export async function fetchBlogCategoryRows(): Promise<BlogCategoryRow[]> {
+  const { data, error } = await supabase.from('blog_categories').select('*').order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data as BlogCategoryRow[]) ?? []
+}
+
+export async function createBlogCategory(input: { slug: string; label: string; color: string; icon: string; sortOrder: number }): Promise<BlogCategoryRow> {
+  const { data, error } = await supabase
+    .from('blog_categories')
+    .insert({ slug: input.slug, label: input.label, color: input.color, icon: input.icon, sort_order: input.sortOrder })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as BlogCategoryRow
+}
+
+export async function updateBlogCategory(id: string, patch: Partial<{ label: string; color: string; icon: string; sortOrder: number }>): Promise<void> {
+  const row: Record<string, unknown> = {}
+  if (patch.label !== undefined) row.label = patch.label
+  if (patch.color !== undefined) row.color = patch.color
+  if (patch.icon !== undefined) row.icon = patch.icon
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
+  const { error } = await supabase.from('blog_categories').update(row).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteBlogCategory(id: string): Promise<void> {
+  const { error } = await supabase.from('blog_categories').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function reorderBlogCategories(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from('blog_categories').update({ sort_order: i }).eq('id', id)))
+}
+
+// ── Admin: tags ───────────────────────────────────────────────────────────
+
+export async function fetchBlogTagRows(): Promise<BlogTagRow[]> {
+  const { data, error } = await supabase.from('blog_tags').select('*').order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data as BlogTagRow[]) ?? []
+}
+
+export async function createBlogTag(input: { slug: string; label: string; sortOrder: number }): Promise<BlogTagRow> {
+  const { data, error } = await supabase
+    .from('blog_tags')
+    .insert({ slug: input.slug, label: input.label, sort_order: input.sortOrder })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as BlogTagRow
+}
+
+export async function updateBlogTag(id: string, patch: Partial<{ label: string; sortOrder: number }>): Promise<void> {
+  const row: Record<string, unknown> = {}
+  if (patch.label !== undefined) row.label = patch.label
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder
+  const { error } = await supabase.from('blog_tags').update(row).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteBlogTag(id: string): Promise<void> {
+  const { error } = await supabase.from('blog_tags').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function reorderBlogTags(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from('blog_tags').update({ sort_order: i }).eq('id', id)))
+}
+
+// ── Admin: media library ─────────────────────────────────────────────────
+
+/** Uploads an image into the shared media library (distinct path prefix from inline hero-image uploads, same bucket/policies). */
+export async function uploadToMediaLibrary(uploaderId: string, file: File): Promise<BlogMediaItem> {
+  if (!file.type.startsWith('image/')) throw new Error('Only image files can be added to the media library.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('Image is too large — please use a file under 5MB.')
+
+  const path = `library/${uploaderId}/${crypto.randomUUID()}.${extensionForFile(file)}`
+  const { error: uploadError } = await supabase.storage
+    .from(BLOG_IMAGES_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false })
+  if (uploadError) throw new Error(`Failed to upload image: ${uploadError.message}`)
+
+  const { data: urlData } = supabase.storage.from(BLOG_IMAGES_BUCKET).getPublicUrl(path)
+
+  const { data, error } = await supabase
+    .from('blog_media')
+    .insert({ url: urlData.publicUrl, path, filename: file.name, size_bytes: file.size, uploaded_by: uploaderId })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as BlogMediaItem
+}
+
+export async function fetchMediaLibrary(): Promise<BlogMediaItem[]> {
+  const { data, error } = await supabase.from('blog_media').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return (data as BlogMediaItem[]) ?? []
+}
+
+export async function deleteMediaItem(item: BlogMediaItem): Promise<void> {
+  const { error: storageError } = await supabase.storage.from(BLOG_IMAGES_BUCKET).remove([item.path])
+  if (storageError) throw new Error(`Failed to delete file: ${storageError.message}`)
+  const { error } = await supabase.from('blog_media').delete().eq('id', item.id)
+  if (error) throw error
+}
+
+// ── Admin: revision history ──────────────────────────────────────────────
+
+export async function fetchPostRevisions(postId: string): Promise<BlogPostRevision[]> {
+  const { data, error } = await supabase
+    .from('blog_post_revisions')
+    .select('*, editor:profiles!blog_post_revisions_edited_by_fkey(username)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data as BlogPostRevision[]) ?? []
 }
 
 // ── Authors ──────────────────────────────────────────────────────────────
