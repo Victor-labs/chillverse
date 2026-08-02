@@ -150,6 +150,13 @@ function formatFlashCountdown(endsAt: string): string {
 // FlashSaleItem to fake full Pack-shaped fields it doesn't have.
 type PurchasablePack = Pack | FlashSaleItem
 
+// Pack has `priceCents`; FlashSaleItem has `sale_price_cents` instead — this
+// narrows the union so callers get the correct charge amount for either shape
+// without TypeScript complaining about a property missing on the other arm.
+function getPriceCents(pack: PurchasablePack): number {
+  return 'priceCents' in pack ? pack.priceCents : pack.sale_price_cents
+}
+
 // ─── Pack Card ────────────────────────────────────────────────
 function PackCard({
   pack,
@@ -630,7 +637,7 @@ export default function BuyDiamonds() {
     const handler = window.PaystackPop.setup({
       key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string,
       email: session.user.email,
-      amount: pack.priceCents,
+      amount: getPriceCents(pack),
       currency: 'NGN',
       ref,
       metadata: {
