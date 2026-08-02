@@ -109,29 +109,46 @@ const PACKS: Pack[] = [
   },
 ]
 
-interface FlashPack {
+// Flash sale items now come from migration 0097's public.get_active_flash_sale()
+// RPC (Ops-console-editable weekly_special / monthly_mega rules) instead of a
+// hardcoded array — see flash sale state + effect inside BuyDiamonds() below.
+interface FlashSaleItem {
   id: string
   diamonds: number
-  priceCents: number
-  priceDisplay: string
-  originalPriceCents: number
-  originalPriceDisplay: string
+  original_price_cents: number
+  discount_pct: number
+  sale_price_cents: number
 }
 
-const FLASH_PACKS: FlashPack[] = [
-  { id: 'flash1', diamonds: 250,  priceCents:  80000, priceDisplay: '₦800',   originalPriceCents: 130000, originalPriceDisplay: '₦1,300' },
-  { id: 'flash2', diamonds: 450,  priceCents: 150000, priceDisplay: '₦1,500', originalPriceCents: 220000, originalPriceDisplay: '₦2,200' },
-  { id: 'flash3', diamonds: 650,  priceCents: 250000, priceDisplay: '₦2,500', originalPriceCents: 340000, originalPriceDisplay: '₦3,400' },
-  { id: 'flash4', diamonds: 800,  priceCents: 300000, priceDisplay: '₦3,000', originalPriceCents: 420000, originalPriceDisplay: '₦4,200' },
-]
+interface ActiveFlashSale {
+  type: 'weekly_special' | 'monthly_mega'
+  title: string
+  subtitle: string | null
+  ends_at: string
+  items: FlashSaleItem[]
+}
+
+function formatNaira(cents: number): string {
+  return `₦${Math.round(cents / 100).toLocaleString()}`
+}
+
+function formatFlashCountdown(endsAt: string): string {
+  const diffMs = new Date(endsAt).getTime() - Date.now()
+  if (diffMs <= 0) return 'Ending soon'
+  const totalMinutes = Math.floor(diffMs / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours > 0) return `Ends in ${hours}h ${minutes}m`
+  return `Ends in ${minutes}m`
+}
 
 // openPaystack/PurchaseModal only ever touch id/priceCents/diamonds (never
 // image/emoji/etc — those are PackCard-only display fields), and
 // PurchaseModal's `pack` prop is used purely as a truthy/null check. So a
-// regular Pack and a FlashPack are interchangeable everywhere activePack
+// regular Pack and a FlashSaleItem are interchangeable everywhere activePack
 // actually gets read — this alias makes that explicit instead of forcing
-// FlashPack to fake full Pack-shaped fields it doesn't have.
-type PurchasablePack = Pack | FlashPack
+// FlashSaleItem to fake full Pack-shaped fields it doesn't have.
+type PurchasablePack = Pack | FlashSaleItem
 
 // ─── Pack Card ────────────────────────────────────────────────
 function PackCard({
@@ -541,6 +558,9 @@ export default function BuyDiamonds() {
   const [activePack, setActivePack] = useState<PurchasablePack | null>(null)
   const paystackScriptLoaded = useRef(false)
 
+  const [flashSale, setFlashSale] = useState<ActiveFlashSale | null>(null)
+  const [flashSaleTick, setFlashSaleTick] = useState(0)
+
   // Load Paystack inline script once
   useEffect(() => {
     if (paystackScriptLoaded.current || document.querySelector('script[src*="paystack"]')) {
@@ -566,6 +586,37 @@ export default function BuyDiamonds() {
         if (data) setIsFirstPurchase(!data.first_purchase_claimed)
       })
   }, [user])
+
+  // Flash sale — driven by migration 0097's get_active_flash_sale() RPC
+  // (Ops console CMS: weekly_special / monthly_mega rules + items), not a
+  // hardcoded array. Re-checked every 60s so the section appears/disappears
+  // on its own as a sale window opens or closes while the page is open, and
+  // ticks every 30s purely to keep the "Ends in Xh Ym" countdown fresh.
+  useEffect(() => {
+    let cancelled = false
+
+    function loadFlashSale() {
+      supabase.rpc('get_active_flash_sale').then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('get_active_flash_sale error:', error)
+          setFlashSale(null)
+          return
+        }
+        setFlashSale((data as ActiveFlashSale | null) ?? null)
+      })
+    }
+
+    loadFlashSale()
+    const refreshInterval = setInterval(loadFlashSale, 60000)
+    const countdownInterval = setInterval(() => setFlashSaleTick(t => t + 1), 30000)
+
+    return () => {
+      cancelled = true
+      clearInterval(refreshInterval)
+      clearInterval(countdownInterval)
+    }
+  }, [])
 
   function openPaystack(pack: PurchasablePack) {
     if (!session?.user?.email || !user) return
@@ -774,136 +825,152 @@ export default function BuyDiamonds() {
           ))}
         </div>
 
-        {/* ── Flash Sales ───────────────────────────────────── */}
-        <div style={{ marginTop: 36 }}>
-          {/* Header */}
-          <div style={{ marginBottom: 14, textAlign: 'center' }}>
-            <div
-              style={{
-                display: 'inline-block',
-                fontFamily: '"Georgia", "Times New Roman", serif',
-                fontSize: 22,
-                fontWeight: 700,
-                fontStyle: 'italic',
-                letterSpacing: '0.5px',
-                background: 'linear-gradient(135deg, var(--accent), #f5c542)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              ⚡ Flash Sales
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-              Limited-time deals — grab them while they last
-            </div>
-          </div>
-
-          {/* Flash pack rows */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {FLASH_PACKS.map((fp, i) => (
+        {/* ── Flash Sales — CMS-driven (migration 0097), hidden entirely
+             when no weekly_special / monthly_mega window is currently open ── */}
+        {flashSale && flashSale.items.length > 0 && (
+          <div style={{ marginTop: 36 }}>
+            {/* Header */}
+            <div style={{ marginBottom: 14, textAlign: 'center' }}>
               <div
-                key={fp.id}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: 'var(--surface)',
-                  border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                  borderRadius: 14,
-                  padding: '12px 16px',
-                  gap: 12,
-                  animation: 'feedIn 0.35s ease-out both',
-                  animationDelay: `${i * 0.06}s`,
-                  boxShadow: '0 0 0 0 transparent',
+                  display: 'inline-block',
+                  fontFamily: '"Georgia", "Times New Roman", serif',
+                  fontSize: 22,
+                  fontWeight: 700,
+                  fontStyle: 'italic',
+                  letterSpacing: '0.5px',
+                  background: 'linear-gradient(135deg, var(--accent), #f5c542)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                 }}
               >
-                {/* Left — diamond amount */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
-                      background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                      border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 16,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ⚡
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
-                      {fp.diamonds.toLocaleString()} 💎
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                      <span style={{ textDecoration: 'line-through' }}>{fp.originalPriceDisplay}</span>
-                    </div>
-                  </div>
+                ⚡ {flashSale.title}
+              </div>
+              {flashSale.subtitle && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                  {flashSale.subtitle}
                 </div>
+              )}
+              <div
+                key={flashSaleTick}
+                style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--accent)', marginTop: 5 }}
+              >
+                {formatFlashCountdown(flashSale.ends_at)}
+              </div>
+            </div>
 
-                {/* Right — price button */}
-                <button
-                  onClick={(e) => {
-                    ripple(e)
-                    if (!session?.user?.email || !user || !window.PaystackPop) return
-                    const ref = `cv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-                    window.PaystackPop.setup({
-                      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string,
-                      email: session.user.email,
-                      amount: fp.priceCents,
-                      currency: 'NGN',
-                      ref,
-                      metadata: { user_id: user.id, pack_id: fp.id, diamonds: fp.diamonds, is_first_purchase: false },
-                      callback: function (response: { reference: string }) {
-                        setLoading(true);
-                        (async () => {
-                          try {
-                            const { error } = await supabase.functions.invoke('credit-diamonds', {
-                              body: { reference: response.reference, user_id: user.id },
-                            })
-                            if (error) throw error
-                            setActivePack(fp)
-                            checkAndAwardAutoBadges(user.id)
-                            setModal('success')
-                          } catch (err) {
-                            console.error('flash credit error:', err)
-                            setActivePack(fp)
-                            setModal('error')
-                          } finally {
-                            setLoading(false)
-                          }
-                        })()
-                      },
-                      onClose: () => setModal('cancelled'),
-                    }).openIframe()
-                  }}
-                  disabled={loading}
-                  className="ripple-wrap"
+            {/* Flash pack rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {flashSale.items.map((item, i) => (
+                <div
+                  key={item.id}
                   style={{
-                    padding: '9px 18px',
-                    borderRadius: 11,
-                    border: 'none',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    background: loading ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#f5c542)',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 800,
-                    fontFamily: 'inherit',
-                    flexShrink: 0,
-                    boxShadow: loading ? 'none' : '0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent)',
-                    transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'var(--surface)',
+                    border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                    borderRadius: 14,
+                    padding: '12px 16px',
+                    gap: 12,
+                    animation: 'feedIn 0.35s ease-out both',
+                    animationDelay: `${i * 0.06}s`,
+                    boxShadow: '0 0 0 0 transparent',
                   }}
                 >
-                  {fp.priceDisplay}
-                </button>
-              </div>
-            ))}
+                  {/* Left — diamond amount */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 16,
+                        flexShrink: 0,
+                      }}
+                    >
+                      ⚡
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                        {item.diamonds.toLocaleString()} 💎
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatNaira(item.original_price_cents)}
+                        </span>
+                        <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--accent)' }}>
+                          -{Math.round(item.discount_pct)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right — price button */}
+                  <button
+                    onClick={(e) => {
+                      ripple(e)
+                      if (!session?.user?.email || !user || !window.PaystackPop) return
+                      const ref = `cv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+                      window.PaystackPop.setup({
+                        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string,
+                        email: session.user.email,
+                        amount: item.sale_price_cents,
+                        currency: 'NGN',
+                        ref,
+                        metadata: { user_id: user.id, pack_id: item.id, diamonds: item.diamonds, is_first_purchase: false },
+                        callback: function (response: { reference: string }) {
+                          setLoading(true);
+                          (async () => {
+                            try {
+                              const { error } = await supabase.functions.invoke('credit-diamonds', {
+                                body: { reference: response.reference, user_id: user.id },
+                              })
+                              if (error) throw error
+                              setActivePack(item)
+                              checkAndAwardAutoBadges(user.id)
+                              setModal('success')
+                            } catch (err) {
+                              console.error('flash credit error:', err)
+                              setActivePack(item)
+                              setModal('error')
+                            } finally {
+                              setLoading(false)
+                            }
+                          })()
+                        },
+                        onClose: () => setModal('cancelled'),
+                      }).openIframe()
+                    }}
+                    disabled={loading}
+                    className="ripple-wrap"
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 11,
+                      border: 'none',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      background: loading ? 'var(--surface3)' : 'linear-gradient(135deg,var(--accent),#f5c542)',
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 800,
+                      fontFamily: 'inherit',
+                      flexShrink: 0,
+                      boxShadow: loading ? 'none' : '0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent)',
+                      transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
+                    }}
+                  >
+                    {formatNaira(item.sale_price_cents)}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer note */}
         <div
