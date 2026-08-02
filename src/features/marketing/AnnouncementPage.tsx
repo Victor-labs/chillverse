@@ -18,7 +18,6 @@ import type { Post } from '../posts/types'
 
 export default function AnnouncementPage() {
   const { postId } = useParams<{ postId: string }>()
-  const navigate = useNavigate()
   const { user } = useAuth()
 
   const [post, setPost] = useState<Post | null>(null)
