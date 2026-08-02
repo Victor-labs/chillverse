@@ -73,6 +73,8 @@ const BlogPostPage        = lazy(() => import('../features/blog/BlogPostPage'))
 const BlogSeriesPage      = lazy(() => import('../features/blog/BlogSeriesPage'))
 const UpdateLog           = lazy(() => import('../features/blog/UpdateLog'))
 const AdminBlog           = lazy(() => import('../features/blog/AdminBlog'))
+const EditorialRoom       = lazy(() => import('../features/marketing/EditorialRoom'))
+const AnnouncementPage    = lazy(() => import('../features/marketing/AnnouncementPage'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -100,6 +102,14 @@ export default function App() {
       // when the app loads. Reacting to 'SIGNED_IN' only meant existing
       // users were silently skipped and never got the push-notification
       // permission prompt at all. Both events need to run this block.
+      // Bumps the public "Active Users" counter shown on /editorial-room
+      // (see migration 0098). Only a genuine fresh sign-in should count —
+      // NOT 'INITIAL_SESSION', which fires on every reload of an already-
+      // logged-in tab and would inflate the number on every page load.
+      if (event === 'SIGNED_IN' && session) {
+        supabase.rpc('increment_auth_activity_counter').then(() => {}, () => {})
+      }
+
       const isRelevantAuthEvent =
         (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && !!session
 
@@ -236,6 +246,8 @@ export default function App() {
           <Route path="/blog/series/:series" element={<Suspense fallback={<Fallback />}><BlogSeriesPage /></Suspense>} />
           <Route path="/blog/admin"          element={<Suspense fallback={<Fallback />}><AdminBlog /></Suspense>} />
           <Route path="/blog/:slug"          element={<Suspense fallback={<Fallback />}><BlogPostPage /></Suspense>} />
+          <Route path="/editorial-room"                       element={<Suspense fallback={<Fallback />}><EditorialRoom /></Suspense>} />
+          <Route path="/editorial-room/announcement/:postId"  element={<Suspense fallback={<Fallback />}><AnnouncementPage /></Suspense>} />
         </Route>
       </Routes>
     </>
