@@ -21,6 +21,7 @@ import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import SharedAvatar from '../../shared/components/Avatar'
+import RankBadge from '../../shared/components/RankBadge'
 import FollowListSheet from './FollowListSheet'
 import { usePlayerBadges } from '../badges/usePlayerBadges'
 import { checkAndAwardAutoBadges } from '../badges/badges'
@@ -394,7 +395,7 @@ function RankModal({ tier, onClose }: { tier: RankTier; onClose: () => void }) {
       <div className="sheet-or-modal" style={{ zIndex: 510 }}>
         <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '28px 20px 36px', position: 'relative', textAlign: 'center', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
           <button type="button" onClick={close} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>{tier.emoji}</div>
+          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><RankBadge tier={tier} size={64} /></div>
           <p style={{ fontSize: 18, fontWeight: 800, color: tier.color, marginBottom: 6 }}>{tier.name}</p>
           <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>You're currently in {tier.name} rank.</p>
         </div>
@@ -873,7 +874,7 @@ export default function Profile() {
           </>
         )}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: rank.color + '18', border: `1px solid ${rank.color}44` }}>
-          <span style={{ fontSize: 13 }}>{rank.emoji}</span>
+          <RankBadge tier={rank} size={16} />
           <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>{rank.name}</span>
         </div>
       </div>
@@ -954,7 +955,7 @@ export default function Profile() {
             <button type="button" onClick={() => setShowRankInfo(true)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 15 }}>{rank.emoji}</span>
+                <RankBadge tier={rank} size={18} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Rank</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 800, color: rank.color }}>{rank.name}</span>

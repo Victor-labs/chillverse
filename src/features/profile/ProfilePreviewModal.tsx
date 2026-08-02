@@ -28,6 +28,7 @@ import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
 import Avatar from '../../shared/components/Avatar'
+import RankBadge from '../../shared/components/RankBadge'
 import { getUserRankTier } from './ranks'
 import { canSeeLiveActivity } from './liveActivityAccess'
 import { usePlayerBadges } from '../badges/usePlayerBadges'
@@ -778,9 +779,9 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                           className="pv-btn"
                           onClick={() => setShowRankToast(true)}
                           title={rank.name}
-                          style={{ width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rank.color + '1c', border: `1px solid ${rank.color}44`, cursor: 'pointer', padding: 0, fontSize: 10, flexShrink: 0 }}
+                          style={{ width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: rank.color + '1c', border: `1px solid ${rank.color}44`, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                         >
-                          {rank.emoji}
+                          <RankBadge tier={rank} size={14} />
                         </button>
                       )}
                       {ownedBadges.map(def => {
@@ -1273,7 +1274,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
           title={`Player in ${rank.name}`}
           icon="" rarity=""
           colorOverride={rank.color}
-          customIcon={<span style={{ fontSize: 14 }}>{rank.emoji}</span>}
+          customIcon={<RankBadge tier={rank} size={16} />}
           onDone={() => setShowRankToast(false)}
         />
       )}

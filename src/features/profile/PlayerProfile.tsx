@@ -24,6 +24,7 @@ import BadgeRow from '../badges/BadgeRow'
 import BadgesStatRow from '../badges/BadgesStatRow'
 import BadgesModal from '../badges/BadgesModal'
 import Avatar from '../../shared/components/Avatar'
+import RankBadge from '../../shared/components/RankBadge'
 import FollowListSheet from './FollowListSheet'
 import SendGiftModal, { giftResultMessage, type GiftSendResult } from '../economy/SendGiftModal'
 
@@ -628,7 +629,7 @@ function PlayerProfileInner() {
       {/* ── Rank badge ── */}
       <div style={{ padding: '0 20px', marginBottom: 16 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: rank.color + '18', border: `1px solid ${rank.color}44` }}>
-          <span style={{ fontSize: 13 }}>{rank.emoji}</span>
+          <RankBadge tier={rank} size={16} />
           <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>{rank.name}</span>
         </div>
       </div>
@@ -735,7 +736,7 @@ function PlayerProfileInner() {
           {(player.grid_cards ?? []).includes('rank') && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--elev-raise-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 15 }}>{rank.emoji}</span>
+                <RankBadge tier={rank} size={18} />
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Rank</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 800, color: rank.color }}>{rank.name}</span>

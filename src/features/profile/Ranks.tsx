@@ -1,7 +1,7 @@
 // src/pages/Ranks.tsx
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, Star, ChevronRight, Crown, Shield, Lock, Target } from 'lucide-react'
+import { ArrowLeft, Trophy, Star, ChevronRight, Crown, Shield, Target } from 'lucide-react'
 import { useProfile } from './useProfile'
 import { supabase } from '../../shared/lib/supabase'
 import { nameStyleFor } from '../../shared/lib/displayNameStyle'
@@ -13,6 +13,7 @@ import {
 } from './ranks'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import Avatar from '../../shared/components/Avatar'
+import RankBadge from '../../shared/components/RankBadge'
 
 // ─── Tab type ────────────────────────────────────────
 type Tab = 'my-rank' | 'all-ranks'
@@ -29,31 +30,6 @@ function RewardIcon({ type }: { type: string }) {
     nothing: '—',
   }
   return <span style={{ fontSize: 18 }}>{icons[type] ?? '🎁'}</span>
-}
-
-// ─── Rank badge (image with emoji fallback) ──────────
-// Renders the tier's uploaded badge artwork (Supabase Storage WebP) at the
-// requested pixel size. Falls back to the tier emoji for tiers without
-// badge art (currently just Rookie) or if the image fails to load.
-function RankBadge({ tier, size, locked }: { tier: RankTier; size: number; locked?: boolean }) {
-  const [failed, setFailed] = useState(false)
-  const emojiSize = Math.round(size * 0.55)
-
-  if (locked) {
-    return <Lock size={Math.round(size * 0.36)} color="var(--text-muted)" />
-  }
-  if (tier.badgeUrl && !failed) {
-    return (
-      <img
-        src={tier.badgeUrl}
-        alt={tier.name}
-        loading="lazy"
-        onError={() => setFailed(true)}
-        style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }}
-      />
-    )
-  }
-  return <span style={{ fontSize: emojiSize, lineHeight: 1 }}>{tier.emoji}</span>
 }
 
 // ─── Single rank card (for All Ranks tab) ────────────
