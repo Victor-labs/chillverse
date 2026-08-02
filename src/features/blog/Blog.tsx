@@ -100,6 +100,20 @@ export default function Blog() {
 
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+      <style>{`
+        .blog-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 28px;
+          margin-bottom: 24px;
+        }
+        @media (min-width: 640px) {
+          .blog-grid { grid-template-columns: repeat(2, 1fr); gap: 32px 24px; }
+        }
+        @media (min-width: 1000px) {
+          .blog-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+      `}</style>
       <Seo
         title="Blog"
         description="Updates, community spotlights, and everything happening on Chillverse."
@@ -202,7 +216,7 @@ export default function Blog() {
           <SectionLabel>{searching ? 'Searching…' : `${searchResults.length} result${searchResults.length === 1 ? '' : 's'} for "${query}"`}</SectionLabel>
           {searchError && <div style={errorBoxStyle}>{searchError}</div>}
           {!searching && !searchError && searchResults.length === 0 && <EmptyState text="No posts matched your search." />}
-          <div style={gridStyle}>
+          <div className="blog-grid">
             {searchResults.map(post => <BlogPostCard key={post.id} post={post} />)}
           </div>
         </>
@@ -216,7 +230,7 @@ export default function Blog() {
           ) : (
             <>
               {rest.length > 0 && <SectionLabel>{showFeatured ? 'More from Chillverse' : 'Latest'}</SectionLabel>}
-              <div style={gridStyle}>
+              <div className="blog-grid">
                 {rest.map(post => <BlogPostCard key={post.id} post={post} />)}
               </div>
               {hasMore && (
@@ -312,10 +326,6 @@ function tabStyle(active: boolean): React.CSSProperties {
     background: active ? 'var(--accent)' : 'transparent',
     border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
   }
-}
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '28px 24px', marginBottom: 24,
 }
 
 const errorBoxStyle: React.CSSProperties = {
