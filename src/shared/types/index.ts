@@ -279,14 +279,13 @@ export interface SupportTicketNote {
 
 // ── Blog ───────────────────────────────────────────────────────────────────
 
-export type BlogCategory =
-  | 'game-updates'
-  | 'community-spotlight'
-  | 'chillverse-hq'
-  | 'how-to'
-  | 'safety'
+// DB-managed as of migration 0096 (blog_categories) — loosened from a fixed
+// union so admin-created categories beyond the original 5 are valid too.
+export type BlogCategory = string
 
 export type BlogLocale = 'en' | 'pcm'
+
+export type BlogPostStatus = 'draft' | 'scheduled' | 'published' | 'archived'
 
 export interface BlogPost {
   id: string
@@ -305,6 +304,59 @@ export interface BlogPost {
   published_at: string | null
   created_at: string
   updated_at: string
+  // ── CMS (migration 0096) ──
+  status: BlogPostStatus
+  scheduled_at: string | null
+  archived_at: string | null
+  seo_title: string | null
+  meta_description: string | null
+  last_edited_by: string | null
+}
+
+export interface BlogCategoryRow {
+  id: string
+  slug: string
+  label: string
+  color: string
+  icon: string
+  sort_order: number
+  created_at: string
+}
+
+export interface BlogTagRow {
+  id: string
+  slug: string
+  label: string
+  sort_order: number
+  created_at: string
+}
+
+export interface BlogMediaItem {
+  id: string
+  url: string
+  path: string
+  filename: string
+  size_bytes: number | null
+  alt_text: string | null
+  uploaded_by: string | null
+  created_at: string
+}
+
+export interface BlogPostRevision {
+  id: string
+  post_id: string
+  title: string
+  excerpt: string | null
+  content: string
+  hero_image_url: string | null
+  category: string | null
+  tags: string[]
+  seo_title: string | null
+  meta_description: string | null
+  status: string | null
+  edited_by: string | null
+  created_at: string
+  editor?: { username: string } | null
 }
 
 /** Row shape returned by the `search_blog_posts` RPC. */
@@ -336,6 +388,11 @@ export interface BlogPostInput {
   translationGroupId: string | null
   authorId: string | null
   isPublished: boolean
+  // ── CMS (migration 0096) ──
+  status: BlogPostStatus
+  scheduledAt: string | null
+  seoTitle: string
+  metaDescription: string
 }
 
 /** Minimal profile shape for the author picker and post byline. */
