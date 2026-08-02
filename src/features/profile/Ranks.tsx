@@ -31,6 +31,31 @@ function RewardIcon({ type }: { type: string }) {
   return <span style={{ fontSize: 18 }}>{icons[type] ?? '🎁'}</span>
 }
 
+// ─── Rank badge (image with emoji fallback) ──────────
+// Renders the tier's uploaded badge artwork (Supabase Storage WebP) at the
+// requested pixel size. Falls back to the tier emoji for tiers without
+// badge art (currently just Rookie) or if the image fails to load.
+function RankBadge({ tier, size, locked }: { tier: RankTier; size: number; locked?: boolean }) {
+  const [failed, setFailed] = useState(false)
+  const emojiSize = Math.round(size * 0.55)
+
+  if (locked) {
+    return <Lock size={Math.round(size * 0.36)} color="var(--text-muted)" />
+  }
+  if (tier.badgeUrl && !failed) {
+    return (
+      <img
+        src={tier.badgeUrl}
+        alt={tier.name}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+      />
+    )
+  }
+  return <span style={{ fontSize: emojiSize, lineHeight: 1 }}>{tier.emoji}</span>
+}
+
 // ─── Single rank card (for All Ranks tab) ────────────
 function RankCard({
   tier, isUnlocked, isCurrent, userXp,
@@ -69,16 +94,15 @@ function RankCard({
     >
       {/* Row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Emoji badge */}
+        {/* Rank badge */}
         <div style={{
           width: 46, height: 46, borderRadius: 14, flexShrink: 0,
           background: `${tier.color}18`,
           border: `1.5px solid ${tier.color}33`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22,
           boxShadow: isUnlocked ? `0 0 12px ${tier.glowColor}` : 'none',
         }}>
-          {isUnlocked ? tier.emoji : <Lock size={16} color="var(--text-muted)" />}
+          <RankBadge tier={tier} size={34} locked={!isUnlocked} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -204,7 +228,9 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
           </span>
           {isMe && <span style={{ fontSize: 9, fontWeight: 800, background: 'var(--accent)', color: '#fff', borderRadius: 5, padding: '1px 5px' }}>YOU</span>}
         </div>
-        <div style={{ fontSize: 11, color: tier.color, fontWeight: 600 }}>{tier.emoji} {tier.name}</div>
+        <div style={{ fontSize: 11, color: tier.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <RankBadge tier={tier} size={14} /> {tier.name}
+        </div>
       </div>
 
       {/* XP */}
@@ -364,10 +390,9 @@ export default function Ranks() {
             background: `linear-gradient(135deg, ${userTier.color}40, ${userTier.color}15)`,
             border: `2px solid ${userTier.color}60`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 34,
             boxShadow: `0 0 28px ${userTier.glowColor}, 4px 4px 12px var(--neu-dark)`,
           }}>
-            {userTier.emoji}
+            <RankBadge tier={userTier} size={54} />
           </div>
 
           <div>
@@ -496,8 +521,8 @@ export default function Ranks() {
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Coming Up Next</p>
               {upcomingRewards.map(tier => (
                 <div key={tier.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14, boxShadow: 'var(--elev-raise-sm)' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: `${tier.color}15`, border: `1px solid ${tier.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                    {tier.emoji}
+                  <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: `${tier.color}15`, border: `1px solid ${tier.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <RankBadge tier={tier} size={30} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: tier.color, marginBottom: 2 }}>{tier.name}</div>
@@ -528,11 +553,10 @@ export default function Ranks() {
                       background: unlocked ? `${tier.color}30` : 'var(--surface2)',
                       border: isCur ? `2px solid ${tier.color}` : '1.5px solid rgba(255,255,255,0.06)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 16,
                       boxShadow: isCur ? `0 0 12px ${tier.glowColor}` : 'none',
                       margin: '0 auto 5px',
                     }}>
-                      {unlocked ? tier.emoji : <Lock size={12} color="var(--text-muted)" />}
+                      <RankBadge tier={tier} size={26} locked={!unlocked} />
                     </div>
                     <div style={{ fontSize: 8, color: unlocked ? tier.color : 'var(--text-muted)', fontWeight: 700, maxWidth: 44, textAlign: 'center', lineHeight: 1.2 }}>
                       {tier.name}

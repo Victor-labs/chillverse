@@ -1,5 +1,7 @@
 // src/lib/ranks.ts
 
+const BADGE_BASE_URL = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Ranks'
+
 export interface RankTier {
   id: string
   name: string
@@ -8,6 +10,8 @@ export interface RankTier {
   color: string
   glowColor: string
   emoji: string
+  /** Rank badge image (128px WebP, Supabase Storage). Undefined only for Rookie, which has no badge art. */
+  badgeUrl?: string
   rewards: Reward[]
 }
 
@@ -48,6 +52,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#cd7f32',
     glowColor: 'rgba(205,127,50,0.35)',
     emoji: '🔶',
+    badgeUrl: `${BADGE_BASE_URL}/bronze-1.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
   {
@@ -58,6 +63,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#cd7f32',
     glowColor: 'rgba(205,127,50,0.35)',
     emoji: '🔶',
+    badgeUrl: `${BADGE_BASE_URL}/bronze-2.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
   {
@@ -68,6 +74,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#cd7f32',
     glowColor: 'rgba(205,127,50,0.35)',
     emoji: '🔶',
+    badgeUrl: `${BADGE_BASE_URL}/bronze-3.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
 
@@ -80,6 +87,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#b0b8c8',
     glowColor: 'rgba(176,184,200,0.35)',
     emoji: '⚪',
+    badgeUrl: `${BADGE_BASE_URL}/silver-1.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
   {
@@ -90,6 +98,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#b0b8c8',
     glowColor: 'rgba(176,184,200,0.35)',
     emoji: '⚪',
+    badgeUrl: `${BADGE_BASE_URL}/silver-2.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
   {
@@ -100,6 +109,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#b0b8c8',
     glowColor: 'rgba(176,184,200,0.35)',
     emoji: '⚪',
+    badgeUrl: `${BADGE_BASE_URL}/silver-3.webp`,
     rewards: [{ type: 'nothing', label: 'No rewards yet', description: 'Rewards begin at Gold I. Keep earning XP.' }],
   },
 
@@ -112,6 +122,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#f5c542',
     glowColor: 'rgba(245,197,66,0.4)',
     emoji: '🟡',
+    badgeUrl: `${BADGE_BASE_URL}/gold-1.webp`,
     rewards: [{
       type: 'badge',
       label: 'Gold Spark Badge',
@@ -126,6 +137,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#f5c542',
     glowColor: 'rgba(245,197,66,0.4)',
     emoji: '🟡',
+    badgeUrl: `${BADGE_BASE_URL}/gold-2.webp`,
     rewards: [{ type: 'nothing', label: 'Milestone rank', description: 'No new reward — but you\'re closing in on Gold III.' }],
   },
   {
@@ -136,6 +148,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#f5c542',
     glowColor: 'rgba(245,197,66,0.4)',
     emoji: '🟡',
+    badgeUrl: `${BADGE_BASE_URL}/gold-3.webp`,
     rewards: [{ type: 'nothing', label: 'Milestone rank', description: 'Almost Platinum — keep the grind going.' }],
   },
 
@@ -148,6 +161,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a0d8ef',
     glowColor: 'rgba(160,216,239,0.4)',
     emoji: '💜',
+    badgeUrl: `${BADGE_BASE_URL}/platinum-1.webp`,
     rewards: [{
       type: 'profile_pic',
       label: 'Platinum Profile Pic',
@@ -163,6 +177,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a0d8ef',
     glowColor: 'rgba(160,216,239,0.4)',
     emoji: '💜',
+    badgeUrl: `${BADGE_BASE_URL}/platinum-2.webp`,
     rewards: [{ type: 'nothing', label: 'Milestone rank', description: 'Grinding through Platinum — respect.' }],
   },
   {
@@ -173,6 +188,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a0d8ef',
     glowColor: 'rgba(160,216,239,0.4)',
     emoji: '💜',
+    badgeUrl: `${BADGE_BASE_URL}/platinum-3.webp`,
     rewards: [{ type: 'nothing', label: 'Milestone rank', description: 'Diamond is right around the corner.' }],
   },
 
@@ -185,6 +201,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a8f0ff',
     glowColor: 'rgba(168,240,255,0.45)',
     emoji: '💎',
+    badgeUrl: `${BADGE_BASE_URL}/diamond-1.webp`,
     rewards: [{
       type: 'album_pic',
       label: 'Diamond Album Pic',
@@ -200,6 +217,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a8f0ff',
     glowColor: 'rgba(168,240,255,0.45)',
     emoji: '💎',
+    badgeUrl: `${BADGE_BASE_URL}/diamond-2.webp`,
     rewards: [{ type: 'nothing', label: 'Milestone rank', description: 'Elite territory. Almost Diamond III.' }],
   },
   {
@@ -210,6 +228,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#a8f0ff',
     glowColor: 'rgba(168,240,255,0.45)',
     emoji: '💎',
+    badgeUrl: `${BADGE_BASE_URL}/diamond-3.webp`,
     rewards: [{
       type: 'chat_name_glow',
       label: 'Diamond Name Glow',
@@ -227,6 +246,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#ff6b00',
     glowColor: 'rgba(255,107,0,0.5)',
     emoji: '👑',
+    badgeUrl: `${BADGE_BASE_URL}/legend.webp`,
     rewards: [
       {
         type: 'profile_border_glow',
@@ -252,6 +272,7 @@ export const RANK_TIERS: RankTier[] = [
     color: '#f5c542',
     glowColor: 'rgba(245,197,66,0.6)',
     emoji: '🌌',
+    badgeUrl: `${BADGE_BASE_URL}/chillverse-og.webp`,
     rewards: [
       {
         type: 'mall_pick',
