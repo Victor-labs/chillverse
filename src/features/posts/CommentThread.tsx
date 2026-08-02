@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth'
 import { fetchComments, addComment } from './posts'
 import type { Comment } from './types'
 import HiddenContentNotice from '../moderation/HiddenContentNotice'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 
 export default function CommentThread({ postId }: { postId: string }) {
   const { user } = useAuth()
@@ -29,6 +30,7 @@ export default function CommentThread({ postId }: { postId: string }) {
     if (!error && data) {
       setComments(c => [...c, data as Comment])
       setDraft('')
+      updateMissionProgress(user.id, 'comments_posted', 1).catch(console.error)
     } else if (error) {
       setCommentError(error.message || 'Failed to post comment. Please try again.')
     }

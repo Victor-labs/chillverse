@@ -18,6 +18,7 @@ import { getRankGroupInfo, type RankGroupId } from '../profile/ranks'
 import HiddenContentNotice from '../moderation/HiddenContentNotice'
 import Avatar from '../../shared/components/Avatar'
 import { useProfilePreviewOptional } from '../../context/ProfilePreview'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 
 const TAG_ICON: Record<string, string> = {
   achievement: '🏆', game_result: '🎮', multiplayer_result: '⚔️', rank: '🎖️',
@@ -82,6 +83,8 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
     if (!ok) {
       setLiked(!next)
       setLikesCount(c => c + (next ? -1 : 1))
+    } else if (next) {
+      updateMissionProgress(user.id, 'posts_liked', 1).catch(console.error)
     }
   }
 

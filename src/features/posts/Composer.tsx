@@ -11,6 +11,7 @@ import { createPost } from './posts'
 import { tokenizeBody } from './mentionParsing'
 import { getTagColor } from './tagColor'
 import { ripple } from '../../shared/lib/ripple'
+import { updateMissionProgress } from '../missions/weeklyMissions'
 import TagAutosuggest from './TagAutosuggest'
 import type { PostTag, TagSuggestion } from './types'
 
@@ -110,6 +111,7 @@ export default function Composer({ open, onClose, onPosted, initialTag }: Compos
     const { error } = await createPost({ authorId: user.id, body: body.trim(), tags, commentable })
     setSubmitting(false)
     if (!error) {
+      updateMissionProgress(user.id, 'posts_created', 1).catch(console.error)
       setBody('')
       setTags([])
       setCommentable(false)

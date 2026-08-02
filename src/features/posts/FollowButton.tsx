@@ -4,6 +4,7 @@ import type { MouseEvent } from 'react'
 import { supabase } from '../../shared/lib/supabase'
 import { notifyFollow } from '../achievements/achievements'
 import { ripple } from '../../shared/lib/ripple'
+import { trackWeeklyUniqueValue } from '../missions/weeklyMissions'
 
 export default function FollowButton({ myId, authorId }: { myId: string; authorId: string }) {
   const [following, setFollowing] = useState(false)
@@ -31,6 +32,7 @@ export default function FollowButton({ myId, authorId }: { myId: string; authorI
     } else {
       await supabase.from('follows').insert({ follower_id: myId, following_id: authorId })
       await notifyFollow(myId, authorId)
+      trackWeeklyUniqueValue(myId, 'users_followed', authorId).catch(console.error)
       setFollowing(true)
     }
     setBusy(false)
