@@ -42,6 +42,7 @@ function ChillverseSection() {
   const gifts = useProfileField<boolean>(profile, 'notif_gifts', true)
   const likes = useProfileField<boolean>(profile, 'notif_profile_likes', true)
   const sessionReset = useProfileField<boolean>(profile, 'notif_session_reset', true)
+  const halo = useProfileField<boolean>(profile, 'notif_halo', true)
 
   return (
     <SettingsShell title="Chillverse">
@@ -58,9 +59,12 @@ function ChillverseSection() {
         <ToggleRow icon={<TimerReset size={15} />} iconBg="rgba(62,207,142,0.12)" iconColor="var(--green)"
           label="Session reset" sub="Notified when your session limit resets"
           on={sessionReset.value} onToggle={() => sessionReset.save(!sessionReset.value)} />
+        <ToggleRow icon={<Sparkles size={15} />} iconBg="color-mix(in srgb, var(--accent) 12%, transparent)" iconColor="var(--accent)"
+          label="Halo" sub="Notified for Halo surprises, challenges, and fortunes"
+          on={halo.value} onToggle={() => halo.save(!halo.value)} />
       </div>
       <InfoLine>These apply both in-app and as system notifications.</InfoLine>
-      <ErrorLine>{exploration.error || gifts.error || likes.error || sessionReset.error}</ErrorLine>
+      <ErrorLine>{exploration.error || gifts.error || likes.error || sessionReset.error || halo.error}</ErrorLine>
     </SettingsShell>
   )
 }
