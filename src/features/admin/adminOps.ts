@@ -223,3 +223,71 @@ export async function searchMallItems(query: string): Promise<{ data: GameGoalMa
   if (error) return { data: [], error: error.message }
   return { data: (data ?? []) as GameGoalMallItem[], error: null }
 }
+
+// ── Flash Sale CMS (migration 0097) ─────────────────────────────────────
+// Two self-repeating schedules editable from the Ops console instead of the
+// hardcoded FLASH_PACKS array that used to live in BuyDiamonds.tsx:
+//   • weekly_special — recurs every week on day_of_week, open start–end time.
+//   • monthly_mega    — recurs on the last Saturday of every month
+//     (computed server-side), open all day by default.
+// If both would be live, monthly_mega always wins — enforced in
+// get_active_flash_sale(), not here.
+export interface FlashSaleRuleItem {
+  id: string
+  diamonds: number
+  original_price_cents: number
+  discount_pct: number
+  sort_order: number
+}
+
+export interface FlashSaleRule {
+  type: 'weekly_special' | 'monthly_mega'
+  enabled: boolean
+  day_of_week: number | null // 0=Sunday..6=Saturday — weekly_special only
+  start_time: string         // "HH:MM:SS"
+  end_time: string           // "HH:MM:SS"
+  title: string
+  subtitle: string | null
+  updated_at: string
+  items: FlashSaleRuleItem[]
+}
+
+/** Both schedules + their items in one call, regardless of whether either
+ *  is currently live — so admins can edit a sale that isn't open right now. */
+export async function fetchFlashSaleRules(): Promise<{ data: FlashSaleRule[]; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_get_flash_sale_rules')
+  if (error) return { data: [], error: friendlyAdminError(error.message) }
+  return { data: (data ?? []) as FlashSaleRule[], error: null }
+}
+
+export interface FlashSaleItemDraft {
+  diamonds: number
+  original_price_cents: number
+  discount_pct: number
+  sort_order: number
+}
+
+/** Saves a rule's schedule/copy and fully replaces its item list in one
+ *  transaction — mirrors the server-side delete-then-insert in migration 0097. */
+export async function saveFlashSaleRule(
+  type: 'weekly_special' | 'monthly_mega',
+  enabled: boolean,
+  dayOfWeek: number | null,
+  startTime: string,
+  endTime: string,
+  title: string,
+  subtitle: string | null,
+  items: FlashSaleItemDraft[],
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc('admin_save_flash_sale_rule', {
+    p_type: type,
+    p_enabled: enabled,
+    p_day_of_week: dayOfWeek,
+    p_start_time: startTime,
+    p_end_time: endTime,
+    p_title: title,
+    p_subtitle: subtitle,
+    p_items: items,
+  })
+  return { error: error ? friendlyAdminError(error.message) : null }
+}

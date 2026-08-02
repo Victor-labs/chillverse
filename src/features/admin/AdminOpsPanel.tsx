@@ -14,6 +14,7 @@ import {
   Power, Megaphone, Download, Activity, AlertTriangle,
   Gamepad2, Map as MapIcon, Settings2, Clock, Send, X, MessageSquare,
   Copy, Check, ChevronDown, ChevronUp, RefreshCw, Target, Zap, Gift, Search,
+  Trash2, Plus,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { Row, ToggleRow, SectionTitle } from '../settings/settingsShared'
@@ -22,7 +23,9 @@ import {
   fetchFeatureFlags, setFeatureFlag, exportUsersCsv, exportTransactionsCsv,
   fetchSystemHealth, fetchRecentClientErrors,
   fetchGameGoalCycles, saveGameGoalDraft, rolloutGameGoalCycle, searchMallItems,
+  fetchFlashSaleRules, saveFlashSaleRule,
   type FeatureFlag, type SystemHealth, type ClientErrorLogRow, type GameGoalCycle, type GameGoalMallItem,
+  type FlashSaleRule, type FlashSaleItemDraft,
 } from './adminOps'
 
 // ── Shared modal shell (mirrors Settings.tsx's Log out / Microphone popovers) ──
@@ -720,9 +723,250 @@ function GameGoalModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Flash Sale CMS (migration 0097) ─────────────────────────────────────
+// Two self-repeating schedules editable here instead of the hardcoded
+// FLASH_PACKS array that used to live in BuyDiamonds.tsx:
+//   • weekly_special — recurs every week on a chosen weekday, open for a
+//     short time window (default Friday 18:00–22:00).
+//   • monthly_mega    — recurs automatically on the LAST SATURDAY of every
+//     month (no date to maintain), open all day by default.
+// If both would be live at once, monthly_mega always wins — enforced by
+// public.get_active_flash_sale() server-side, not by anything client-side.
+
+const DOW_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+function timeToInputValue(t: string): string {
+  return t.slice(0, 5) // "HH:MM:SS" -> "HH:MM" for <input type="time">
+}
+function inputValueToTime(v: string): string {
+  return v.length === 5 ? `${v}:00` : v
+}
+
+function FlashSaleItemRow({ item, onChange, onRemove }: {
+  item: FlashSaleItemDraft
+  onChange: (next: FlashSaleItemDraft) => void
+  onRemove: () => void
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 64px 28px', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+      <input
+        type="number" min={1} placeholder="Diamonds" value={item.diamonds}
+        onChange={e => onChange({ ...item, diamonds: Number(e.target.value) })}
+        style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }}
+      />
+      <div style={{ position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)', pointerEvents: 'none' }}>₦</span>
+        <input
+          type="number" min={1} placeholder="Orig. price" value={item.original_price_cents / 100}
+          onChange={e => onChange({ ...item, original_price_cents: Math.round(Number(e.target.value) * 100) })}
+          style={{ ...inputStyle, padding: '7px 8px 7px 20px', fontSize: 12 }}
+        />
+      </div>
+      <div style={{ position: 'relative' }}>
+        <input
+          type="number" min={0} max={95} value={item.discount_pct}
+          onChange={e => onChange({ ...item, discount_pct: Number(e.target.value) })}
+          style={{ ...inputStyle, padding: '7px 16px 7px 8px', fontSize: 12, textAlign: 'right' }}
+        />
+        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
+      </div>
+      <button
+        onClick={onRemove} aria-label="Remove item"
+        style={{ width: 26, height: 26, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      >
+        <Trash2 size={12} />
+      </button>
+    </div>
+  )
+}
+
+function FlashSaleRuleForm({ rule, onSaved }: { rule: FlashSaleRule; onSaved: (r: FlashSaleRule) => void }) {
+  const isWeekly = rule.type === 'weekly_special'
+
+  const [enabled, setEnabled] = useState(rule.enabled)
+  const [dayOfWeek, setDayOfWeek] = useState<number>(rule.day_of_week ?? 5)
+  const [startTime, setStartTime] = useState(timeToInputValue(rule.start_time))
+  const [endTime, setEndTime] = useState(timeToInputValue(rule.end_time))
+  const [title, setTitle] = useState(rule.title)
+  const [subtitle, setSubtitle] = useState(rule.subtitle ?? '')
+  const [items, setItems] = useState<FlashSaleItemDraft[]>(
+    rule.items.map(i => ({ diamonds: i.diamonds, original_price_cents: i.original_price_cents, discount_pct: i.discount_pct, sort_order: i.sort_order })),
+  )
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  function markDirty() { setSaved(false) }
+
+  function updateItem(i: number, next: FlashSaleItemDraft) {
+    setItems(prev => prev.map((it, idx) => (idx === i ? next : it)))
+    markDirty()
+  }
+  function removeItem(i: number) {
+    setItems(prev => prev.filter((_, idx) => idx !== i).map((it, idx) => ({ ...it, sort_order: idx })))
+    markDirty()
+  }
+  function addItem() {
+    setItems(prev => [...prev, { diamonds: 100, original_price_cents: 100000, discount_pct: 30, sort_order: prev.length }])
+    markDirty()
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    setSaved(false)
+    const { error } = await saveFlashSaleRule(
+      rule.type,
+      enabled,
+      isWeekly ? dayOfWeek : null,
+      inputValueToTime(startTime),
+      inputValueToTime(endTime),
+      title,
+      subtitle.trim() || null,
+      items,
+    )
+    setSaving(false)
+    if (error) { setError(error); return }
+    setSaved(true)
+    onSaved({
+      ...rule,
+      enabled,
+      day_of_week: isWeekly ? dayOfWeek : null,
+      start_time: inputValueToTime(startTime),
+      end_time: inputValueToTime(endTime),
+      title,
+      subtitle: subtitle.trim() || null,
+      items: items.map((it, idx) => ({ id: rule.items[idx]?.id ?? `${rule.type}-${idx}`, ...it })),
+    })
+  }
+
+  return (
+    <div style={{ padding: 14, borderRadius: 14, background: 'var(--surface2)', border: '1px solid var(--border)', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+          {isWeekly ? 'Weekly Special' : 'Monthly Mega Sale'}
+        </span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 700 }}>{enabled ? 'On' : 'Off'}</span>
+          <input
+            type="checkbox" checked={enabled}
+            onChange={e => { setEnabled(e.target.checked); markDirty() }}
+            style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }}
+          />
+        </label>
+      </div>
+
+      <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        {isWeekly
+          ? 'Recurs every week on the day below, open for the time window below.'
+          : 'Recurs automatically on the last Saturday of every month — no date to maintain. Overrides Weekly Special that day.'}
+      </p>
+
+      <p style={fieldLabel}>Title</p>
+      <input value={title} onChange={e => { setTitle(e.target.value); markDirty() }} style={{ ...inputStyle, marginBottom: 10 }} />
+
+      <p style={fieldLabel}>Subtitle</p>
+      <input value={subtitle} onChange={e => { setSubtitle(e.target.value); markDirty() }} style={{ ...inputStyle, marginBottom: 10 }} />
+
+      {isWeekly && (
+        <>
+          <p style={fieldLabel}>Day of week</p>
+          <select
+            value={dayOfWeek}
+            onChange={e => { setDayOfWeek(Number(e.target.value)); markDirty() }}
+            style={{ ...inputStyle, marginBottom: 10 }}
+          >
+            {DOW_LABELS.map((d, i) => (
+              <option key={i} value={i}>{d}</option>
+            ))}
+          </select>
+        </>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+        <div>
+          <p style={fieldLabel}>Start time</p>
+          <input type="time" value={startTime} onChange={e => { setStartTime(e.target.value); markDirty() }} style={inputStyle} />
+        </div>
+        <div>
+          <p style={fieldLabel}>End time</p>
+          <input type="time" value={endTime} onChange={e => { setEndTime(e.target.value); markDirty() }} style={inputStyle} />
+        </div>
+      </div>
+
+      <p style={fieldLabel}>Items ({items.length})</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 64px 28px', gap: 6, marginBottom: 4 }}>
+        <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 700 }}>Diamonds</span>
+        <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 700 }}>Orig. price</span>
+        <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 700 }}>Off</span>
+        <span />
+      </div>
+      {items.map((item, i) => (
+        <FlashSaleItemRow key={i} item={item} onChange={next => updateItem(i, next)} onRemove={() => removeItem(i)} />
+      ))}
+      <button
+        onClick={addItem} className="btn-secondary"
+        style={{ width: '100%', padding: '7px 0', fontSize: 11.5, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+      >
+        <Plus size={12} /> Add item
+      </button>
+
+      {error && <p style={{ fontSize: 11, color: 'var(--red)', marginBottom: 10 }}>{error}</p>}
+      {saved && !error && <p style={{ fontSize: 11, color: '#4fd18a', fontWeight: 700, marginBottom: 10 }}>Saved.</p>}
+
+      <button
+        onClick={handleSave} disabled={saving || items.length === 0}
+        className="btn-primary"
+        style={{ width: '100%', padding: '10px 0', fontSize: 13, opacity: saving || items.length === 0 ? 0.6 : 1 }}
+      >
+        {saving ? 'Saving…' : `Save ${isWeekly ? 'Weekly Special' : 'Monthly Mega Sale'}`}
+      </button>
+    </div>
+  )
+}
+
+function FlashSaleModal({ onClose }: { onClose: () => void }) {
+  const [rules, setRules] = useState<FlashSaleRule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchFlashSaleRules().then(({ data, error }) => {
+      if (error) { setError(error); setLoading(false); return }
+      setRules(data)
+      setLoading(false)
+    })
+  }, [])
+
+  function handleSaved(next: FlashSaleRule) {
+    setRules(prev => prev.map(r => (r.type === next.type ? next : r)))
+  }
+
+  const monthly = rules.find(r => r.type === 'monthly_mega')
+  const weekly = rules.find(r => r.type === 'weekly_special')
+
+  return (
+    <Modal title="Flash Sale Schedule" onClose={onClose} width={440}>
+      {loading ? (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Loading…</p>
+      ) : error ? (
+        <p style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center', padding: 20 }}>{error}</p>
+      ) : (
+        <>
+          {monthly && <FlashSaleRuleForm rule={monthly} onSaved={handleSaved} />}
+          {weekly && <FlashSaleRuleForm rule={weekly} onSaved={handleSaved} />}
+          <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            If both schedules would be live at the same time, Monthly Mega Sale always wins — Weekly Special is suppressed that day.
+          </p>
+        </>
+      )}
+    </Modal>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────
 
-type ModalKind = 'maintenance-message' | 'broadcast' | 'health' | 'game-goal' | { category: string } | null
+type ModalKind = 'maintenance-message' | 'broadcast' | 'health' | 'game-goal' | 'flash-sales' | { category: string } | null
 
 export default function AdminOpsPanel() {
   const maint = useMaintenance()
@@ -833,6 +1077,15 @@ export default function AdminOpsPanel() {
         />
       </div>
 
+      <SectionTitle>Sales & Promotions</SectionTitle>
+      <div className="settings-card">
+        <Row
+          icon={<Zap size={15} />} iconBg="color-mix(in srgb, var(--accent) 12%, transparent)" iconColor="var(--accent)"
+          label="Flash Sale Schedule" sub="Weekly Special + Monthly Mega Sale — items, discounts, timing"
+          onClick={(e) => { ripple(e); setModal('flash-sales') }}
+        />
+      </div>
+
       <SectionTitle>Data export</SectionTitle>
       <div className="settings-card">
         <Row
@@ -868,6 +1121,7 @@ export default function AdminOpsPanel() {
       {modal === 'broadcast' && <BroadcastModal onClose={() => setModal(null)} />}
       {modal === 'health' && <SystemHealthModal onClose={() => setModal(null)} />}
       {modal === 'game-goal' && <GameGoalModal onClose={() => setModal(null)} />}
+      {modal === 'flash-sales' && <FlashSaleModal onClose={() => setModal(null)} />}
       {modal && typeof modal === 'object' && (
         <FlagCategoryModal
           category={modal.category}
