@@ -150,7 +150,7 @@ export default function BlogLayout() {
               border: 'none', borderRadius: 999, padding: '9px 18px',
             }}
           >
-            {session ? 'Open App' : 'Log In'}
+            {session ? 'Open App' : 'Open Chillverse'}
           </button>
         </nav>
       </header>
