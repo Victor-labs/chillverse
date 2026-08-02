@@ -68,6 +68,18 @@ export default function EditorialRoom() {
   }, [])
 
   return (
+    // `landing-root` pulls in the same --lbg (#050506) background + the
+    // ambient multi-colour glow (::before, fixed, defined once in
+    // index.css) that the actual landing page uses — instead of the flat
+    // pure #000000 this page was inheriting from BlogLayout's shared
+    // chrome. The negative margin/padding pair cancels out BlogLayout's
+    // <main> padding so the background bleeds edge-to-edge behind the
+    // header-to-footer content area, then reapplies the same padding so
+    // nothing shifts position.
+    <div
+      className="landing-root"
+      style={{ margin: '-32px calc(-1 * clamp(1rem, 4vw, 2.5rem)) -64px', padding: '32px clamp(1rem, 4vw, 2.5rem) 64px' }}
+    >
     <div style={{ maxWidth: 1240, margin: '0 auto' }}>
       <Seo
         title="Editorial Room"
@@ -176,6 +188,7 @@ export default function EditorialRoom() {
           .editorial-stats-grid { grid-template-columns: repeat(3, 1fr); }
         }
       `}</style>
+    </div>
     </div>
   )
 }
