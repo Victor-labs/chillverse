@@ -342,16 +342,16 @@ export default function Dashboard() {
       {/* ── Quick Actions ── */}
       <section className="su d3">
         <p className="section-label">Quick Actions</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           {QUICK_ACTIONS.map((a) => {
             const Icon = a.icon
             return (
-              <Link key={a.label} to={a.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: 18, textAlign: 'center', cursor: 'pointer' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: a.bg, boxShadow: 'var(--elev-raise)', color: '#fff', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon size={22} />
+              <Link key={a.label} to={a.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: '12px 8px', textAlign: 'center', cursor: 'pointer' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: a.bg, boxShadow: 'var(--elev-raise)', color: '#fff', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={16} />
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{a.sub}</div>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{a.label}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.2 }}>{a.sub}</div>
               </Link>
             )
           })}
@@ -395,26 +395,42 @@ export default function Dashboard() {
       {/* ── Explore Chillverse ── */}
       <section className="su d5">
         <p className="section-label">Explore Chillverse</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Watch',            desc: 'Trending videos & streams',    icon: Film,     iconBg: 'rgba(62,207,142,0.12)',  iconColor: '#3ecf8e', to: '/watch'           },
             { label: 'Games',            desc: 'Play, compete & rank up',       icon: Gamepad2, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/games'           },
             { label: 'Weekly Missions',  desc: 'Complete missions, earn XP',    icon: Sparkles, iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/weekly-missions' },
             { label: 'Missions',         desc: 'Watch ads, earn Orbs',          icon: PlayCircle, iconBg: 'rgba(52,211,153,0.12)', iconColor: '#34d399', to: '/wallet?tab=orbs' },
-            { label: 'Artifacts',        desc: 'Collect & explore relics',      icon: Fan,      iconBg: 'rgba(239,68,68,0.12)',   iconColor: '#ef4444', to: '/artifacts'       },
           ].map((tile) => {
             const Icon = tile.icon
             return (
-              <Link key={tile.label} to={tile.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: 20, cursor: 'pointer' }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: tile.iconBg, boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, color: tile.iconColor }}>
-                  <Icon size={20} />
+              <Link key={tile.label} to={tile.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: 14, cursor: 'pointer' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: tile.iconBg, boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, color: tile.iconColor }}>
+                  <Icon size={16} />
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{tile.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>{tile.desc}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{tile.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.4 }}>{tile.desc}</div>
               </Link>
             )
           })}
         </div>
+
+        {/* Artifacts — full-width, styled like the Multiplayer card */}
+        <Link
+          to="/artifacts"
+          onClick={(e) => ripple(e)}
+          className="neu-card ripple-wrap"
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, marginTop: 12 }}
+        >
+          <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(239,68,68,0.12)', boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+            <Fan size={20} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Artifacts</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Collect &amp; explore relics</div>
+          </div>
+          <ChevronRight size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
+        </Link>
       </section>
 
       {/* ── Today's game activity ── */}
