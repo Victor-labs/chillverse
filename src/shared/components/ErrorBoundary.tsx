@@ -1,18 +1,32 @@
 // src/components/ErrorBoundary.tsx
 import { Component, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
+import { isStaleChunkError, reloadForStaleChunk } from '../lib/staleChunkReload'
 
 interface Props { children: ReactNode }
-interface State { crashed: boolean; message: string }
+interface State { crashed: boolean; message: string; staleChunk: boolean }
 
 export default class ErrorBoundary extends Component<Props, State> {
-  state: State = { crashed: false, message: '' }
+  state: State = { crashed: false, message: '', staleChunk: false }
 
   static getDerivedStateFromError(error: Error): State {
-    return { crashed: true, message: error?.message ?? 'Unknown error' }
+    const staleChunk = isStaleChunkError(error?.message)
+    return { crashed: true, message: error?.message ?? 'Unknown error', staleChunk }
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (isStaleChunkError(error?.message)) {
+      // Not a real crash — a new deploy replaced this chunk's hash while the
+      // tab was open. Reload to pick up the current build instead of
+      // logging it as an app error. If we already tried this recently and
+      // it's still happening, fall through to the manual crash screen below
+      // instead of looping.
+      const reloaded = reloadForStaleChunk()
+      if (reloaded) return
+      this.setState({ staleChunk: false })
+      return
+    }
+
     console.error('[Chillverse crash]', error, info)
     // Best-effort, fire-and-forget — feeds the Admin Dashboard's System
     // Health panel with real error volume (migration 0056). Never awaited
@@ -26,6 +40,11 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   render() {
+    if (this.state.crashed && this.state.staleChunk) {
+      // Reload is already in flight (or was just skipped by the cooldown
+      // guard) — show nothing jarring in the meantime.
+      return null
+    }
     if (this.state.crashed) {
       return (
         <div style={{
