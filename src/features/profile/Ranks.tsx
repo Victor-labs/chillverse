@@ -399,11 +399,11 @@ export default function Ranks() {
         </button>
       </div>
 
-      {/* Hero header — trophy art background, dark scrim so tier-colored text stays legible */}
+      {/* Hero header — trophy art background: bright at top, fading down, never fully opaque */}
       <div style={{
-        backgroundImage: `linear-gradient(135deg, ${userTier.color}22, rgba(0,0,0,0.72) 55%, rgba(0,0,0,0.85)), url(${RANK_HERO_IMG})`,
+        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.68) 100%), url(${RANK_HERO_IMG})`,
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center 30%',
         border: `1px solid ${userTier.color}30`,
         borderRadius: 24, padding: '28px 24px', marginBottom: 20,
         boxShadow: `0 0 40px ${userTier.glowColor}, 6px 6px 18px var(--neu-dark), -3px -3px 10px var(--neu-light)`,
@@ -412,6 +412,7 @@ export default function Ranks() {
       }}>
         {/* BG glow orb */}
         <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${userTier.color}30 0%, transparent 70%)`, pointerEvents: 'none', animation: 'rankGlow 3s ease-in-out infinite' }} />
+
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           {/* Big rank badge */}
@@ -568,31 +569,80 @@ export default function Ranks() {
           {/* Rank Journey — scrollable badge track + the XP progress bar (moved down from the hero) */}
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Rank Journey</p>
           <div style={panelStyle(userTier.color)}>
-            <ScrollFadeRow style={{ marginBottom: nextTier ? 16 : 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <ScrollFadeRow style={{ marginBottom: nextTier ? 20 : 4 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
                 {RANK_TIERS.map((tier, i) => {
                   const unlocked = unlockedIds.has(tier.id)
                   const isCur    = tier.id === userTier.id
+                  const stepDone = unlocked // step number is "reached" once unlocked
+                  const CARD_W = 128
+
                   return (
-                    <div key={tier.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <div style={{ textAlign: 'center' }}>
+                    <div key={tier.id} style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, width: CARD_W, marginRight: i < RANK_TIERS.length - 1 ? 12 : 0 }}>
+                      {/* Step number + connector */}
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
                         <div style={{
-                          width: 36, height: 36, borderRadius: '50%',
-                          background: unlocked ? `${tier.color}30` : 'var(--surface3)',
-                          border: isCur ? `2px solid ${tier.color}` : '1.5px solid rgba(255,255,255,0.06)',
+                          width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          boxShadow: isCur ? `0 0 12px ${tier.glowColor}` : 'none',
-                          margin: '0 auto 5px',
+                          fontSize: 10, fontWeight: 800,
+                          background: stepDone ? tier.color : 'var(--surface3)',
+                          color: stepDone ? '#111' : 'var(--text-muted)',
+                          border: isCur ? `2px solid ${tier.color}` : 'none',
+                          boxShadow: isCur ? `0 0 10px ${tier.glowColor}` : 'none',
                         }}>
-                          <RankBadge tier={tier} size={26} locked={!unlocked} />
+                          {i + 1}
                         </div>
-                        <div style={{ fontSize: 8, color: unlocked ? tier.color : 'var(--text-muted)', fontWeight: 700, maxWidth: 44, textAlign: 'center', lineHeight: 1.2 }}>
+                        {i < RANK_TIERS.length - 1 && (
+                          <div style={{ flex: 1, height: 2, background: stepDone ? tier.color : 'var(--surface3)', marginLeft: 4 }} />
+                        )}
+                      </div>
+
+                      {/* Rank card */}
+                      <div style={{
+                        position: 'relative',
+                        background: isCur
+                          ? `linear-gradient(160deg, ${tier.color}28, ${tier.color}0c)`
+                          : unlocked
+                            ? `linear-gradient(160deg, ${tier.color}14, ${tier.color}05)`
+                            : 'var(--surface2)',
+                        border: isCur ? `1.5px solid ${tier.color}70` : unlocked ? `1px solid ${tier.color}30` : '1px solid var(--border)',
+                        borderRadius: 16,
+                        padding: '16px 10px 14px',
+                        textAlign: 'center',
+                        opacity: unlocked ? 1 : 0.55,
+                        boxShadow: isCur ? `0 0 22px ${tier.glowColor}, 4px 4px 12px var(--neu-dark)` : 'none',
+                        marginBottom: isCur ? 12 : 0,
+                      }}>
+                        <div style={{
+                          width: 48, height: 48, borderRadius: 14, margin: '0 auto 10px',
+                          background: `${tier.color}18`, border: `1.5px solid ${tier.color}33`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: unlocked ? `0 0 12px ${tier.glowColor}` : 'none',
+                        }}>
+                          <RankBadge tier={tier} size={34} locked={!unlocked} />
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: unlocked ? tier.color : 'var(--text-muted)', marginBottom: 6, lineHeight: 1.25 }}>
                           {tier.name}
                         </div>
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600 }}>
+                          {fmtXP(tier.xpRequired)} XP
+                        </div>
+                        <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>
+                          {tier.xpRequired === 0 ? 'starting rank' : 'XP needed'}
+                        </div>
+
+                        {isCur && (
+                          <div style={{
+                            position: 'absolute', left: '50%', bottom: -11, transform: 'translateX(-50%)',
+                            background: tier.color, color: '#111', fontSize: 8, fontWeight: 800,
+                            letterSpacing: '0.4px', textTransform: 'uppercase',
+                            borderRadius: 8, padding: '4px 10px', whiteSpace: 'nowrap',
+                            boxShadow: `0 2px 10px ${tier.glowColor}`,
+                          }}>
+                            Current Rank
+                          </div>
+                        )}
                       </div>
-                      {i < RANK_TIERS.length - 1 && (
-                        <div style={{ width: 16, height: 2, background: unlocked ? tier.color : 'var(--surface3)', margin: '0 2px', marginBottom: 16, borderRadius: 1 }} />
-                      )}
                     </div>
                   )
                 })}
