@@ -11,7 +11,8 @@ import {
   Shirt, UserCheck, Pencil, Handshake, Medal, Swords, Shield, Mail, Gift,
   Gem, ShoppingBag, Palette, Zap, Heart, Rocket, CalendarCheck, Compass,
   Map, Bot, Share2, UserPlus, Award, TrendingUp, Newspaper, Star, Camera,
-  Sparkles, PartyPopper,
+  Sparkles, PartyPopper, Move, Drama, Grid3X3, Eye, BookOpen, Target,
+  Spade, Blocks, Layers, SquarePen, MessageSquare,
 } from 'lucide-react'
 
 export const MISSION_ICONS: Record<string, LucideIcon> = {
@@ -57,6 +58,18 @@ export const MISSION_ICONS: Record<string, LucideIcon> = {
   star: Star,
   camera: Camera,
   'party-popper': PartyPopper,
+  move: Move,
+  drama: Drama,
+  'grid-3x3': Grid3X3,
+  eye: Eye,
+  'book-open': BookOpen,
+  target: Target,
+  sparkles: Sparkles,
+  spade: Spade,
+  blocks: Blocks,
+  layers: Layers,
+  'square-pen': SquarePen,
+  'message-square': MessageSquare,
 }
 
 export function getMissionIcon(key: string): LucideIcon {
