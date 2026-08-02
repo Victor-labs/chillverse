@@ -295,6 +295,16 @@ export default function Games({ onBack }: { onBack?: () => void } = {}) {
       'hangman':        ['hangman_played'],
       'speed-math':     ['speed_math_played'],
       'pattern-memory': ['pattern_memory_played'],
+      'arrow-dash':     ['arrow_dash_played'],
+      'rapid-sort':     ['rapid_sort_played'],
+      'tac-zone':       ['tac_zone_played'],
+      'two-truths':     ['two_truths_played'],
+      'liars-grid':     ['liars_grid_played'],
+      'trivia-clash':   ['trivia_clash_played'],
+      'close-call':     ['close_call_played'],
+      'pattern-king':   ['pattern_king_played'],
+      'colour-block':   ['colour_block_played'],
+      'tile-merge':     ['tile_merge_played'],
     }
     const extraMetrics = gameMetricMap[payload.gameId as GameId]
     if (extraMetrics) {
@@ -314,6 +324,10 @@ export default function Games({ onBack }: { onBack?: () => void } = {}) {
 
     if (payload.gameId === 'pattern-memory' && payload.correct === payload.total && payload.total > 0) {
       updateMissionProgress(userId, 'pattern_memory_perfect', 1).catch(console.error)
+    }
+
+    if (payload.gameId === 'uno' && payload.score > 0) {
+      updateMissionProgress(userId, 'uno_won', 1).catch(console.error)
     }
 
     updateMissionProgress(userId, 'games_today', 1).catch(console.error)
