@@ -113,84 +113,89 @@ export default function Blog() {
         </h1>
       </div>
 
-      {/* Category tabs — hidden while searching */}
-      {!isSearching && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 20, paddingBottom: 4 }}>
-          <button type="button" onClick={(e) => { ripple(e); selectCategory(null) }} className="ripple-wrap" style={tabStyle(activeCategory === null)}>
-            All
-          </button>
-          {BLOG_CATEGORIES.map(cat => (
-            <button key={cat.slug} type="button" onClick={(e) => { ripple(e); selectCategory(cat.slug) }} className="ripple-wrap" style={tabStyle(activeCategory === cat.slug)}>
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {error && <div style={errorBoxStyle}>{error}</div>}
 
-      {/* ── Controls row (below tabs) ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 260px' }}>
-          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            value={query}
-            onChange={(e) => runSearch(e.target.value)}
-            placeholder="Search posts…"
-            style={{
-              width: '100%', padding: '13px 16px 13px 42px', borderRadius: 14,
-              background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
-              fontSize: 14, outline: 'none',
-            }}
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => runSearch('')}
-              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'pointer' }}
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
+      {/* Newest post always leads, directly under the title — Discord-style */}
+      {featured && <FeaturedPost post={featured} />}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isStaff && (
-            <button
-              type="button"
-              onClick={(e) => { ripple(e); navigate('/blog/admin') }}
-              className="ripple-wrap"
-              title="Manage posts"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                fontSize: 13, fontWeight: 700, color: 'var(--text-dim)',
-                background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 16px',
-              }}
-            >
-              <Settings2 size={14} /> Manage
+      {/* ── Controls row — tabs, search, language ── moved below the lead story,
+          not stacked above it like before. Tabs hidden while searching. */}
+      <div style={{ marginBottom: 36 }}>
+        {!isSearching && (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
+            <button type="button" onClick={(e) => { ripple(e); selectCategory(null) }} className="ripple-wrap" style={tabStyle(activeCategory === null)}>
+              All
             </button>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 999, padding: 4 }}>
-            <Languages size={14} color="var(--text-muted)" style={{ marginLeft: 8 }} />
-            {BLOG_LOCALES.map(l => (
-              <button
-                key={l.code}
-                type="button"
-                onClick={(e) => { ripple(e); switchLocale(l.code) }}
-                className="ripple-wrap"
-                style={{
-                  fontSize: 12.5, fontWeight: 700, padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
-                  color: locale === l.code ? '#fff' : 'var(--text-dim)',
-                  background: locale === l.code ? 'var(--accent)' : 'transparent',
-                }}
-                title={l.label}
-              >
-                {l.shortLabel}
+            {BLOG_CATEGORIES.map(cat => (
+              <button key={cat.slug} type="button" onClick={(e) => { ripple(e); selectCategory(cat.slug) }} className="ripple-wrap" style={tabStyle(activeCategory === cat.slug)}>
+                {cat.label}
               </button>
             ))}
           </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 260px' }}>
+            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              value={query}
+              onChange={(e) => runSearch(e.target.value)}
+              placeholder="Search posts…"
+              style={{
+                width: '100%', padding: '13px 16px 13px 42px', borderRadius: 14,
+                background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)',
+                fontSize: 14, outline: 'none',
+              }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => runSearch('')}
+                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {isStaff && (
+              <button
+                type="button"
+                onClick={(e) => { ripple(e); navigate('/blog/admin') }}
+                className="ripple-wrap"
+                title="Manage posts"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                  fontSize: 13, fontWeight: 700, color: 'var(--text-dim)',
+                  background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 16px',
+                }}
+              >
+                <Settings2 size={14} /> Manage
+              </button>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 999, padding: 4 }}>
+              <Languages size={14} color="var(--text-muted)" style={{ marginLeft: 8 }} />
+              {BLOG_LOCALES.map(l => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={(e) => { ripple(e); switchLocale(l.code) }}
+                  className="ripple-wrap"
+                  style={{
+                    fontSize: 12.5, fontWeight: 700, padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
+                    color: locale === l.code ? '#fff' : 'var(--text-dim)',
+                    background: locale === l.code ? 'var(--accent)' : 'transparent',
+                  }}
+                  title={l.label}
+                >
+                  {l.shortLabel}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-
-      {error && <div style={errorBoxStyle}>{error}</div>}
 
       {isSearching ? (
         <>
@@ -210,7 +215,6 @@ export default function Blog() {
             <EmptyState text="No posts here yet — check back soon." />
           ) : (
             <>
-              {featured && <FeaturedPost post={featured} />}
               {rest.length > 0 && <SectionLabel>{showFeatured ? 'More from Chillverse' : 'Latest'}</SectionLabel>}
               <div style={gridStyle}>
                 {rest.map(post => <BlogPostCard key={post.id} post={post} />)}
@@ -311,7 +315,7 @@ function tabStyle(active: boolean): React.CSSProperties {
 }
 
 const gridStyle: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '40px 32px', marginBottom: 24,
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '28px 24px', marginBottom: 24,
 }
 
 const errorBoxStyle: React.CSSProperties = {

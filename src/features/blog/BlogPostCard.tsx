@@ -20,8 +20,8 @@ export default function BlogPostCard({ post }: { post: BlogPost | BlogSearchResu
       }}
     >
       <div style={{
-        width: '100%', aspectRatio: '16 / 10', borderRadius: 16, background: 'var(--surface2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 16,
+        width: '100%', aspectRatio: '16 / 9', borderRadius: 14, background: 'var(--surface2)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 14,
       }}>
         {post.hero_image_url ? (
           <img
