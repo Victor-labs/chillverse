@@ -70,6 +70,13 @@ export async function signInWithDiscord() {
 
 /** Sign the current user out. */
 export async function signOut() {
+  // Fire-and-forget: bumps the public "Active Users" counter shown on the
+  // /editorial-room page (see migration 0098). Never awaited and never
+  // allowed to block/throw the real sign-out — it's just a stats tick.
+  supabase.rpc('increment_auth_activity_counter').then(
+    () => {},
+    () => {}
+  )
   return supabase.auth.signOut()
 }
 
