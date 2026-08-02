@@ -92,13 +92,13 @@ export async function unlockAchievement(userId: string, achievementId: string): 
       }
     }
 
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      type: 'achievement',
-      title: `Achievement Unlocked: ${ach.title}`,
-      body: ach.description,
-      icon: ach.icon,
-      meta: { achievement_id: achievementId, xp_reward: ach.xp_reward },
+    await supabase.rpc('insert_notification', {
+      p_user_id: userId,
+      p_type: 'achievement',
+      p_title: `Achievement Unlocked: ${ach.title}`,
+      p_body: ach.description,
+      p_icon: ach.icon,
+      p_meta: { achievement_id: achievementId, xp_reward: ach.xp_reward },
     })
   }
 
