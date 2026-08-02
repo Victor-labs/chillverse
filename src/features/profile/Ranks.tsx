@@ -253,6 +253,7 @@ export default function Ranks() {
   const [tab, setTab] = useState<Tab>('my-rank')
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [pinnedMe, setPinnedMe] = useState<{ entry: LeaderboardEntry; position: number } | null>(null)
   const [lbLoading, setLbLoading] = useState(false)
   const [lbMode, setLbMode] = useState<'tier' | 'global'>('tier')
   const myRowRef = useRef<HTMLDivElement>(null)
@@ -266,10 +267,15 @@ export default function Ranks() {
   // view), or the full global ranking across all players (triggered by the
   // "Check My Global Rank" toggle below). Team/staff accounts are always
   // excluded (see getLeaderboardExclusionIds above) — leaderboard is
-  // players only.
+  // players only. Both modes are capped to the top 50; if the player isn't
+  // in that top 50, their exact position is computed separately and pinned
+  // below the list instead of padding out a huge fetch.
   useEffect(() => {
     if (!showLeaderboard) return
     setLbLoading(true)
+    setPinnedMe(null)
+
+    const LB_SELECT = 'id, display_name, username, xp, level, streak, avatar, display_name_font, display_name_color'
 
     getLeaderboardExclusionIds().then(excludedIds => {
       const excludeFilter = <T,>(q: T) =>
@@ -281,39 +287,65 @@ export default function Ranks() {
         excludeFilter(
           supabase
             .from('profiles')
-            .select('id, display_name, username, xp, level, streak, avatar, display_name_font, display_name_color')
+            .select(LB_SELECT)
         )
           .order('xp', { ascending: false })
-          .limit(200)
+          .limit(50)
           .then(({ data }: { data: LeaderboardEntry[] | null }) => {
-            setLeaderboard(data ?? [])
+            const top50 = data ?? []
+            setLeaderboard(top50)
             setLbLoading(false)
+
+            if (profile && !top50.some(p => p.id === profile.id)) {
+              excludeFilter(
+                supabase
+                  .from('profiles')
+                  .select('id', { count: 'exact', head: true })
+                  .gt('xp', userXp)
+              )
+                .then(({ count }: { count: number | null }) => {
+                  setPinnedMe({ entry: profile, position: (count ?? 0) + 1 })
+                })
+            }
           })
         return
       }
 
-      // Find user's rank tier bounds
+      // Tier mode — bound the query to the user's tier bucket directly
+      // (xp >= tier floor, xp < next tier floor) rather than over-fetching
+      // and filtering client-side.
       const tier = getUserRankTier(userXp)
-      excludeFilter(
-        supabase
-          .from('profiles')
-          .select('id, display_name, username, xp, level, streak, avatar, display_name_font, display_name_color')
-          .gte('xp', tier.xpRequired)
-      )
+      const tierNextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
+
+      let tierQuery = supabase
+        .from('profiles')
+        .select(LB_SELECT)
+        .gte('xp', tier.xpRequired)
+      if (tierNextTier) tierQuery = tierQuery.lt('xp', tierNextTier.xpRequired)
+
+      excludeFilter(tierQuery)
         .order('xp', { ascending: false })
-        .limit(100)
+        .limit(50)
         .then(({ data }: { data: LeaderboardEntry[] | null }) => {
-          const all = data ?? []
-          // filter to only this tier (xp < next tier threshold)
-          const nextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
-          const sameRank = nextTier
-            ? all.filter(p => p.xp < nextTier.xpRequired)
-            : all
-          setLeaderboard(sameRank)
+          const top50 = data ?? []
+          setLeaderboard(top50)
           setLbLoading(false)
+
+          if (profile && !top50.some(p => p.id === profile.id)) {
+            let countQuery = supabase
+              .from('profiles')
+              .select('id', { count: 'exact', head: true })
+              .gt('xp', userXp)
+            if (tierNextTier) countQuery = countQuery.lt('xp', tierNextTier.xpRequired)
+
+            excludeFilter(countQuery)
+              .then(({ count }: { count: number | null }) => {
+                setPinnedMe({ entry: profile, position: (count ?? 0) + 1 })
+              })
+          }
         })
     })
-  }, [showLeaderboard, userXp, lbMode])
+  }, [showLeaderboard, userXp, lbMode, profile])
 
   // In global mode, once the (potentially long) full list loads, jump
   // straight to the player's own row instead of leaving them to scroll.
@@ -605,6 +637,7 @@ export default function Ranks() {
                           <div style={{ fontSize: isFirst ? 12 : 10, fontWeight: 700, color: 'var(--text)', marginBottom: 4, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...nameStyleFor(entry) }}>{name}</div>
                           {/* Podium block */}
                           <div style={{ width: '100%', height: podiumHeights[i], borderRadius: '10px 10px 0 0', background: `linear-gradient(180deg, ${entryTier.color}30, ${entryTier.color}10)`, border: `1px solid ${entryTier.color}40`, boxShadow: isFirst ? `0 -4px 18px ${entryTier.glowColor}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
+                            <RankBadge tier={entryTier} size={isFirst ? 22 : 18} />
                             <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.xp)}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>XP</div>
                           </div>
@@ -613,11 +646,11 @@ export default function Ranks() {
                     })}
                   </div>
                 )}
-                {leaderboard.map((entry, i) => (
+                {leaderboard.slice(3).map((entry, i) => (
                   <LeaderboardRow
                     key={entry.id}
                     entry={entry}
-                    position={i + 1}
+                    position={i + 4}
                     isMe={entry.id === profile?.id}
                     innerRef={entry.id === profile?.id ? myRowRef : undefined}
                   />
@@ -626,6 +659,17 @@ export default function Ranks() {
                   <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>
                     No players yet. Be the first!
                   </div>
+                )}
+                {pinnedMe && (
+                  <>
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, letterSpacing: 3, margin: '10px 0' }}>· · ·</div>
+                    <LeaderboardRow
+                      entry={pinnedMe.entry}
+                      position={pinnedMe.position}
+                      isMe
+                      innerRef={myRowRef}
+                    />
+                  </>
                 )}
 
                 {/* Toggle between the normal (same-tier) board and the full global ranking */}
