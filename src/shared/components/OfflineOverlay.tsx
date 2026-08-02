@@ -10,11 +10,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { WifiOff } from 'lucide-react'
 
-// The landing page and signup flow are the first thing a brand-new,
-// possibly flaky-connection visitor sees. A full-screen "you're offline"
-// takeover there reads as broken rather than helpful — a failed request
-// on those pages should just fail quietly (or retry), not block the page.
+// The landing page, signup flow, and the public blog are the first thing
+// a brand-new, possibly flaky-connection visitor sees. A full-screen
+// "you're offline" takeover there reads as broken rather than helpful —
+// a failed request on those pages should just fail quietly (or retry),
+// not block the page. Blog is matched by prefix since it covers
+// /blog, /blog/:slug, /blog/updates, /blog/admin, etc.
 const SUPPRESSED_PATHS = ['/', '/signup']
+const SUPPRESSED_PREFIXES = ['/blog']
 
 // Same-origin, tiny, always present — avoids any CORS/third-party concerns.
 const CHECK_URL = '/favicon.ico'
@@ -51,6 +54,7 @@ export default function OfflineOverlay() {
   const [retrying, setRetrying] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const suppressed = SUPPRESSED_PATHS.includes(location.pathname)
+    || SUPPRESSED_PREFIXES.some(prefix => location.pathname.startsWith(prefix))
 
   const runCheck = useCallback(async () => {
     const reachable = await isReachable()
