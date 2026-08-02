@@ -65,6 +65,7 @@ export interface Profile {
   notif_profile_likes: boolean | null
   notif_session_reset: boolean | null
   notif_follower_online: boolean | null
+  notif_halo: boolean | null
   highlight_notif_scope: 'everyone' | 'followers' | null
   live_activity_visibility: 'everyone' | 'followers' | 'none' | null
 }
