@@ -14,9 +14,29 @@ import {
 import PageOnboarding from '../onboarding/PageOnboarding'
 import Avatar from '../../shared/components/Avatar'
 import RankBadge from '../../shared/components/RankBadge'
+import ScrollFadeRow from '../../shared/components/ScrollFadeRow'
 
 // ─── Tab type ────────────────────────────────────────
 type Tab = 'my-rank' | 'all-ranks'
+
+// Hero background art (trophy) — sits behind the "My Rank" summary card
+const RANK_HERO_IMG = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Ranks/ranks.png'
+
+// Shared "panel" look used for Rank Journey + Coming Up Next — a dark,
+// slightly-elevated surface (mirrors the raised-button treatment elsewhere)
+// instead of each row floating as its own separate card.
+function panelStyle(accentColor: string): React.CSSProperties {
+  return {
+    position: 'relative',
+    background: `linear-gradient(160deg, var(--surface2) 0%, var(--surface) 75%)`,
+    border: '1px solid var(--border)',
+    borderRadius: 20,
+    padding: '16px 16px 14px',
+    marginBottom: 20,
+    boxShadow: `4px 4px 14px var(--neu-dark), -2px -2px 8px var(--neu-light), inset 0 0 30px ${accentColor}0a`,
+    overflow: 'hidden',
+  }
+}
 
 // ─── Reward icon map ─────────────────────────────────
 function RewardIcon({ type }: { type: string }) {
@@ -379,9 +399,11 @@ export default function Ranks() {
         </button>
       </div>
 
-      {/* Hero header */}
+      {/* Hero header — trophy art background, dark scrim so tier-colored text stays legible */}
       <div style={{
-        background: `linear-gradient(135deg, ${userTier.color}18, ${userTier.color}06)`,
+        backgroundImage: `linear-gradient(135deg, ${userTier.color}22, rgba(0,0,0,0.72) 55%, rgba(0,0,0,0.85)), url(${RANK_HERO_IMG})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
         border: `1px solid ${userTier.color}30`,
         borderRadius: 24, padding: '28px 24px', marginBottom: 20,
         boxShadow: `0 0 40px ${userTier.glowColor}, 6px 6px 18px var(--neu-dark), -3px -3px 10px var(--neu-light)`,
@@ -389,9 +411,9 @@ export default function Ranks() {
         position: 'relative', overflow: 'hidden',
       }}>
         {/* BG glow orb */}
-        <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${userTier.color}22 0%, transparent 70%)`, pointerEvents: 'none', animation: 'rankGlow 3s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${userTier.color}30 0%, transparent 70%)`, pointerEvents: 'none', animation: 'rankGlow 3s ease-in-out infinite' }} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           {/* Big rank badge */}
           <div style={{
             width: 72, height: 72, borderRadius: 22, flexShrink: 0,
@@ -405,7 +427,7 @@ export default function Ranks() {
 
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: userTier.color, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
-              Your Rank
+              My Rank
             </div>
             <div style={{
               fontSize: 28, fontWeight: 900, letterSpacing: '-0.5px',
@@ -419,35 +441,6 @@ export default function Ranks() {
             </div>
           </div>
         </div>
-
-        {/* XP Progress to next rank */}
-        {nextTier ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 7 }}>
-              <span style={{ fontWeight: 600 }}>{fmtXP(xpIntoTier)} / {fmtXP(xpNeeded)} XP</span>
-              <span>Next: <span style={{ color: nextTier.color, fontWeight: 700 }}>{nextTier.name}</span> · {fmtXP(xpNeeded - xpIntoTier)} XP away</span>
-            </div>
-            <div style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px rgba(0,0,0,0.4)' }}>
-              <div style={{
-                height: '100%', borderRadius: 4, width: `${pct}%`,
-                background: `linear-gradient(90deg, ${userTier.color}, ${nextTier.color})`,
-                boxShadow: `0 0 10px ${userTier.glowColor}`,
-                transition: 'width 1s ease',
-              }} />
-            </div>
-            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
-              {nextTier.rewards.some(r => r.type !== 'nothing')
-                ? <span>🎁 <strong style={{ color: nextTier.color }}>{nextTier.name}</strong> unlocks: {nextTier.rewards[0].label}</span>
-                : <span>Keep earning XP to reach <strong style={{ color: nextTier.color }}>{nextTier.name}</strong></span>
-              }
-            </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(245,197,66,0.1)', border: '1px solid rgba(245,197,66,0.3)', borderRadius: 12, padding: '10px 14px' }}>
-            <Crown size={16} style={{ color: '#f5c542' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#f5c542' }}>You've reached the highest rank in Chillverse. Legendary.</span>
-          </div>
-        )}
       </div>
 
       {/* Tabs */}
@@ -493,12 +486,14 @@ export default function Ranks() {
       {tab === 'my-rank' && (
         <div style={{ animation: 'feedIn 0.3s ease-out both' }}>
 
-          {/* Your rewards unlocked so far */}
+          {/* Your rewards unlocked so far — progressive strip, unlocked-only */}
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Rewards You've Unlocked</p>
           {(() => {
-            const unlocked = RANK_TIERS
+            const unlockedRewards = RANK_TIERS
               .filter(t => unlockedIds.has(t.id) && t.rewards.some(r => r.type !== 'nothing'))
-            if (unlocked.length === 0) {
+              .flatMap(t => t.rewards.filter(r => r.type !== 'nothing').map(reward => ({ tier: t, reward })))
+
+            if (unlockedRewards.length === 0) {
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: '28px 20px', textAlign: 'center', marginBottom: 20 }}>
                   <div style={{ fontSize: 28, marginBottom: 10 }}>🏆</div>
@@ -507,75 +502,131 @@ export default function Ranks() {
                 </div>
               )
             }
+
             return (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-                {unlocked.flatMap(t => t.rewards.filter(r => r.type !== 'nothing').map((reward, i) => (
-                  <div key={`${t.id}-${i}`} style={{ background: `${t.color}10`, border: `1px solid ${t.color}30`, borderRadius: 16, padding: 14, boxShadow: `0 0 12px ${t.glowColor}` }}>
+              <ScrollFadeRow style={{ marginBottom: 20 }}>
+                {unlockedRewards.map(({ tier: t, reward }, i) => (
+                  <div
+                    key={`${t.id}-${i}`}
+                    style={{
+                      flexShrink: 0, width: 104, scrollSnapAlign: 'start',
+                      background: `linear-gradient(160deg, ${t.color}14, ${t.color}05)`,
+                      border: `1px solid ${t.color}35`, borderRadius: 16, padding: '12px 10px',
+                      boxShadow: `0 0 12px ${t.glowColor}`,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                    }}
+                  >
                     {reward.imageUrl
-                      ? <img src={reward.imageUrl} alt={reward.label} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 10, marginBottom: 8, border: `1px solid ${t.color}40` }} />
-                      : <div style={{ fontSize: 28, marginBottom: 8 }}><RewardIcon type={reward.type} /></div>
+                      ? <img src={reward.imageUrl} alt={reward.label} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, marginBottom: 8, border: `1px solid ${t.color}40` }} />
+                      : (
+                        <div style={{ width: 56, height: 56, borderRadius: 10, background: `${t.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                          <RewardIcon type={reward.type} />
+                        </div>
+                      )
                     }
-                    <div style={{ fontSize: 11, fontWeight: 700, color: t.color, marginBottom: 3 }}>{reward.label}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.4 }}>{reward.description.slice(0, 60)}…</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: t.color, marginBottom: 2, lineHeight: 1.3 }}>{reward.label}</div>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>{t.name}</div>
                   </div>
-                )))}
-              </div>
+                ))}
+              </ScrollFadeRow>
             )
           })()}
 
-          {/* Upcoming rewards */}
+          {/* Upcoming rewards — same raised dark-panel treatment throughout */}
           {upcomingRewards.length > 0 && (
             <>
               <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Coming Up Next</p>
-              {upcomingRewards.map(tier => (
-                <div key={tier.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 14, boxShadow: 'var(--elev-raise-sm)' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: `${tier.color}15`, border: `1px solid ${tier.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <RankBadge tier={tier} size={30} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: tier.color, marginBottom: 2 }}>{tier.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      🎁 {tier.rewards.filter(r => r.type !== 'nothing').map(r => r.label).join(' · ')}
+              <div style={panelStyle(userTier.color)}>
+                {upcomingRewards.map((tier, i) => (
+                  <div
+                    key={tier.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '10px 4px',
+                      borderBottom: i < upcomingRewards.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}
+                  >
+                    <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: `${tier.color}15`, border: `1px solid ${tier.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <RankBadge tier={tier} size={30} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: tier.color, marginBottom: 2 }}>{tier.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        🎁 {tier.rewards.filter(r => r.type !== 'nothing').map(r => r.label).join(' · ')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>{fmtXP(tier.xpRequired)}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>XP needed</div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>{fmtXP(tier.xpRequired)}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>XP needed</div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </>
           )}
 
-          {/* Rank history - tiers passed */}
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12, marginTop: 20 }}>Rank Journey</p>
-          <div style={{ display: 'flex', alignItems: 'center', overflowX: 'auto', gap: 0, paddingBottom: 8 }}>
-            {RANK_TIERS.map((tier, i) => {
-              const unlocked = unlockedIds.has(tier.id)
-              const isCur    = tier.id === userTier.id
-              return (
-                <div key={tier.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      background: unlocked ? `${tier.color}30` : 'var(--surface2)',
-                      border: isCur ? `2px solid ${tier.color}` : '1.5px solid rgba(255,255,255,0.06)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: isCur ? `0 0 12px ${tier.glowColor}` : 'none',
-                      margin: '0 auto 5px',
-                    }}>
-                      <RankBadge tier={tier} size={26} locked={!unlocked} />
+          {/* Rank Journey — scrollable badge track + the XP progress bar (moved down from the hero) */}
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>Rank Journey</p>
+          <div style={panelStyle(userTier.color)}>
+            <ScrollFadeRow style={{ marginBottom: nextTier ? 16 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                {RANK_TIERS.map((tier, i) => {
+                  const unlocked = unlockedIds.has(tier.id)
+                  const isCur    = tier.id === userTier.id
+                  return (
+                    <div key={tier.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%',
+                          background: unlocked ? `${tier.color}30` : 'var(--surface3)',
+                          border: isCur ? `2px solid ${tier.color}` : '1.5px solid rgba(255,255,255,0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: isCur ? `0 0 12px ${tier.glowColor}` : 'none',
+                          margin: '0 auto 5px',
+                        }}>
+                          <RankBadge tier={tier} size={26} locked={!unlocked} />
+                        </div>
+                        <div style={{ fontSize: 8, color: unlocked ? tier.color : 'var(--text-muted)', fontWeight: 700, maxWidth: 44, textAlign: 'center', lineHeight: 1.2 }}>
+                          {tier.name}
+                        </div>
+                      </div>
+                      {i < RANK_TIERS.length - 1 && (
+                        <div style={{ width: 16, height: 2, background: unlocked ? tier.color : 'var(--surface3)', margin: '0 2px', marginBottom: 16, borderRadius: 1 }} />
+                      )}
                     </div>
-                    <div style={{ fontSize: 8, color: unlocked ? tier.color : 'var(--text-muted)', fontWeight: 700, maxWidth: 44, textAlign: 'center', lineHeight: 1.2 }}>
-                      {tier.name}
-                    </div>
-                  </div>
-                  {i < RANK_TIERS.length - 1 && (
-                    <div style={{ width: 16, height: 2, background: unlocked ? tier.color : 'var(--surface3)', margin: '0 2px', marginBottom: 16, borderRadius: 1 }} />
-                  )}
+                  )
+                })}
+              </div>
+            </ScrollFadeRow>
+
+            {/* XP progress to next rank */}
+            {nextTier ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 7 }}>
+                  <span style={{ fontWeight: 600 }}>{fmtXP(xpIntoTier)} / {fmtXP(xpNeeded)} XP</span>
+                  <span>Next: <span style={{ color: nextTier.color, fontWeight: 700 }}>{nextTier.name}</span> · {fmtXP(xpNeeded - xpIntoTier)} XP away</span>
                 </div>
-              )
-            })}
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px rgba(0,0,0,0.4)' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 4, width: `${pct}%`,
+                    background: `linear-gradient(90deg, ${userTier.color}, ${nextTier.color})`,
+                    boxShadow: `0 0 10px ${userTier.glowColor}`,
+                    transition: 'width 1s ease',
+                  }} />
+                </div>
+                <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
+                  {nextTier.rewards.some(r => r.type !== 'nothing')
+                    ? <span>🎁 <strong style={{ color: nextTier.color }}>{nextTier.name}</strong> unlocks: {nextTier.rewards[0].label}</span>
+                    : <span>Keep earning XP to reach <strong style={{ color: nextTier.color }}>{nextTier.name}</strong></span>
+                  }
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(245,197,66,0.1)', border: '1px solid rgba(245,197,66,0.3)', borderRadius: 12, padding: '10px 14px' }}>
+                <Crown size={16} style={{ color: '#f5c542' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#f5c542' }}>You've reached the highest rank in Chillverse. Legendary.</span>
+              </div>
+            )}
           </div>
         </div>
       )}
