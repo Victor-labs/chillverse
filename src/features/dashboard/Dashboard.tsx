@@ -194,6 +194,48 @@ export default function Dashboard() {
     [profile, currentHour],
   )
 
+  // ── Lazy random "glint" — EVERY card runs its own independent random
+  // cycle: each one, on its own random schedule (~7–18s apart), plays a
+  // single glass shine sweep then goes quiet until its own next turn.
+  // Cards are not coordinated, so two can glint at once by chance, or none
+  // for a while — it's per-card, not a single spotlight touring the grid.
+  const GLINT_CARD_KEYS = useMemo(
+    () => ['qa-0', 'qa-1', 'qa-2', 'multiplayer', 'tile-0', 'tile-1', 'tile-2', 'tile-3', 'artifacts', 'halo'],
+    [],
+  )
+  const [activeGlints, setActiveGlints] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    let cancelled = false
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+
+    const scheduleForKey = (key: string) => {
+      const delay = 7000 + Math.random() * 11000 // lazy: every ~7–18s, per card
+      const waitId = setTimeout(() => {
+        if (cancelled) return
+        setActiveGlints(prev => {
+          const next = new Set(prev)
+          next.add(key)
+          return next
+        })
+        const playId = setTimeout(() => {
+          if (cancelled) return
+          setActiveGlints(prev => {
+            const next = new Set(prev)
+            next.delete(key)
+            return next
+          })
+          scheduleForKey(key) // this card reschedules itself independently
+        }, 1500) // sweep duration, matches dashGlintSweep animation
+        timeouts.push(playId)
+      }, delay)
+      timeouts.push(waitId)
+    }
+
+    GLINT_CARD_KEYS.forEach(scheduleForKey)
+
+    return () => { cancelled = true; timeouts.forEach(clearTimeout) }
+  }, [GLINT_CARD_KEYS])
+
   if (loading) {
     return (
       <div className="flex flex-col max-w-[800px] mx-auto">
@@ -278,6 +320,10 @@ export default function Dashboard() {
     { label: 'Community',   sub: 'See what\'s new', to: '/feed',    bg: 'linear-gradient(135deg,#00e5ff,#4f8ef7)', icon: Rss },
   ]
 
+  // Renders the glass-shine sweep for a card only when it's this card's turn
+  const Glint = ({ cardKey }: { cardKey: string }) =>
+    activeGlints.has(cardKey) ? <span className="dash-glint-sweep" aria-hidden="true" /> : null
+
   return (
     <div className="flex flex-col max-w-[800px] mx-auto">
       <PageOnboarding pageKey="dashboard" />
@@ -343,10 +389,11 @@ export default function Dashboard() {
       <section className="su d3">
         <p className="section-label">Quick Actions</p>
         <div className="grid grid-cols-3 gap-2">
-          {QUICK_ACTIONS.map((a) => {
+          {QUICK_ACTIONS.map((a, i) => {
             const Icon = a.icon
             return (
-              <Link key={a.label} to={a.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: '12px 8px', textAlign: 'center', cursor: 'pointer' }}>
+              <Link key={a.label} to={a.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: '12px 8px', textAlign: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+                <Glint cardKey={`qa-${i}`} />
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: a.bg, boxShadow: 'var(--elev-raise)', color: '#fff', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon size={16} />
                 </div>
@@ -365,8 +412,9 @@ export default function Dashboard() {
           to="/multiplayer"
           onClick={(e) => ripple(e)}
           className="neu-card ripple-wrap"
-          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 18 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 18, position: 'relative', overflow: 'hidden' }}
         >
+          <Glint cardKey="multiplayer" />
           <div style={{ width: 52, height: 52, borderRadius: 16, flexShrink: 0, background: 'linear-gradient(135deg, var(--blue), var(--purple))', boxShadow: '0 4px 14px rgba(79,142,247,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Swords size={24} style={{ color: '#fff' }} />
           </div>
@@ -401,10 +449,11 @@ export default function Dashboard() {
             { label: 'Games',            desc: 'Play, compete & rank up',       icon: Gamepad2, iconBg: 'rgba(155,109,255,0.12)', iconColor: '#9b6dff', to: '/games'           },
             { label: 'Weekly Missions',  desc: 'Complete missions, earn XP',    icon: Sparkles, iconBg: 'rgba(245,197,66,0.12)',  iconColor: '#f5c542', to: '/weekly-missions' },
             { label: 'Missions',         desc: 'Watch ads, earn Orbs',          icon: PlayCircle, iconBg: 'rgba(52,211,153,0.12)', iconColor: '#34d399', to: '/wallet?tab=orbs' },
-          ].map((tile) => {
+          ].map((tile, i) => {
             const Icon = tile.icon
             return (
-              <Link key={tile.label} to={tile.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: 14, cursor: 'pointer' }}>
+              <Link key={tile.label} to={tile.to} onClick={(e) => ripple(e)} className="neu-card ripple-wrap" style={{ padding: 14, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+                <Glint cardKey={`tile-${i}`} />
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: tile.iconBg, boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, color: tile.iconColor }}>
                   <Icon size={16} />
                 </div>
@@ -420,8 +469,9 @@ export default function Dashboard() {
           to="/artifacts"
           onClick={(e) => ripple(e)}
           className="neu-card ripple-wrap"
-          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, marginTop: 12 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, marginTop: 12, position: 'relative', overflow: 'hidden' }}
         >
+          <Glint cardKey="artifacts" />
           <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(239,68,68,0.12)', boxShadow: 'var(--elev-raise-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
             <Fan size={20} />
           </div>
@@ -463,6 +513,7 @@ export default function Dashboard() {
             position: 'relative', overflow: 'hidden', textDecoration: 'none',
           }}
         >
+          <Glint cardKey="halo" />
           <div style={{
             position: 'absolute', bottom: -20, right: -20,
             width: 140, height: 140, borderRadius: '50%',
@@ -501,7 +552,30 @@ export default function Dashboard() {
         </Link>
       </section>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Lazy random glass-glint sweep — plays once on whichever card is
+           currently "it", then goes quiet until the next random turn. */
+        .dash-glint-sweep {
+          position: absolute;
+          top: -50%;
+          left: -60%;
+          width: 42%;
+          height: 200%;
+          background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.32) 45%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.32) 55%, transparent 100%);
+          transform: skewX(-18deg);
+          animation: dashGlintSweep 1.4s ease-in-out forwards;
+          pointer-events: none;
+          z-index: 2;
+        }
+        @keyframes dashGlintSweep {
+          0%   { left: -60%; opacity: 0; }
+          10%  { opacity: 1; }
+          55%  { opacity: 1; }
+          100% { left: 130%; opacity: 0; }
+        }
+      `}</style>
     </div>
   )
         }
