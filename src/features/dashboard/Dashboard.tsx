@@ -194,46 +194,35 @@ export default function Dashboard() {
     [profile, currentHour],
   )
 
-  // ── Lazy random "glint" — EVERY card runs its own independent random
-  // cycle: each one, on its own random schedule (~7–18s apart), plays a
-  // single glass shine sweep then goes quiet until its own next turn.
-  // Cards are not coordinated, so two can glint at once by chance, or none
-  // for a while — it's per-card, not a single spotlight touring the grid.
+  // ── Lazy random "glint" — one dashboard card at a time gets a glass
+  // shine sweep, on a random delay, so it feels like a subtle temptation
+  // rather than a busy/looping effect on every card at once.
   const GLINT_CARD_KEYS = useMemo(
     () => ['qa-0', 'qa-1', 'qa-2', 'multiplayer', 'tile-0', 'tile-1', 'tile-2', 'tile-3', 'artifacts', 'halo'],
     [],
   )
-  const [activeGlints, setActiveGlints] = useState<Set<string>>(new Set())
+  const [glintCard, setGlintCard] = useState<string | null>(null)
   useEffect(() => {
+    let waitId: ReturnType<typeof setTimeout>
+    let playId: ReturnType<typeof setTimeout>
     let cancelled = false
-    const timeouts: ReturnType<typeof setTimeout>[] = []
 
-    const scheduleForKey = (key: string) => {
-      const delay = 7000 + Math.random() * 11000 // lazy: every ~7–18s, per card
-      const waitId = setTimeout(() => {
+    const scheduleNext = () => {
+      const delay = 7000 + Math.random() * 11000 // lazy: every ~7–18s
+      waitId = setTimeout(() => {
         if (cancelled) return
-        setActiveGlints(prev => {
-          const next = new Set(prev)
-          next.add(key)
-          return next
-        })
-        const playId = setTimeout(() => {
+        const key = GLINT_CARD_KEYS[Math.floor(Math.random() * GLINT_CARD_KEYS.length)]
+        setGlintCard(key)
+        playId = setTimeout(() => {
           if (cancelled) return
-          setActiveGlints(prev => {
-            const next = new Set(prev)
-            next.delete(key)
-            return next
-          })
-          scheduleForKey(key) // this card reschedules itself independently
+          setGlintCard(null)
+          scheduleNext()
         }, 1500) // sweep duration, matches dashGlintSweep animation
-        timeouts.push(playId)
       }, delay)
-      timeouts.push(waitId)
     }
+    scheduleNext()
 
-    GLINT_CARD_KEYS.forEach(scheduleForKey)
-
-    return () => { cancelled = true; timeouts.forEach(clearTimeout) }
+    return () => { cancelled = true; clearTimeout(waitId); clearTimeout(playId) }
   }, [GLINT_CARD_KEYS])
 
   if (loading) {
@@ -322,7 +311,7 @@ export default function Dashboard() {
 
   // Renders the glass-shine sweep for a card only when it's this card's turn
   const Glint = ({ cardKey }: { cardKey: string }) =>
-    activeGlints.has(cardKey) ? <span className="dash-glint-sweep" aria-hidden="true" /> : null
+    glintCard === cardKey ? <span className="dash-glint-sweep" aria-hidden="true" /> : null
 
   return (
     <div className="flex flex-col max-w-[800px] mx-auto">
