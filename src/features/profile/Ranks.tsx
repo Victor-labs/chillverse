@@ -221,7 +221,7 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
         />
       </div>
 
-      {/* Name + rank */}
+      {/* Name + rank + level */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...nameStyleFor(entry) }}>
@@ -229,15 +229,16 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
           </span>
           {isMe && <span style={{ fontSize: 9, fontWeight: 800, background: 'var(--accent)', color: '#fff', borderRadius: 5, padding: '1px 5px' }}>YOU</span>}
         </div>
-        <div style={{ fontSize: 11, color: tier.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ fontSize: 11, color: tier.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
           <RankBadge tier={tier} size={14} /> {tier.name}
         </div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Lv {entry.level}</div>
       </div>
 
-      {/* XP */}
+      {/* XP (lifetime) + Rank Score (active_rank_xp — drives sort order & badge) */}
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{fmtXP(entry.active_rank_xp)}</div>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>XP · Lv {entry.level}</div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{fmtXP(entry.xp)} <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>XP</span></div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: tier.color, fontFamily: 'monospace', marginTop: 2 }}>{fmtXP(entry.active_rank_xp)} <span style={{ fontSize: 9, fontWeight: 700 }}>RS</span></div>
       </div>
     </div>
   )
@@ -478,17 +479,17 @@ export default function Ranks() {
             }}>
               {userTier.name}
             </div>
-            {decayed ? (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                {fmtXP(activeRankXp)} Active XP · <span style={{ color: 'var(--text-muted)' }}>{fmtXP(userXp)} Lifetime XP</span>
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                {fmtXP(userXp)} XP · Level {profile?.level ?? 1}
-              </div>
-            )}
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>
+              Level {profile?.level ?? 1}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>
+              {fmtXP(userXp)} <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', fontFamily: 'inherit' }}>XP</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: userTier.color, fontFamily: 'monospace', marginTop: 2 }}>
+              {fmtXP(activeRankXp)} <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'inherit' }}>Rank Score</span>
+            </div>
             {decayed && (
-              <div style={{ marginTop: 4, fontSize: 10.5, fontWeight: 700, color: '#ffb44d' }}>
+              <div style={{ marginTop: 6, fontSize: 10.5, fontWeight: 700, color: '#ffb44d' }}>
                 ⚠ Decayed from {lifetimeTier.name} — earn XP to restore it
               </div>
             )}
@@ -789,7 +790,7 @@ export default function Ranks() {
                   <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8, marginBottom: 28, height: 190 }}>
                     {/* Layout order: 2nd · 1st · 3rd */}
                     {([leaderboard[1], leaderboard[0], leaderboard[2]] as LeaderboardEntry[]).map((entry, i) => {
-                      const podiumHeights = [100, 140, 78]
+                      const podiumHeights = [112, 155, 90]
                       const medals = ['🥈', '🥇', '🥉']
                       const isFirst = i === 1
                       const entryTier = getUserRankTier(entry.active_rank_xp)
@@ -810,8 +811,9 @@ export default function Ranks() {
                           {/* Podium block */}
                           <div style={{ width: '100%', height: podiumHeights[i], borderRadius: '10px 10px 0 0', background: `linear-gradient(180deg, ${entryTier.color}30, ${entryTier.color}10)`, border: `1px solid ${entryTier.color}40`, boxShadow: isFirst ? `0 -4px 18px ${entryTier.glowColor}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
                             <RankBadge tier={entryTier} size={isFirst ? 22 : 18} />
-                            <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.active_rank_xp)}</div>
+                            <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.xp)}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>XP</div>
+                            <div style={{ fontSize: isFirst ? 11 : 9.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace', marginTop: 1 }}>{fmtXP(entry.active_rank_xp)} <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)' }}>RS</span></div>
                           </div>
                         </div>
                       )
