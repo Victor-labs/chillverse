@@ -12,10 +12,11 @@
 // var(--surface), etc., so overriding those custom properties here is
 // enough to re-skin the whole blog without touching any of those files.
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { Newspaper, Sun, Moon } from 'lucide-react'
 import Logo from './Logo'
 import Wordmark from './Wordmark'
+import Footer from './Footer'
 import { useAuth } from '../features/auth/useAuth'
 import { ripple } from '../shared/lib/ripple'
 
@@ -80,13 +81,20 @@ function readStoredAppearance(): BlogAppearance {
 export default function BlogLayout() {
   const { session } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // /editorial-room is a distinct public surface sharing this chrome with
+  // /blog, but it isn't the blog: no "Blog" badge, no light/dark toggle
+  // (it always renders on the landing page's dark palette via
+  // EditorialRoom's own `landing-root` background), and it gets the real
+  // site Footer instead of the blog's slim one.
+  const isEditorialRoom = location.pathname.startsWith('/editorial-room')
   const [appearance, setAppearance] = useState<BlogAppearance>(readStoredAppearance)
 
   useEffect(() => {
     localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance)
   }, [appearance])
 
-  const palette = appearance === 'dark' ? DARK_PALETTE : LIGHT_PALETTE
+  const palette = isEditorialRoom ? DARK_PALETTE : (appearance === 'dark' ? DARK_PALETTE : LIGHT_PALETTE)
   const scopeStyle = { ...palette, minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' } as CSSProperties
 
   return (
@@ -112,33 +120,37 @@ export default function BlogLayout() {
           <span className="blog-header-wordmark">
             <Wordmark size={17} animated={false} />
           </span>
-          <span style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            fontSize: 12, fontWeight: 800, color: 'var(--text-dim)',
-            background: 'var(--surface2)', border: '1px solid var(--border)',
-            borderRadius: 999, padding: '4px 10px', marginLeft: 2, flexShrink: 0,
-          }}>
-            <Newspaper size={12} /> <span className="blog-header-badge-text">Blog</span>
-          </span>
+          {!isEditorialRoom && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              fontSize: 12, fontWeight: 800, color: 'var(--text-dim)',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 999, padding: '4px 10px', marginLeft: 2, flexShrink: 0,
+            }}>
+              <Newspaper size={12} /> <span className="blog-header-badge-text">Blog</span>
+            </span>
+          )}
         </Link>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span className="blog-header-link"><HeaderLink to="/blog">Latest</HeaderLink></span>
           <span className="blog-header-link"><HeaderLink to="/blog/updates">Update Log</HeaderLink></span>
 
-          <button
-            type="button"
-            onClick={(e) => { ripple(e); setAppearance(a => a === 'dark' ? 'light' : 'dark') }}
-            className="ripple-wrap"
-            title={appearance === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={{
-              marginLeft: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 34, height: 34, borderRadius: 999,
-              background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-dim)',
-            }}
-          >
-            {appearance === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
+          {!isEditorialRoom && (
+            <button
+              type="button"
+              onClick={(e) => { ripple(e); setAppearance(a => a === 'dark' ? 'light' : 'dark') }}
+              className="ripple-wrap"
+              title={appearance === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{
+                marginLeft: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 34, height: 34, borderRadius: 999,
+                background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-dim)',
+              }}
+            >
+              {appearance === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          )}
 
           <button
             type="button"
@@ -159,21 +171,25 @@ export default function BlogLayout() {
         <Outlet />
       </main>
 
-      <footer style={{
-        borderTop: '1px solid var(--border)', padding: '24px clamp(1rem, 4vw, 2.5rem)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Logo size={18} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Chillverse</span>
-        </div>
-        <div style={{ display: 'flex', gap: 18 }}>
-          <Link to="/about" style={footerLinkStyle}>About</Link>
-          <Link to="/privacy" style={footerLinkStyle}>Privacy</Link>
-          <Link to="/terms" style={footerLinkStyle}>Terms</Link>
-          <Link to="/" style={footerLinkStyle}>Chillverse Home</Link>
-        </div>
-      </footer>
+      {isEditorialRoom ? (
+        <Footer />
+      ) : (
+        <footer style={{
+          borderTop: '1px solid var(--border)', padding: '24px clamp(1rem, 4vw, 2.5rem)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Logo size={18} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Chillverse</span>
+          </div>
+          <div style={{ display: 'flex', gap: 18 }}>
+            <Link to="/about" style={footerLinkStyle}>About</Link>
+            <Link to="/privacy" style={footerLinkStyle}>Privacy</Link>
+            <Link to="/terms" style={footerLinkStyle}>Terms</Link>
+            <Link to="/" style={footerLinkStyle}>Chillverse Home</Link>
+          </div>
+        </footer>
+      )}
     </div>
   )
 }
