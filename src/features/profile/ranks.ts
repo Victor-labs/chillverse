@@ -335,6 +335,11 @@ export function fmtXPValue(n: number): string {
   return String(n)
 }
 
+/** Format the active_rank_xp "Rank Score" the same way as fmtXP — used wherever it's paired with an "RS" label. */
+export function fmtRankScore(n: number): string {
+  return fmtXP(n)
+}
+
 // ── Rank groups — used by Rank Tags (Chat + Posts) ───────────────────────
 // The 8 broad groups a Staff/Moderator/Admin can @tag (e.g. "@Gold" notifies
 // everyone from Gold I to Gold III). Derived from RANK_TIERS so the group
