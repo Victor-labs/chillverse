@@ -14,6 +14,8 @@ export interface Profile {
   streak: number
   longest_streak: number
   last_streak_date: string | null
+  rank_shield_until: string | null       // ISO timestamp; while in the future, weekly rank decay skips this profile
+  xp_booster_until: string | null        // ISO timestamp; while in the future, XP gains are doubled (see sync_active_rank_xp trigger)
   created_at: string
   connected_platform: string | null
   // ── Edit Profile fields ──
@@ -130,7 +132,7 @@ export interface FeedItem {
 // ── Mall ────────────────────────────────────────────────────────────────────
 
 export type MallRarity = 'Common' | 'Rare' | 'Epic' | 'Mythic'
-export type MallItemCategory = 'avatar_skin' | 'profile_pic' | 'chat_theme' | 'xp_booster' | 'banner'
+export type MallItemCategory = 'avatar_skin' | 'profile_pic' | 'chat_theme' | 'xp_booster' | 'banner' | 'rank_shield' | 'streak_freeze'
 
 /** user_items.item_type — broader than MallItemCategory since some items
  *  (album pics, artifacts) are granted directly via rank rewards rather
@@ -145,6 +147,7 @@ export interface MallItem {
   description: string | null
   rarity: MallRarity
   price_gems: number | null
+  price_orbs: number | null
   unlock_xp: number | null
   is_pro_locked: boolean
   unlocks_profile_pic_id: string | null
