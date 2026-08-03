@@ -5,8 +5,8 @@ import Logo from './Logo'
 import Wordmark from './Wordmark'
 
 // Items with an href go to a real place. Items with href: null are
-// placeholders — rendered as plain, unclickable text for now (Work at
-// Chillverse / Brand / Reviews don't have pages yet).
+// placeholders — rendered as plain, unclickable text for now (Brand /
+// Reviews don't have pages yet).
 type FooterLink = { label: string; href: string | null; external?: boolean }
 
 const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
@@ -24,7 +24,7 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
       { label: 'About', href: '/about' },
       { label: 'Contact', href: 'mailto:chillverserelationoffice@gmail.com' },
       { label: 'Editorial room', href: '/editorial-room' },
-      { label: 'Work at Chillverse', href: null },
+      { label: 'Work at Chillverse', href: '/work' },
       { label: 'Brand', href: null },
     ],
   },
