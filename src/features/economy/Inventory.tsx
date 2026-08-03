@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Package, Shirt, Zap, Image as ImageIcon,
-  X, CheckCircle2, CircleDashed, Sparkles,
+  X, CheckCircle2, CircleDashed, Sparkles, Shield, Snowflake, Clock,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
@@ -10,6 +10,7 @@ import { useAuth } from '../auth/useAuth'
 import { useProfile } from '../profile/useProfile'
 import { updateMissionProgress } from '../missions/weeklyMissions'
 import type { MallItem, MallRarity } from '../../shared/types'
+import ConsumableIcon, { isConsumableIconCategory } from './ConsumableIcon'
 
 /* ══════════════════════════════════════════════════
    TYPES
@@ -106,21 +107,31 @@ function EquipModal({
   entry,
   onEquip,
   onUnequip,
+  onUse,
+  using,
+  activeUntil,
   onClose,
 }: {
   entry: InventoryEntry
   onEquip: () => void
   onUnequip: () => void
+  onUse: () => void
+  using: boolean
+  activeUntil: string | null
   onClose: () => void
 }) {
   const { item } = entry
   const color = RARITY_COLOR[item.rarity]
   const isEquipped = entry.is_equipped
+  const isManualConsumable = item.category === 'rank_shield' || item.category === 'xp_booster'
+  const isAutoConsumable = item.category === 'streak_freeze'
 
   const categoryLabel =
-    item.category === 'avatar_skin'  ? 'Avatar' :
-    item.category === 'xp_booster'   ? 'Consumable' :
-    item.sub_category === 'album'    ? 'Album' : 'Profile Pic'
+    item.category === 'avatar_skin'    ? 'Avatar' :
+    item.category === 'xp_booster'     ? 'Consumable' :
+    item.category === 'rank_shield'    ? 'Consumable' :
+    item.category === 'streak_freeze'  ? 'Consumable' :
+    item.sub_category === 'album'      ? 'Album' : 'Profile Pic'
 
   return (
     <div
@@ -152,18 +163,27 @@ function EquipModal({
           <X size={13} />
         </button>
 
-        {/* Image placeholder */}
+        {/* Image */}
         <div style={{
           width: '100%', height: 160, borderRadius: 16, marginBottom: 16,
-          background: item.image_url
+          background: isConsumableIconCategory(item.category)
+            ? undefined
+            : item.image_url
             ? `url(${item.image_url}) center/cover`
             : `linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(155,109,255,0.08))`,
           border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
         }}>
-          {!item.image_url && (
+          {isConsumableIconCategory(item.category) ? (
+            <ConsumableIcon
+              category={item.category}
+              imageUrl={item.image_url}
+              fit="contain"
+              style={{ width: '100%', height: '100%' }}
+            />
+          ) : !item.image_url ? (
             <Package size={36} style={{ color: 'rgba(255,255,255,0.15)' }} />
-          )}
+          ) : null}
         </div>
 
         {/* Category chip */}
@@ -203,8 +223,47 @@ function EquipModal({
           </div>
         )}
 
-        {/* Equip / Unequip button */}
-        {isEquipped ? (
+        {/* Use / Equip / Unequip / auto-info */}
+        {isManualConsumable ? (
+          <>
+            {activeUntil && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)',
+                background: 'var(--surface2)', borderRadius: 10, padding: '8px 10px', marginBottom: 10,
+              }}>
+                <Clock size={12} />
+                Active until {new Date(activeUntil).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </div>
+            )}
+            <button
+              onClick={(e) => { ripple(e); onUse() }}
+              className="ripple-wrap"
+              disabled={using}
+              style={{
+                width: '100%', padding: 13, borderRadius: 14, border: 'none',
+                cursor: using ? 'not-allowed' : 'pointer',
+                background: using ? 'var(--surface3)' : 'linear-gradient(135deg, var(--accent), var(--accent2))',
+                color: using ? 'var(--text-muted)' : '#fff', fontSize: 14, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                boxShadow: using ? 'none' : '0 4px 18px color-mix(in srgb, var(--accent) 35%, transparent)',
+              }}
+            >
+              {item.category === 'rank_shield' ? <Shield size={15} /> : <Zap size={15} />}
+              {using ? 'Activating…' : activeUntil ? 'Use Another' : 'Use'}
+            </button>
+          </>
+        ) : isAutoConsumable ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            textAlign: 'center', padding: 13, borderRadius: 14,
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            fontSize: 12, color: 'var(--text-dim)', fontWeight: 600, lineHeight: 1.5,
+          }}>
+            <Snowflake size={15} style={{ color: '#6dd5ff', flexShrink: 0 }} />
+            Applies automatically the next time you miss a day — no action needed.
+          </div>
+        ) : isEquipped ? (
           <button
             onClick={(e) => { ripple(e); onUnequip() }}
             className="ripple-wrap"
@@ -241,7 +300,7 @@ function EquipModal({
 /* ══════════════════════════════════════════════════
    ITEM CARD
 ══════════════════════════════════════════════════ */
-function InventoryCard({ entry, onTap }: { entry: InventoryEntry; onTap: () => void }) {
+function InventoryCard({ entry, onTap, activeUntil }: { entry: InventoryEntry; onTap: () => void; activeUntil?: string | null }) {
   const { item } = entry
   const color = RARITY_COLOR[item.rarity]
   const isMythic = item.rarity === 'Mythic'
@@ -274,16 +333,32 @@ function InventoryCard({ entry, onTap }: { entry: InventoryEntry; onTap: () => v
         }} />
       )}
 
+      {/* Active-consumable badge */}
+      {activeUntil && (
+        <div style={{
+          position: 'absolute', top: 6, left: 6, zIndex: 1,
+          fontSize: 8, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase',
+          color: '#fff', background: 'rgba(62,207,142,0.9)',
+          padding: '2px 6px', borderRadius: 6,
+        }}>
+          Active
+        </div>
+      )}
+
       {/* Image */}
       <div style={{
         width: '100%', aspectRatio: '1 / 1', borderRadius: 12, marginBottom: 8,
-        background: item.image_url
+        background: isConsumableIconCategory(item.category)
+          ? undefined
+          : item.image_url
           ? `url(${item.image_url}) center/cover`
           : `linear-gradient(135deg, ${color}18, ${color}08)`,
         border: `1px solid ${color}22`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
       }}>
-        {!item.image_url && item.animated_url && /\.(mp4|webm)$/i.test(item.animated_url) ? (
+        {isConsumableIconCategory(item.category) ? (
+          <ConsumableIcon category={item.category} imageUrl={item.image_url} style={{ width: '100%', height: '100%' }} />
+        ) : !item.image_url && item.animated_url && /\.(mp4|webm)$/i.test(item.animated_url) ? (
           <video src={item.animated_url} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : !item.image_url ? (
           <Package size={22} style={{ color: `${color}55` }} />
@@ -342,10 +417,21 @@ export default function Inventory() {
   const { session } = useAuth()
   const userId = session?.user?.id ?? null
 
-  const { refetch: refetchProfile } = useProfile()
+  const { profile, refetch: refetchProfile } = useProfile()
   const { inventory, setInventory, loading } = useInventory(userId)
   const [selected, setSelected] = useState<InventoryEntry | null>(null)
   const [toast, setToast]       = useState<ToastMsg | null>(null)
+  const [using, setUsing]       = useState(false)
+
+  // Returns the ISO timestamp a manual consumable is active until, or null
+  // if it's not currently active (or isn't a rank_shield/xp_booster).
+  const activeUntilFor = useCallback((item: MallItem): string | null => {
+    const until =
+      item.category === 'rank_shield' ? profile?.rank_shield_until :
+      item.category === 'xp_booster'  ? profile?.xp_booster_until :
+      null
+    return until && new Date(until) > new Date() ? until : null
+  }, [profile])
 
   const equip = useCallback(async (entry: InventoryEntry) => {
     const { item } = entry
@@ -416,6 +502,38 @@ export default function Inventory() {
     }
     refetchProfile()
   }, [setInventory, userId, refetchProfile])
+
+  const useConsumable = useCallback(async (entry: InventoryEntry) => {
+    if (!userId || using) return
+    const { item } = entry
+    setUsing(true)
+    try {
+      const { error } = await supabase.rpc('use_consumable', { p_user_id: userId, p_item_id: item.id })
+      if (error) {
+        if (error.message === 'not_owned') {
+          alert('You no longer own this item.')
+        } else if (error.message === 'not_manually_usable') {
+          alert('This item is applied automatically — no action needed.')
+        } else {
+          console.error('use_consumable error:', error)
+          alert('Could not use this item. Please try again.')
+        }
+        return
+      }
+
+      // Optimistic: decrement quantity, drop the entry entirely once it
+      // hits 0 (matches use_consumable deleting the row server-side).
+      setInventory(prev => prev
+        .map(e => e.id === entry.id ? { ...e, quantity: e.quantity - 1 } : e)
+        .filter(e => e.quantity > 0)
+      )
+      setToast({ text: `${item.name} activated!`, equipped: true })
+      setSelected(null)
+      refetchProfile()
+    } finally {
+      setUsing(false)
+    }
+  }, [userId, using, setInventory, refetchProfile])
 
   const avatars     = inventory.filter(e => e.item.category === 'avatar_skin')
   const consumables = inventory.filter(e => e.item.category === 'xp_booster' || e.item.is_consumable)
@@ -492,7 +610,7 @@ export default function Inventory() {
           <div style={{ marginBottom: 28, animation: 'invSectionIn 0.3s ease-out both', animationDelay: '0.07s' }}>
             <SectionHeader icon={<Zap size={16} style={{ color: '#f5c542' }} />} label="Consumables" count={consumables.length} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {consumables.map(e => <InventoryCard key={e.id} entry={e} onTap={() => setSelected(e)} />)}
+              {consumables.map(e => <InventoryCard key={e.id} entry={e} onTap={() => setSelected(e)} activeUntil={activeUntilFor(e.item)} />)}
             </div>
           </div>
         )}
@@ -536,6 +654,9 @@ export default function Inventory() {
           entry={selected}
           onEquip={() => equip(selected)}
           onUnequip={() => unequip(selected)}
+          onUse={() => useConsumable(selected)}
+          using={using}
+          activeUntil={activeUntilFor(selected.item)}
           onClose={() => setSelected(null)}
         />
       )}

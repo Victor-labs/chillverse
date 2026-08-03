@@ -14,6 +14,7 @@ import { useProfile } from '../profile/useProfile'
 import { isProActive } from '../../shared/lib/proPlans'
 import { useMallItems } from './useMallItems'
 import { useWallet } from './useWallet'
+import ConsumableIcon, { isConsumableIconCategory } from './ConsumableIcon'
 import type { MallItem, MallRarity } from '../../shared/types'
 import PageOnboarding from '../onboarding/PageOnboarding'
 import ProfileEffectPreview from './ProfileEffectPreview'
@@ -110,6 +111,9 @@ function getLockInfo(item: MallItem, hasOwnedRequirement: boolean, isPro: boolea
 // video itself with no autoplay — the browser just displays frame 1, which
 // looks identical to a static poster without needing a separate asset.
 function CardThumb({ item, style }: { item: MallItem; style: React.CSSProperties }) {
+  if (isConsumableIconCategory(item.category)) {
+    return <ConsumableIcon category={item.category} imageUrl={item.image_url} style={style} />
+  }
   if (item.image_url) {
     return <div style={{ ...style, background: `url(${item.image_url}) center/cover` }} />
   }
@@ -201,6 +205,10 @@ function RectCard({ item, onSelect, onWishlist, wishlisted, likeCount = 0 }: { i
           ) : item.price_gems != null ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 700, color: 'var(--text)' }}>
               💎 {item.price_gems.toLocaleString()}
+            </span>
+          ) : item.price_orbs != null ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 700, color: 'var(--text)' }}>
+              🔮 {item.price_orbs.toLocaleString()}
             </span>
           ) : item.unlock_xp != null ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 700, color: 'var(--text)' }}>
@@ -301,6 +309,9 @@ const BUY_LABEL: Partial<Record<MallItem['category'], string>> = {
   profile_pic: 'Buy Profile Pic',
   banner: 'Buy Banner',
   avatar_skin: 'Buy Avatar',
+  rank_shield: 'Buy Rank Shield',
+  xp_booster: 'Buy XP Booster',
+  streak_freeze: 'Buy Streak Freeze',
 }
 
 // Shared sizing for the "profile header mockup" preview (banner + the
@@ -323,10 +334,11 @@ const BUY_SHEET_HEIGHT_VH = 85
 const PIC_THUMB_SIZE = 108
 
 function ItemModal({
-  item, walletBalance, userId, onClose, onPurchased, onWishlist, wishlisted, previewProfile, ownerCount = 0,
+  item, walletBalance, orbBalance, userId, onClose, onPurchased, onWishlist, wishlisted, previewProfile, ownerCount = 0,
 }: {
   item: MallItem
   walletBalance: number
+  orbBalance: number
   userId: string | null
   onClose: () => void
   onPurchased: (item: MallItem) => void
@@ -338,7 +350,12 @@ function ItemModal({
   const isPro = useContext(MallProContext)
   const userXp = useContext(MallXpContext)
   const lock = getLockInfo(item, false, isPro, userXp)
-  const canAfford = item.price_gems != null && walletBalance >= item.price_gems
+  const canAfford = item.price_gems != null
+    ? walletBalance >= item.price_gems
+    : item.price_orbs != null
+    ? orbBalance >= item.price_orbs
+    : false
+  const isConsumable3 = isConsumableIconCategory(item.category)
   const [buying, setBuying] = useState(false)
   const [alreadyOwned, setAlreadyOwned] = useState(false)
   const [checkingOwn, setCheckingOwn] = useState(true)
@@ -655,7 +672,14 @@ function ItemModal({
             borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'var(--surface2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14,
           }}>
-            {item.animated_url ? (
+            {isConsumable3 ? (
+              <ConsumableIcon
+                category={item.category as 'rank_shield' | 'xp_booster' | 'streak_freeze'}
+                imageUrl={item.image_url}
+                fit="contain"
+                style={{ width: '100%', height: '100%', borderRadius: 12 }}
+              />
+            ) : item.animated_url ? (
               /\.(mp4|webm)$/i.test(item.animated_url) ? (
                 <video
                   src={item.animated_url}
@@ -688,7 +712,10 @@ function ItemModal({
         )}
 
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center', marginBottom: 10 }}>
-          Give your profile a distinct look
+          {item.category === 'rank_shield' ? 'Protects your Rank Score from weekly decay'
+            : item.category === 'xp_booster' ? 'Doubles your XP for a limited time'
+            : item.category === 'streak_freeze' ? 'Auto-saves a missed streak day'
+            : 'Give your profile a distinct look'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
           <Users size={14} color="var(--text-dim)" />
@@ -712,14 +739,19 @@ function ItemModal({
                 💎 {item.price_gems.toLocaleString()} Diamonds
               </div>
             )}
+            {item.price_orbs != null && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--surface2)', borderRadius: 12, padding: 12, marginBottom: 14, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
+                🔮 {item.price_orbs.toLocaleString()} Orbs
+              </div>
+            )}
             {isXpUnlock && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--surface2)', borderRadius: 12, padding: 12, marginBottom: 14, fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
                 <Zap size={15} color="#f5c542" /> {item.unlock_xp!.toLocaleString()} XP reached — free unlock
               </div>
             )}
-            {item.price_gems != null && !canAfford && (
+            {(item.price_gems != null || item.price_orbs != null) && !canAfford && (
               <div style={{ fontSize: 11, color: '#ff6b6b', textAlign: 'center', marginBottom: 10 }}>
-                Not enough Diamonds to buy this item.
+                Not enough {item.price_orbs != null ? 'Orbs' : 'Diamonds'} to buy this item.
               </div>
             )}
             <button
@@ -736,7 +768,7 @@ function ItemModal({
                 transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
               }}
             >
-              <ShoppingBag size={14} /> {buying ? 'Buying…' : item.price_gems != null ? buyLabelBase : 'Unlock'}
+              <ShoppingBag size={14} /> {buying ? 'Buying…' : (item.price_gems != null || item.price_orbs != null) ? buyLabelBase : 'Unlock'}
             </button>
           </>
         )}
@@ -937,6 +969,7 @@ export default function Mall() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
   const [ownerCounts, setOwnerCounts] = useState<Record<string, number>>({})
   const diamondBalance = wallet?.gem_balance ?? 0
+  const orbBalance = wallet?.orb_balance ?? 0
 
   // Load like counts for all visible items + subscribe to realtime changes
   useEffect(() => {
@@ -1039,8 +1072,13 @@ export default function Mall() {
           <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', boxShadow: 'var(--elev-raise-sm)' }}>
             <ArrowLeft size={15} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-            💎 {diamondBalance.toLocaleString()} Diamonds
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+              🔮 {orbBalance.toLocaleString()} Orbs
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', padding: '7px 13px', borderRadius: 20, fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+              💎 {diamondBalance.toLocaleString()} Diamonds
+            </div>
           </div>
         </div>
 
@@ -1119,11 +1157,15 @@ export default function Mall() {
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{item.name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <RarityBadge rarity={item.rarity} />
-                    {item.price_gems != null && (
+                    {item.price_gems != null ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
                         💎 {item.price_gems.toLocaleString()}
                       </span>
-                    )}
+                    ) : item.price_orbs != null ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
+                        🔮 {item.price_orbs.toLocaleString()}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -1144,6 +1186,7 @@ export default function Mall() {
         <ItemModal
           item={selectedItem}
           walletBalance={diamondBalance}
+          orbBalance={orbBalance}
           userId={userId}
           onClose={() => setSelectedItem(null)}
           onWishlist={handleWishlist}
