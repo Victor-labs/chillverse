@@ -75,6 +75,10 @@ const UpdateLog           = lazy(() => import('../features/blog/UpdateLog'))
 const AdminBlog           = lazy(() => import('../features/blog/AdminBlog'))
 const EditorialRoom       = lazy(() => import('../features/marketing/EditorialRoom'))
 const AnnouncementPage    = lazy(() => import('../features/marketing/AnnouncementPage'))
+const WorkLanding         = lazy(() => import('../features/careers/WorkLanding'))
+const JobDetail           = lazy(() => import('../features/careers/JobDetail'))
+const JobApplyComingSoon  = lazy(() => import('../features/careers/JobApplyComingSoon'))
+const CareersAdmin        = lazy(() => import('../features/careers/admin/CareersAdmin'))
 
 const Fallback = () => (
   <div style={{ color: 'var(--text-dim)', padding: 40, textAlign: 'center' }}>Loading…</div>
@@ -179,6 +183,14 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/privacy"         element={<Privacy />} />
         <Route path="/terms"           element={<Terms />} />
+
+        {/* Careers — public, reachable signed-in or not (like /about, /blog).
+            /work/admin gates itself internally via useModRole, same pattern
+            as /blog/admin. */}
+        <Route path="/work"              element={<Suspense fallback={<Fallback />}><WorkLanding /></Suspense>} />
+        <Route path="/work/admin"        element={<Suspense fallback={<Fallback />}><CareersAdmin /></Suspense>} />
+        <Route path="/work/:slug/apply"  element={<Suspense fallback={<Fallback />}><JobApplyComingSoon /></Suspense>} />
+        <Route path="/work/:slug"        element={<Suspense fallback={<Fallback />}><JobDetail /></Suspense>} />
 
         <Route path="/watch" element={<ProtectedRoute><Suspense fallback={<Fallback />}><Watch /></Suspense></ProtectedRoute>} />
 
