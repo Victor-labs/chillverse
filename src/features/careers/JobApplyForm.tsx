@@ -219,9 +219,13 @@ export default function JobApplyForm() {
               <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--ltext, #f2f0fb)', margin: '0 0 10px' }}>
                 Application sent
               </h1>
-              <p style={{ fontSize: 13.5, color: 'var(--ltext-sec, #9b96c0)', lineHeight: 1.6, maxWidth: 380, margin: '0 auto 24px' }}>
-                Thanks for applying to {job.title}. The Chillverse team will review your application and reach out if
-                there's a fit.
+              <p style={{ fontSize: 13.5, color: 'var(--ltext-sec, #9b96c0)', lineHeight: 1.6, maxWidth: 380, margin: '0 auto 16px' }}>
+                We've successfully received your application and our recruitment team will review it carefully.
+                If your qualifications match what we're looking for, we'll contact you via email with the next
+                steps, which may include an interview or a trial task.
+              </p>
+              <p style={{ fontSize: 12.5, color: 'var(--ltext-muted, #5a5678)', fontWeight: 700, margin: '0 auto 24px' }}>
+                Estimated Review Time: 3–7 business days
               </p>
               <button
                 type="button"
