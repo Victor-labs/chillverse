@@ -18,7 +18,10 @@ const DRIFT = {
   orb: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Landing/Crystal.png',
 }
 
-const FOUNDERS = ['Victor_vk', 'Abdul Hadi']
+const FOUNDERS = [
+  { name: 'Victor_vk', role: 'Founder' },
+  { name: 'Abdul Hadi', role: 'Co-Founder' },
+]
 
 const JSON_LD = [
   {
@@ -198,13 +201,13 @@ export default function About() {
       <section className="relative px-5 sm:px-6 md:px-16 py-4 sm:py-6 max-w-[1200px] mx-auto mb-16 sm:mb-20">
         <h2 className="reveal text-2xl sm:text-3xl font-bold tracking-tight text-center mb-8 sm:mb-10">Founders</h2>
         <div className="reveal grid grid-cols-2 gap-4 sm:gap-6 max-w-md mx-auto">
-          {FOUNDERS.map((name) => (
+          {FOUNDERS.map(({ name, role }) => (
             <div key={name} className="glass-panel-strong glow-pink-tint rounded-[24px] p-6 sm:p-8 text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[var(--violet)] to-[#3d1fb5] flex items-center justify-center mx-auto mb-4">
                 <Crown size={26} className="text-white" />
               </div>
               <p className="text-sm sm:text-base font-bold tracking-wide uppercase">{name}</p>
-              <p className="text-xs text-[var(--ltext-muted)] mt-1">Co-Founder</p>
+              <p className="text-xs text-[var(--ltext-muted)] mt-1">{role}</p>
             </div>
           ))}
         </div>
