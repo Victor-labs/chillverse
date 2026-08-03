@@ -8,7 +8,7 @@ import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { ripple } from '../../shared/lib/ripple'
 import {
   RANK_TIERS, getUserRankTier, getNextRankTier,
-  getRankProgress, fmtXP,
+  getRankProgress, fmtXP, fmtRankScore,
   isRankDecayed, getDecayedRankProgress,
   type RankTier,
 } from './ranks'
@@ -238,7 +238,7 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
       {/* XP (lifetime) + Rank Score (active_rank_xp — drives sort order & badge) */}
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{fmtXP(entry.xp)} <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>XP</span></div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: tier.color, fontFamily: 'monospace', marginTop: 2 }}>{fmtXP(entry.active_rank_xp)} <span style={{ fontSize: 9, fontWeight: 700 }}>RS</span></div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{fmtRankScore(entry.active_rank_xp)} RS</div>
       </div>
     </div>
   )
@@ -485,8 +485,8 @@ export default function Ranks() {
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>
               {fmtXP(userXp)} <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', fontFamily: 'inherit' }}>XP</span>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: userTier.color, fontFamily: 'monospace', marginTop: 2 }}>
-              {fmtXP(activeRankXp)} <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'inherit' }}>Rank Score</span>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {fmtRankScore(activeRankXp)} RS
             </div>
             {decayed && (
               <div style={{ marginTop: 6, fontSize: 10.5, fontWeight: 700, color: '#ffb44d' }}>
@@ -813,7 +813,7 @@ export default function Ranks() {
                             <RankBadge tier={entryTier} size={isFirst ? 22 : 18} />
                             <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.xp)}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>XP</div>
-                            <div style={{ fontSize: isFirst ? 11 : 9.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace', marginTop: 1 }}>{fmtXP(entry.active_rank_xp)} <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)' }}>RS</span></div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{fmtRankScore(entry.active_rank_xp)} RS</div>
                           </div>
                         </div>
                       )
