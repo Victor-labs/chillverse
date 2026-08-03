@@ -64,6 +64,7 @@ const MyTickets           = lazy(() => import('../features/support/MyTickets'))
 const ModerationPanel     = lazy(() => import('../features/moderation/ModerationPanel'))
 const AdminDashboard      = lazy(() => import('../features/admin/AdminDashboard'))
 const AdminUserDetail     = lazy(() => import('../features/admin/AdminUserDetail'))
+const AboutAdminPanel     = lazy(() => import('../features/marketing/AboutAdminPanel'))
 const Leaderboards        = lazy(() => import('../features/leaderboards/Leaderboards'))
 const ChessPage            = lazy(() => import('../features/games/play/ChessPage'))
 const Ludo                 = lazy(() => import('../features/games/play/Ludo'))
@@ -247,6 +248,7 @@ export default function App() {
           <Route path="/moderation"       element={<Suspense fallback={<Fallback />}><ModerationPanel /></Suspense>} />
           <Route path="/admin"            element={<Suspense fallback={<Fallback />}><AdminDashboard /></Suspense>} />
           <Route path="/admin/users/:userId" element={<Suspense fallback={<Fallback />}><AdminUserDetail /></Suspense>} />
+          <Route path="/about/admin"      element={<Suspense fallback={<Fallback />}><AboutAdminPanel /></Suspense>} />
         </Route>
 
         {/* Blog — a separate public surface (like discord.com/blog vs discord.com),
