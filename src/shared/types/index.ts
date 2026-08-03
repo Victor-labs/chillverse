@@ -7,7 +7,9 @@ export interface Profile {
   country: string | null
   interests: string[]
   dob: string | null
-  xp: number
+  xp: number                              // lifetime XP total — never decreases; drives unlocks, rank tags, progress math
+  active_rank_xp: number                  // decaying XP total — drives leaderboard order + displayed rank badge; never exceeds xp
+  last_xp_gain_at: string | null          // ISO timestamp of the most recent XP award; decay grace period counts from this
   level: number
   streak: number
   longest_streak: number
