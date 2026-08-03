@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Trophy, Home, Flame, Gamepad2, ShoppingBag,
   Settings, Zap, X, ChevronLeft, ChevronRight,
-  Package, ChevronDown, Wallet, GamepadIcon, Layers, ShieldCheck, LayoutDashboard,
+  Package, ChevronDown, Wallet, Layers, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
 import { ripple } from '../shared/lib/ripple'
 import { useModRole } from '../features/moderation/useModRole'
@@ -34,15 +34,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',    to: '/dashboard',   icon: Home,        badge: null },
   { label: 'Streak',       to: '/streak',       icon: Flame,       badge: null },
-  {
-    label: 'Games',
-    to: '/games',
-    icon: Gamepad2,
-    badge: null,
-    children: [
-      { label: 'Play Games',    to: '/games',        icon: GamepadIcon },
-    ],
-  },
+  { label: 'Game Zone',    to: '/games',        icon: Gamepad2,    badge: null },
   {
     label: 'Mall',
     to: '/mall',
@@ -96,7 +88,6 @@ export default function Sidebar({ open, collapsed, onClose, onToggleCollapse, pr
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const s = new Set<string>()
     if (pathname === '/mall' || pathname === '/inventory' || pathname === '/wallet') s.add('Mall')
-    if (pathname === '/games' || pathname === '/leaderboards' || pathname === '/exploration') s.add('Games')
     if (pathname === '/settings' || pathname === '/version') s.add('Settings')
     return s
   })
