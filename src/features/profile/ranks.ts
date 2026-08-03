@@ -328,6 +328,13 @@ export function fmtXP(n: number): string {
   return String(n)
 }
 
+/** Same shortening as fmtXP but without the k/M unit letter — for use next to an explicit "XP" label. */
+export function fmtXPValue(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1)
+  if (n >= 1_000)     return (n / 1_000).toFixed(1)
+  return String(n)
+}
+
 // ── Rank groups — used by Rank Tags (Chat + Posts) ───────────────────────
 // The 8 broad groups a Staff/Moderator/Admin can @tag (e.g. "@Gold" notifies
 // everyone from Gold I to Gold III). Derived from RANK_TIERS so the group
