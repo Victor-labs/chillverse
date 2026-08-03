@@ -77,7 +77,7 @@ const EditorialRoom       = lazy(() => import('../features/marketing/EditorialRo
 const AnnouncementPage    = lazy(() => import('../features/marketing/AnnouncementPage'))
 const WorkLanding         = lazy(() => import('../features/careers/WorkLanding'))
 const JobDetail           = lazy(() => import('../features/careers/JobDetail'))
-const JobApplyComingSoon  = lazy(() => import('../features/careers/JobApplyComingSoon'))
+const JobApplyForm        = lazy(() => import('../features/careers/JobApplyForm'))
 const CareersAdmin        = lazy(() => import('../features/careers/admin/CareersAdmin'))
 
 const Fallback = () => (
@@ -189,7 +189,7 @@ export default function App() {
             as /blog/admin. */}
         <Route path="/work"              element={<Suspense fallback={<Fallback />}><WorkLanding /></Suspense>} />
         <Route path="/work/admin"        element={<Suspense fallback={<Fallback />}><CareersAdmin /></Suspense>} />
-        <Route path="/work/:slug/apply"  element={<Suspense fallback={<Fallback />}><JobApplyComingSoon /></Suspense>} />
+        <Route path="/work/:slug/apply"  element={<Suspense fallback={<Fallback />}><JobApplyForm /></Suspense>} />
         <Route path="/work/:slug"        element={<Suspense fallback={<Fallback />}><JobDetail /></Suspense>} />
 
         <Route path="/watch" element={<ProtectedRoute><Suspense fallback={<Fallback />}><Watch /></Suspense></ProtectedRoute>} />
