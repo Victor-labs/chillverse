@@ -9,6 +9,7 @@ import { ripple } from '../../shared/lib/ripple'
 import {
   RANK_TIERS, getUserRankTier, getNextRankTier,
   getRankProgress, fmtXP,
+  isRankDecayed, getDecayedRankProgress,
   type RankTier,
 } from './ranks'
 import PageOnboarding from '../onboarding/PageOnboarding'
@@ -54,12 +55,13 @@ function RewardIcon({ type }: { type: string }) {
 
 // ─── Single rank card (for All Ranks tab) ────────────
 function RankCard({
-  tier, isUnlocked, isCurrent, userXp,
+  tier, isUnlocked, isCurrent, progressXp,
 }: {
   tier: RankTier
   isUnlocked: boolean
   isCurrent: boolean
-  userXp: number
+  /** XP value to compute "X XP to next" against — active_rank_xp, since isCurrent is keyed off the active tier. */
+  progressXp: number
 }) {
   const [open, setOpen] = useState(false)
   const hasRealReward = tier.rewards.some(r => r.type !== 'nothing')
@@ -122,7 +124,7 @@ function RankCard({
             {isCurrent && (() => {
               const next = getNextRankTier(tier)
               if (!next) return <span style={{ color: tier.color, fontWeight: 700 }}> · MAX RANK</span>
-              const { xpIntoTier, xpNeeded } = getRankProgress(userXp)
+              const { xpIntoTier, xpNeeded } = getRankProgress(progressXp)
               return <span style={{ color: 'var(--text-dim)' }}> · {fmtXP(xpNeeded - xpIntoTier)} XP to next</span>
             })()}
           </div>
@@ -175,6 +177,7 @@ interface LeaderboardEntry {
   display_name: string | null
   username: string
   xp: number
+  active_rank_xp: number
   level: number
   streak: number
   avatar: string | null
@@ -183,7 +186,9 @@ interface LeaderboardEntry {
 }
 
 function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: LeaderboardEntry; position: number; isMe: boolean; innerRef?: React.Ref<HTMLDivElement> }) {
-  const tier = getUserRankTier(entry.xp)
+  // Leaderboard order + badges are driven by active_rank_xp — the XP shown
+  // in each row matches that same number so sort order never looks "wrong".
+  const tier = getUserRankTier(entry.active_rank_xp)
   const posColor = position === 1 ? '#f5c542' : position === 2 ? '#b0b8c8' : position === 3 ? '#cd7f32' : 'var(--text-muted)'
   const name = entry.display_name || entry.username
 
@@ -231,7 +236,7 @@ function LeaderboardRow({ entry, position, isMe, innerRef }: { entry: Leaderboar
 
       {/* XP */}
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{fmtXP(entry.xp)}</div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', fontFamily: 'monospace' }}>{fmtXP(entry.active_rank_xp)}</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>XP · Lv {entry.level}</div>
       </div>
     </div>
@@ -279,10 +284,20 @@ export default function Ranks() {
   const myRowRef = useRef<HTMLDivElement>(null)
   const currentRankCardRef = useRef<HTMLDivElement>(null)
 
-  const userXp   = profile?.xp ?? 0
-  const userTier = getUserRankTier(userXp)
+  const userXp       = profile?.xp ?? 0
+  const activeRankXp = profile?.active_rank_xp ?? userXp
+  const lifetimeTier = getUserRankTier(userXp)
+  const activeTier   = getUserRankTier(activeRankXp)
+  const decayed      = isRankDecayed(userXp, activeRankXp)
+  // userTier represents the ACTIVE/displayed rank — it drives colors, the
+  // "Current Rank" pointer in the Rank Journey track, and the leaderboard
+  // toggle button theming across this whole page. Lifetime standing (the
+  // permanent achievement) is shown separately, greyed, when decayed.
+  const userTier = activeTier
   const nextTier = getNextRankTier(userTier)
-  const { pct, xpIntoTier, xpNeeded } = getRankProgress(userXp)
+  const { pct, xpIntoTier, xpNeeded } = decayed
+    ? getDecayedRankProgress(activeRankXp)
+    : getRankProgress(userXp)
 
   // Center the current rank's card in the Rank Journey scroller on load,
   // instead of leaving the user to scroll all the way from Rookie.
@@ -304,7 +319,8 @@ export default function Ranks() {
     setLbLoading(true)
     setPinnedMe(null)
 
-    const LB_SELECT = 'id, display_name, username, xp, level, streak, avatar, display_name_font, display_name_color'
+    const LB_SELECT = 'id, display_name, username, xp, active_rank_xp, level, streak, avatar, display_name_font, display_name_color'
+    const myActiveRankXp = profile?.active_rank_xp ?? userXp
 
     getLeaderboardExclusionIds().then(excludedIds => {
       const excludeFilter = <T,>(q: T) =>
@@ -318,7 +334,7 @@ export default function Ranks() {
             .from('profiles')
             .select(LB_SELECT)
         )
-          .order('xp', { ascending: false })
+          .order('active_rank_xp', { ascending: false })
           .limit(50)
           .then(({ data }: { data: LeaderboardEntry[] | null }) => {
             const top50 = data ?? []
@@ -330,7 +346,7 @@ export default function Ranks() {
                 supabase
                   .from('profiles')
                   .select('id', { count: 'exact', head: true })
-                  .gt('xp', userXp)
+                  .gt('active_rank_xp', myActiveRankXp)
               )
                 .then(({ count }: { count: number | null }) => {
                   setPinnedMe({ entry: profile, position: (count ?? 0) + 1 })
@@ -342,7 +358,8 @@ export default function Ranks() {
 
       // Tier mode — bound the query to the user's tier bucket directly
       // (xp >= tier floor, xp < next tier floor) rather than over-fetching
-      // and filtering client-side.
+      // and filtering client-side. Tier-bucket boundaries stay on lifetime
+      // xp (per spec — only sort order + position use active_rank_xp).
       const tier = getUserRankTier(userXp)
       const tierNextTier = RANK_TIERS.find(t => t.xpRequired > tier.xpRequired)
 
@@ -353,7 +370,7 @@ export default function Ranks() {
       if (tierNextTier) tierQuery = tierQuery.lt('xp', tierNextTier.xpRequired)
 
       excludeFilter(tierQuery)
-        .order('xp', { ascending: false })
+        .order('active_rank_xp', { ascending: false })
         .limit(50)
         .then(({ data }: { data: LeaderboardEntry[] | null }) => {
           const top50 = data ?? []
@@ -364,7 +381,8 @@ export default function Ranks() {
             let countQuery = supabase
               .from('profiles')
               .select('id', { count: 'exact', head: true })
-              .gt('xp', userXp)
+              .gt('active_rank_xp', myActiveRankXp)
+              .gte('xp', tier.xpRequired)
             if (tierNextTier) countQuery = countQuery.lt('xp', tierNextTier.xpRequired)
 
             excludeFilter(countQuery)
@@ -424,7 +442,21 @@ export default function Ranks() {
 
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
-          {/* Big rank badge */}
+          {/* Lifetime badge — greyed out, only shown while decayed. Your
+              permanent achievement, currently inactive. */}
+          {decayed && (
+            <div style={{
+              width: 46, height: 46, borderRadius: 16, flexShrink: 0,
+              background: 'rgba(255,255,255,0.06)',
+              border: '2px solid rgba(255,255,255,0.14)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              filter: 'grayscale(1)', opacity: 0.5,
+            }}>
+              <RankBadge tier={lifetimeTier} size={32} />
+            </div>
+          )}
+
+          {/* Active rank badge — highlighted, this is the currently-displayed rank */}
           <div style={{
             width: 72, height: 72, borderRadius: 22, flexShrink: 0,
             background: `linear-gradient(135deg, ${userTier.color}40, ${userTier.color}15)`,
@@ -446,9 +478,20 @@ export default function Ranks() {
             }}>
               {userTier.name}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-              {fmtXP(userXp)} XP · Level {profile?.level ?? 1}
-            </div>
+            {decayed ? (
+              <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                {fmtXP(activeRankXp)} Active XP · <span style={{ color: 'var(--text-muted)' }}>{fmtXP(userXp)} Lifetime XP</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                {fmtXP(userXp)} XP · Level {profile?.level ?? 1}
+              </div>
+            )}
+            {decayed && (
+              <div style={{ marginTop: 4, fontSize: 10.5, fontWeight: 700, color: '#ffb44d' }}>
+                ⚠ Decayed from {lifetimeTier.name} — earn XP to restore it
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -504,6 +547,7 @@ export default function Ranks() {
                 {RANK_TIERS.map((tier, i) => {
                   const unlocked = unlockedIds.has(tier.id)
                   const isCur    = tier.id === userTier.id
+                  const isLifetimeBest = decayed && tier.id === lifetimeTier.id
                   const stepDone = unlocked // step number is "reached" once unlocked
                   const CARD_W = 88
 
@@ -539,13 +583,14 @@ export default function Ranks() {
                           : unlocked
                             ? `linear-gradient(160deg, ${tier.color}14, ${tier.color}05)`
                             : 'var(--surface2)',
-                        border: isCur ? `1.5px solid ${tier.color}70` : unlocked ? `1px solid ${tier.color}30` : '1px solid var(--border)',
+                        border: isCur ? `1.5px solid ${tier.color}70` : isLifetimeBest ? `1.5px dashed ${tier.color}50` : unlocked ? `1px solid ${tier.color}30` : '1px solid var(--border)',
                         borderRadius: 13,
                         padding: '10px 6px 9px',
                         textAlign: 'center',
-                        opacity: unlocked ? 1 : 0.55,
+                        opacity: isLifetimeBest ? 0.7 : unlocked ? 1 : 0.55,
+                        filter: isLifetimeBest ? 'grayscale(0.4)' : 'none',
                         boxShadow: isCur ? `0 0 16px ${tier.glowColor}, 4px 4px 12px var(--neu-dark)` : 'none',
-                        marginBottom: isCur ? 9 : 0,
+                        marginBottom: (isCur || isLifetimeBest) ? 9 : 0,
                       }}>
                         <div style={{
                           width: 34, height: 34, borderRadius: 10, margin: '0 auto 7px',
@@ -573,6 +618,17 @@ export default function Ranks() {
                             Current Rank
                           </div>
                         )}
+                        {isLifetimeBest && (
+                          <div style={{
+                            position: 'absolute', left: '50%', bottom: -9, transform: 'translateX(-50%)',
+                            background: 'var(--surface3)', color: 'var(--text-muted)', fontSize: 7, fontWeight: 800,
+                            letterSpacing: '0.3px', textTransform: 'uppercase',
+                            borderRadius: 7, padding: '3px 8px', whiteSpace: 'nowrap',
+                            border: `1px solid ${tier.color}40`,
+                          }}>
+                            Lifetime Best
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
@@ -585,7 +641,10 @@ export default function Ranks() {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 7 }}>
                   <span style={{ fontWeight: 600 }}>{fmtXP(xpIntoTier)} / {fmtXP(xpNeeded)} XP</span>
-                  <span>Next: <span style={{ color: nextTier.color, fontWeight: 700 }}>{nextTier.name}</span> · {fmtXP(xpNeeded - xpIntoTier)} XP away</span>
+                  <span>
+                    {decayed ? 'Recover to: ' : 'Next: '}
+                    <span style={{ color: nextTier.color, fontWeight: 700 }}>{nextTier.name}</span> · {fmtXP(xpNeeded - xpIntoTier)} XP away
+                  </span>
                 </div>
                 <div style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px rgba(0,0,0,0.4)' }}>
                   <div style={{
@@ -596,9 +655,11 @@ export default function Ranks() {
                   }} />
                 </div>
                 <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
-                  {nextTier.rewards.some(r => r.type !== 'nothing')
-                    ? <span>🎁 <strong style={{ color: nextTier.color }}>{nextTier.name}</strong> unlocks: {nextTier.rewards[0].label}</span>
-                    : <span>Keep earning XP to reach <strong style={{ color: nextTier.color }}>{nextTier.name}</strong></span>
+                  {decayed
+                    ? <span>Earn XP to restore your <strong style={{ color: nextTier.color }}>{nextTier.name}</strong> rank</span>
+                    : nextTier.rewards.some(r => r.type !== 'nothing')
+                      ? <span>🎁 <strong style={{ color: nextTier.color }}>{nextTier.name}</strong> unlocks: {nextTier.rewards[0].label}</span>
+                      : <span>Keep earning XP to reach <strong style={{ color: nextTier.color }}>{nextTier.name}</strong></span>
                   }
                 </div>
               </>
@@ -731,7 +792,7 @@ export default function Ranks() {
                       const podiumHeights = [100, 140, 78]
                       const medals = ['🥈', '🥇', '🥉']
                       const isFirst = i === 1
-                      const entryTier = getUserRankTier(entry.xp)
+                      const entryTier = getUserRankTier(entry.active_rank_xp)
                       const name = entry.display_name || entry.username
                       return (
                         <div key={entry.id} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -749,7 +810,7 @@ export default function Ranks() {
                           {/* Podium block */}
                           <div style={{ width: '100%', height: podiumHeights[i], borderRadius: '10px 10px 0 0', background: `linear-gradient(180deg, ${entryTier.color}30, ${entryTier.color}10)`, border: `1px solid ${entryTier.color}40`, boxShadow: isFirst ? `0 -4px 18px ${entryTier.glowColor}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
                             <RankBadge tier={entryTier} size={isFirst ? 22 : 18} />
-                            <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.xp)}</div>
+                            <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: entryTier.color, fontFamily: 'monospace' }}>{fmtXP(entry.active_rank_xp)}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>XP</div>
                           </div>
                         </div>
@@ -818,7 +879,7 @@ export default function Ranks() {
               tier={tier}
               isUnlocked={unlockedIds.has(tier.id)}
               isCurrent={tier.id === userTier.id}
-              userXp={userXp}
+              progressXp={activeRankXp}
             />
           ))}
         </div>

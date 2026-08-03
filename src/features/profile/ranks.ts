@@ -357,3 +357,36 @@ export function getRankGroupInfo(group: RankGroupId): RankGroupInfo {
 export function getUserRankGroup(xp: number): RankGroupId {
   return getUserRankTier(xp).group
 }
+
+// ── Rank Decay ────────────────────────────────────────────────────
+// `xp` is the permanent lifetime total — it never decreases and is what
+// getUserRankTier/getUserRankGroup above always operate on. `active_rank_xp`
+// is a second, decaying number (see supabase/migrations/0098_rank_decay.sql)
+// that drives the leaderboard and the *displayed* rank badge everywhere
+// except rank tags/reward unlocking, which stay on lifetime xp.
+
+/** Get the rank tier one full step below the given tier (clamped at Rookie). */
+export function getTierOneBelow(tier: RankTier): RankTier {
+  const idx = RANK_TIERS.findIndex(t => t.id === tier.id)
+  return RANK_TIERS[Math.max(idx - 1, 0)]
+}
+
+/**
+ * Is the player's displayed/active rank currently decayed below their
+ * permanent lifetime tier? True once active_rank_xp has dropped enough
+ * that it now resolves to a lower tier than lifetime xp does.
+ */
+export function isRankDecayed(xp: number, activeRankXp: number): boolean {
+  return getUserRankTier(activeRankXp).id !== getUserRankTier(xp).id
+}
+
+/**
+ * Progress (0–100) for the "My Rank" dual-badge decayed state — progress
+ * within the active (one-tier-below) bracket, but capped at a maximum of
+ * 50% fill while decayed, regardless of how close active_rank_xp actually
+ * is to the lifetime tier's threshold.
+ */
+export function getDecayedRankProgress(activeRankXp: number): { pct: number; xpIntoTier: number; xpNeeded: number } {
+  const { pct, xpIntoTier, xpNeeded } = getRankProgress(activeRankXp)
+  return { pct: Math.min(50, pct), xpIntoTier, xpNeeded }
+}

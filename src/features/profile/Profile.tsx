@@ -12,7 +12,11 @@ import { useProfile } from './useProfile'
 import { isProActive } from '../../shared/lib/proPlans'
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
-import { getUserRankTier, type RankTier } from './ranks'
+import {
+  getUserRankTier, getNextRankTier, getRankProgress, fmtXP,
+  isRankDecayed, getDecayedRankProgress,
+  type RankTier,
+} from './ranks'
 import { getGameMeta, getGameById } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 import EditProfileModal, { type EditProfileSavedFields } from './EditProfileModal'
@@ -384,10 +388,24 @@ function AchievementsModal({
 }
 
 // ── Rank detail modal — "comment shaped" card explaining current rank ──
-function RankModal({ tier, onClose }: { tier: RankTier; onClose: () => void }) {
+function RankModal({
+  lifetimeXp, activeRankXp, onClose,
+}: {
+  lifetimeXp: number
+  activeRankXp: number
+  onClose: () => void
+}) {
   const [visible, setVisible] = useState(false)
   useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
   function close() { setVisible(false); setTimeout(onClose, 280) }
+
+  const lifetimeTier = getUserRankTier(lifetimeXp)
+  const activeTier = getUserRankTier(activeRankXp)
+  const decayed = isRankDecayed(lifetimeXp, activeRankXp)
+  const nextTier = getNextRankTier(activeTier)
+  const { pct, xpIntoTier, xpNeeded } = decayed
+    ? getDecayedRankProgress(activeRankXp)
+    : getRankProgress(lifetimeXp)
 
   return (
     <>
@@ -395,9 +413,50 @@ function RankModal({ tier, onClose }: { tier: RankTier; onClose: () => void }) {
       <div className="sheet-or-modal" style={{ zIndex: 510 }}>
         <div className="sheet-or-modal-inner" style={{ background: 'var(--surface2)', padding: '28px 20px 36px', position: 'relative', textAlign: 'center', transform: visible ? 'translateY(0)' : 'translateY(100%)' }}>
           <button type="button" onClick={close} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
-          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><RankBadge tier={tier} size={64} /></div>
-          <p style={{ fontSize: 18, fontWeight: 800, color: tier.color, marginBottom: 6 }}>{tier.name}</p>
-          <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>You're currently in {tier.name} rank.</p>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 12 }}>
+            {decayed && (
+              <div style={{ opacity: 0.5, filter: 'grayscale(1)' }}>
+                <RankBadge tier={lifetimeTier} size={40} />
+              </div>
+            )}
+            <RankBadge tier={activeTier} size={64} />
+          </div>
+
+          <p style={{ fontSize: 18, fontWeight: 800, color: activeTier.color, marginBottom: 6 }}>{activeTier.name}</p>
+
+          {decayed ? (
+            <>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 4 }}>
+                Your rank has decayed from <strong style={{ color: lifetimeTier.color }}>{lifetimeTier.name}</strong> due to inactivity.
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 18 }}>
+                {fmtXP(activeRankXp)} Active XP · {fmtXP(lifetimeXp)} Lifetime XP
+              </p>
+            </>
+          ) : (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 18 }}>You're currently in {activeTier.name} rank.</p>
+          )}
+
+          {nextTier && (
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 7 }}>
+                <span style={{ fontWeight: 600 }}>{fmtXP(xpIntoTier)} / {fmtXP(xpNeeded)} XP</span>
+                <span>
+                  {decayed ? 'Recover to: ' : 'Next: '}
+                  <span style={{ color: nextTier.color, fontWeight: 700 }}>{nextTier.name}</span>
+                </span>
+              </div>
+              <div style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.3)', overflow: 'hidden', boxShadow: 'inset 1px 1px 4px rgba(0,0,0,0.4)' }}>
+                <div style={{
+                  height: '100%', borderRadius: 4, width: `${pct}%`,
+                  background: `linear-gradient(90deg, ${activeTier.color}, ${nextTier.color})`,
+                  boxShadow: `0 0 10px ${activeTier.glowColor}`,
+                  transition: 'width 1s ease',
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -738,7 +797,9 @@ export default function Profile() {
     )
   }
 
-  const rank = getRank(profile.xp)
+  const lifetimeXp = profile.xp
+  const activeRankXp = profile.active_rank_xp ?? profile.xp
+  const rank = getRank(activeRankXp) // drives the badge shown everywhere on this page
   const isPro = isProActive(profile)
 
   return (
@@ -1129,7 +1190,7 @@ export default function Profile() {
         <AchievementsModal total={achievementCount} recent={recentAchievements} onClose={() => setShowAchievements(false)} />
       )}
       {showRankInfo && (
-        <RankModal tier={rank} onClose={() => setShowRankInfo(false)} />
+        <RankModal lifetimeXp={lifetimeXp} activeRankXp={activeRankXp} onClose={() => setShowRankInfo(false)} />
       )}
       {likeToast && (
         <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(255,77,139,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>

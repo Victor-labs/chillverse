@@ -78,6 +78,7 @@ interface PreviewProfile {
   avatar: string
   bio: string | null
   xp: number
+  active_rank_xp: number
   created_at: string
   presence: Presence | null
   is_pro: boolean
@@ -426,7 +427,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   useEffect(() => {
     if (!profile?.grid_cards?.includes('leaderboard')) { setLbPosition(null); return }
     let active = true
-    supabase.from('profiles').select('id, xp').order('xp', { ascending: false })
+    supabase.from('profiles').select('id, active_rank_xp').order('active_rank_xp', { ascending: false })
       .then(({ data }) => {
         if (!active) return
         const pos = (data ?? []).findIndex((p: { id: string }) => p.id === userId)
@@ -561,7 +562,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
   }
 
   const displayName = profile?.display_name || profile?.username || '…'
-  const rank = profile ? getUserRankTier(profile.xp) : null
+  const rank = profile ? getUserRankTier(profile.active_rank_xp ?? profile.xp) : null
   const presence: Presence = (profile?.presence as Presence) || 'offline'
   const memberSince = profile
     ? new Date((isModerator ? profile.staff_member_since : null) ?? profile.created_at)

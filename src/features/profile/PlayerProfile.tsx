@@ -131,6 +131,7 @@ interface PlayerData {
   country: string | null
   interests: string[]
   xp: number
+  active_rank_xp: number
   level: number
   streak: number
   bio: string | null
@@ -335,7 +336,7 @@ function PlayerProfileInner() {
   // Load leaderboard position
   useEffect(() => {
     if (!userId) return
-    supabase.from('profiles').select('id, xp').order('xp', { ascending: false })
+    supabase.from('profiles').select('id, active_rank_xp').order('active_rank_xp', { ascending: false })
       .then(({ data }) => {
         const pos = (data ?? []).findIndex((p: { id: string }) => p.id === userId)
         setLbPosition(pos >= 0 ? pos + 1 : null)
@@ -531,7 +532,7 @@ function PlayerProfileInner() {
     )
   }
 
-  const rank = getRank(player.xp)
+  const rank = getRank(player.active_rank_xp ?? player.xp)
   const displayName = player.display_name || player.username
 
   return (
