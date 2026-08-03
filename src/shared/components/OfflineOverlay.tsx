@@ -10,14 +10,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { WifiOff } from 'lucide-react'
 
-// The landing page, signup flow, and the public blog are the first thing
-// a brand-new, possibly flaky-connection visitor sees. A full-screen
-// "you're offline" takeover there reads as broken rather than helpful —
-// a failed request on those pages should just fail quietly (or retry),
-// not block the page. Blog is matched by prefix since it covers
-// /blog, /blog/:slug, /blog/updates, /blog/admin, etc.
+// The landing page, signup flow, public blog, and every footer page
+// (About, FAQ, Privacy, Terms, Work/careers, Editorial room) are the
+// first thing a brand-new, possibly flaky-connection visitor sees. A
+// full-screen "you're offline" takeover there reads as broken rather
+// than helpful — a failed request on those pages should just fail
+// quietly (or retry), not block the page. The overlay is reserved for
+// the real app experience (dashboard, chat, and the rest) once someone
+// is signed in and using Chillverse. Prefixes cover nested routes, e.g.
+// /blog/:slug, /work/:slug/apply, /work/admin, /editorial-room/announcement/:postId.
 const SUPPRESSED_PATHS = ['/', '/signup']
-const SUPPRESSED_PREFIXES = ['/blog']
+const SUPPRESSED_PREFIXES = ['/blog', '/about', '/faq', '/privacy', '/terms', '/work', '/editorial-room']
 
 // Same-origin, tiny, always present — avoids any CORS/third-party concerns.
 const CHECK_URL = '/favicon.ico'
