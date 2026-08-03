@@ -1,17 +1,19 @@
 // src/features/careers/admin/CareersAdmin.tsx
-// Staff-only CMS for the /work job listings — reachable at /work/admin.
-// Lets staff toggle roles on/off, edit copy, add new roles, and delete
-// old ones. Gated the same way AdminBlog/AdminDashboard are: render the
-// page for anyone, but show an "admins only" state unless useModRole
-// says they're staff — the real enforcement is RLS on job_openings itself
-// (migration 0098), this is just UX.
+// Staff-only CMS for the /work job listings and applications — reachable
+// at /work/admin. The "Roles" tab (this file's RolesTab) lets staff toggle
+// roles on/off, edit copy, add new roles, and delete old ones. The
+// "Applications" tab (ApplicationsAdmin.tsx) is where staff review
+// Phase 2 submissions. Staff gating for both tabs lives in the default
+// export below via useModRole — the real enforcement is RLS on
+// job_openings and job_applications (migrations 0098), this is just UX.
 import { useEffect, useState, type CSSProperties } from 'react'
-import { ShieldAlert, Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react'
+import { ShieldAlert, Plus, Pencil, Trash2, Eye, EyeOff, X, Briefcase, Inbox } from 'lucide-react'
 import { useModRole } from '../../moderation/useModRole'
 import {
   fetchAllJobOpenings, createJobOpening, updateJobOpening, deleteJobOpening,
   slugify, type JobOpening, type JobOpeningInput, type JobCategory, type Compensation,
 } from '../api'
+import ApplicationsAdmin from './ApplicationsAdmin'
 
 const CATEGORIES: JobCategory[] = ['Community', 'Marketing', 'Design', 'Engineering', 'Quality Assurance', 'Editorial', 'Support']
 
@@ -35,8 +37,8 @@ const EMPTY_FORM: JobOpeningInput = {
   summary: '', description: '', is_active: true, sort_order: 0,
 }
 
-export default function CareersAdmin() {
-  const { isStaff, loading: roleLoading } = useModRole()
+/** The "Roles" tab of the CMS — everything that used to be the whole page. */
+export function RolesTab() {
   const [jobs, setJobs] = useState<JobOpening[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -51,11 +53,9 @@ export default function CareersAdmin() {
   }
 
   useEffect(() => {
-    if (roleLoading) return
-    if (!isStaff) { setLoading(false); return }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roleLoading, isStaff])
+  }, [])
 
   async function toggleActive(job: JobOpening) {
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_active: !j.is_active } : j))
@@ -70,25 +70,11 @@ export default function CareersAdmin() {
     setJobs(prev => prev.filter(j => j.id !== job.id))
   }
 
-  if (roleLoading) return null
-
-  if (!isStaff) {
-    return (
-      <div style={{ maxWidth: 480, margin: '80px auto', textAlign: 'center', padding: 20 }}>
-        <ShieldAlert size={32} style={{ color: 'var(--text-dim)', marginBottom: 10 }} />
-        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Staff only</p>
-        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>
-          This page is restricted to Chillverse staff.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 20px 80px' }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: 0 }}>Careers CMS</h1>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: 0 }}>Roles</h2>
           <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '4px 0 0' }}>Manage roles shown on /work</p>
         </div>
         <button
@@ -280,6 +266,51 @@ function JobEditorModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+const tabButtonStyle = (active: boolean): CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700,
+  padding: '9px 16px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--border)',
+  background: active ? 'var(--accent)' : 'var(--surface2)',
+  color: active ? '#fff' : 'var(--text-dim)',
+})
+
+/** Entry point at /work/admin: gates on staff, then switches between the
+ *  Roles CMS and the Applications review queue. */
+export default function CareersAdmin() {
+  const { isStaff, loading: roleLoading } = useModRole()
+  const [tab, setTab] = useState<'roles' | 'applications'>('roles')
+
+  if (roleLoading) return null
+
+  if (!isStaff) {
+    return (
+      <div style={{ maxWidth: 480, margin: '80px auto', textAlign: 'center', padding: 20 }}>
+        <ShieldAlert size={32} style={{ color: 'var(--text-dim)', marginBottom: 10 }} />
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Staff only</p>
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6 }}>
+          This page is restricted to Chillverse staff.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 20px 80px' }}>
+      <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 18px' }}>Careers CMS</h1>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <button type="button" style={tabButtonStyle(tab === 'roles')} onClick={() => setTab('roles')}>
+          <Briefcase size={14} /> Roles
+        </button>
+        <button type="button" style={tabButtonStyle(tab === 'applications')} onClick={() => setTab('applications')}>
+          <Inbox size={14} /> Applications
+        </button>
+      </div>
+
+      {tab === 'roles' ? <RolesTab /> : <ApplicationsAdmin />}
     </div>
   )
 }
