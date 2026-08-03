@@ -119,7 +119,11 @@ export default function WorkLanding() {
             <img
               src={SIDE_IMAGE}
               alt="A member of the Chillverse team at work"
-              style={{ width: '100%', maxWidth: 480, height: 'auto', borderRadius: 20, display: 'block', margin: '0 auto' }}
+              style={{
+                width: '100%', maxWidth: 480, height: 'auto', aspectRatio: '4 / 3', objectFit: 'cover',
+                maxHeight: 320, borderRadius: 22, display: 'block', margin: '0 auto',
+              }}
+              className="work-side-image"
               loading="lazy"
             />
           </div>
@@ -166,7 +170,7 @@ export default function WorkLanding() {
             </p>
           ) : (
             <div
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 18 }}
             >
               {filteredJobs.map(job => <JobCard key={job.id} job={job} />)}
             </div>
@@ -181,6 +185,7 @@ export default function WorkLanding() {
       <style>{`
         @media (min-width: 768px) {
           .work-split-section { flex-direction: row !important; }
+          .work-side-image { max-height: none !important; }
         }
       `}</style>
     </div>

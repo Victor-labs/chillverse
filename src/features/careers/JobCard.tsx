@@ -13,12 +13,12 @@ export default function JobCard({ job }: { job: JobOpening }) {
       className="ripple-wrap"
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left',
-        cursor: 'pointer', width: '100%', padding: 18, borderRadius: 16,
+        cursor: 'pointer', width: '100%', padding: '20px 20px 22px', borderRadius: 22,
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
         transition: 'border-color 200ms, background 200ms',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 12 }}>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ltext-sec, #9b96c0)' }}>
           {job.category}
         </span>
@@ -35,7 +35,7 @@ export default function JobCard({ job }: { job: JobOpening }) {
         </span>
       </div>
 
-      <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ltext, #f2f0fb)', margin: '0 0 6px', lineHeight: 1.3 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ltext, #f2f0fb)', margin: '0 0 7px', lineHeight: 1.3 }}>
         {job.title}
       </h3>
       <p style={{ fontSize: 12.5, color: 'var(--ltext-sec, #9b96c0)', margin: 0, lineHeight: 1.5 }}>
