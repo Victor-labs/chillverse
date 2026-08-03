@@ -22,6 +22,7 @@ export interface MultiplayerTrendingGame {
   id: string
   name: string
   tagline: string
+  tag: string
   accent: string
   icon: LucideIcon
   bannerUrl?: string
@@ -34,8 +35,8 @@ export interface MultiplayerTrendingGame {
 // pulling in the full Multiplayer.tsx catalog, since only these need to be
 // visible/deep-linkable from the Games Home page.
 export const MULTIPLAYER_TRENDING: MultiplayerTrendingGame[] = [
-  { id: 'chess', name: 'Chillverse Chess', tagline: 'Full rules, real AI — castling, en passant, the works.', accent: '#c9a24b', icon: Crown, route: '/play/chess', requiresActiveSub: false },
-  { id: 'ludo',  name: 'Ludo',             tagline: 'Roll, race, and knock the AI back to base.',            accent: '#c79a3b', icon: Dices, route: '/play/ludo',  requiresActiveSub: false },
+  { id: 'chess', name: 'Chillverse Chess', tagline: 'Full rules, real AI — castling, en passant, the works.', tag: 'Multiplayer', accent: '#c9a24b', icon: Crown, route: '/play/chess', requiresActiveSub: false },
+  { id: 'ludo',  name: 'Ludo',             tagline: 'Roll, race, and knock the AI back to base.',            tag: 'Multiplayer', accent: '#c79a3b', icon: Dices, route: '/play/ludo',  requiresActiveSub: false },
 ]
 
 /**
@@ -85,8 +86,9 @@ export async function fetchTrendingGames(): Promise<TrendingEntry[]> {
   }))
 
   // Interleave a couple of multiplayer picks into the front of the row so
-  // they're visible without pushing every solo game down.
-  return [...soloEntries.slice(0, 2), ...mpEntries, ...soloEntries.slice(2)]
+  // they're visible without pushing every solo game down. Capped at 5
+  // total cards for Trending Now.
+  return [...soloEntries.slice(0, 2), ...mpEntries, ...soloEntries.slice(2)].slice(0, 5)
 }
 
 export function isGameMeta(x: GameMeta | MultiplayerTrendingGame): x is GameMeta {

@@ -5,7 +5,7 @@ import { ripple } from '../../shared/lib/ripple'
 
 interface Props {
   name: string
-  tagline: string
+  tag: string
   accent: string
   icon: LucideIcon
   bannerUrl?: string
@@ -15,7 +15,7 @@ interface Props {
   onOpen: () => void
 }
 
-export default function TrendingGameCard({ name, tagline, accent, icon: Icon, bannerUrl, isHot, isNew, locked, onOpen }: Props) {
+export default function TrendingGameCard({ name, tag, accent, icon: Icon, bannerUrl, isHot, isNew, locked, onOpen }: Props) {
   return (
     <div
       className="ripple-wrap"
@@ -66,7 +66,7 @@ export default function TrendingGameCard({ name, tagline, accent, icon: Icon, ba
       </div>
 
       <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '8px 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</p>
-      <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tagline}</p>
+      <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tag}</p>
     </div>
   )
 }

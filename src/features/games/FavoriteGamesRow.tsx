@@ -55,7 +55,7 @@ export default function FavoriteGamesRow({ games, onOpenGame }: { games: GameMet
                   </div>
                 </div>
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '8px 0 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.name}</p>
-                <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.tagline}</p>
+                <p style={{ fontSize: 10.5, color: 'var(--text-muted)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.category ?? 'Game'}</p>
               </div>
             )
           })}

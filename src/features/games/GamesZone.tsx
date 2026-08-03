@@ -186,7 +186,7 @@ export default function GamesZone() {
                 <TrendingGameCard
                   key={entry.key}
                   name={meta.name}
-                  tagline={meta.tagline}
+                  tag={entry.isMultiplayer ? (meta as MultiplayerTrendingGame).tag : ((meta as { category?: string }).category ?? 'Game')}
                   accent={meta.accent}
                   icon={meta.icon}
                   bannerUrl={meta.bannerUrl}
