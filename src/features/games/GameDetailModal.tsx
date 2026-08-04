@@ -36,8 +36,19 @@ interface Props {
   onToggleFavorite: () => void
   locked: boolean
   lockedReason: string | null
-  onPlay: () => void
+  onPlay: (difficulty?: string) => void
   onClose: () => void
+}
+
+// Games that need a pre-play choice collected before Play is tapped. Add
+// entries here (instead of the game showing its own second intro screen)
+// so every solo game funnels through this one detail sheet.
+const DIFFICULTY_OPTIONS: Partial<Record<string, { value: string; label: string }[]>> = {
+  'tac-zone': [
+    { value: 'easy', label: 'Easy' },
+    { value: 'hard', label: 'Hard' },
+    { value: 'expert', label: 'Expert' },
+  ],
 }
 
 // Sheet height on phone/tablet — a percentage of the viewport, so it
@@ -67,6 +78,9 @@ export default function GameDetailModal({
   const [menuOpen, setMenuOpen] = useState(false)
   const [idCopied, setIdCopied] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const difficultyOptions = DIFFICULTY_OPTIONS[game.id]
+  const [difficulty, setDifficulty] = useState<string | undefined>(difficultyOptions?.[1]?.value ?? difficultyOptions?.[0]?.value)
 
   useEffect(() => {
     function onResize() { setIsDesktop(computeIsDesktop()) }
@@ -248,6 +262,29 @@ export default function GameDetailModal({
             {game.requiresPro && <span className="chip" style={{ color: '#9b6dff' }}>Pro only</span>}
           </div>
 
+          {/* Difficulty picker — e.g. Tac Zone's Easy/Hard/Expert. Lives
+              here now instead of a second intro screen inside the game
+              itself. */}
+          {difficultyOptions && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {difficultyOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={(e) => { ripple(e); setDifficulty(opt.value) }}
+                  style={{
+                    flex: 1, padding: '9px 0', borderRadius: 12, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                    background: difficulty === opt.value ? `${game.accent}22` : 'var(--surface2)',
+                    color: difficulty === opt.value ? game.accent : 'var(--text-dim)',
+                    border: difficulty === opt.value ? `1px solid ${game.accent}55` : '1px solid var(--border)',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Rank + personal best */}
           <div style={{ marginBottom: 10 }}>
             <RankProgressBar rank={rank} streak={streak} streakRequired={rankCfg.streakRequired} />
@@ -269,7 +306,7 @@ export default function GameDetailModal({
           <button
             type="button"
             className="ripple-wrap"
-            onClick={(e) => { if (locked) return; ripple(e); onPlay() }}
+            onClick={(e) => { if (locked) return; ripple(e); onPlay(difficulty) }}
             disabled={locked}
             style={{
               width: '100%', padding: '13px 16px', borderRadius: 14, border: 'none',

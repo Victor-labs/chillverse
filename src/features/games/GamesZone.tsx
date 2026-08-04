@@ -44,10 +44,11 @@ export default function GamesZone() {
 
   const [view, setView] = useState<ZoneView>(hasDeepLink ? 'games' : 'landing')
   const [category, setCategory] = useState<CategoryKey>('all')
+  const [pendingOpenGameId, setPendingOpenGameId] = useState<GameId | null>(null)
 
   const { session } = useAuth()
   const userId = session?.user?.id ?? ''
-  const { profile } = useProfile()
+  const { profile, refetch: refetchProfile } = useProfile()
   const sessionLimit = getSessionLimits(profile).limit
 
   const [sessionInfo, setSessionInfo] = useState({ count: 0, limit: sessionLimit, limitReached: false, resetAt: 0 })
@@ -66,12 +67,12 @@ export default function GamesZone() {
     fetchTrendingGames().then(setTrending)
   }, [])
 
-  // Deep-link into a specific game's detail card without leaving this
-  // page — mirrors how Multiplayer's "Vs AI" already opens Games.tsx.
+  // Opens a game's detail sheet directly, staying on this page underneath
+  // it — no more routing away to the old full-page game list first.
   const navigateToGame = useCallback((id: GameId) => {
-    navigate('/games', { state: { openGame: id }, replace: true })
+    setPendingOpenGameId(id)
     setView('games')
-  }, [navigate])
+  }, [])
 
   function openCategory(key: CategoryKey) {
     setCategory(key)
@@ -130,7 +131,7 @@ export default function GamesZone() {
     },
   ]
 
-  if (view === 'games') return <Games onBack={() => setView('landing')} />
+  if (view === 'games') return <Games onBack={() => { setView('landing'); setPendingOpenGameId(null) }} openGameId={pendingOpenGameId} onFavoritesChanged={refetchProfile} />
   if (view === 'activity') return <ActivityGoals onBack={() => setView('landing')} />
   if (view === 'category') {
     return (
