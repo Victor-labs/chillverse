@@ -306,6 +306,7 @@ export interface BlogPost {
   locale: BlogLocale
   translation_group_id: string | null
   author_id: string | null
+  persona_author_id: string | null
   is_published: boolean
   published_at: string | null
   created_at: string
@@ -393,6 +394,7 @@ export interface BlogPostInput {
   locale: BlogLocale
   translationGroupId: string | null
   authorId: string | null
+  personaAuthorId: string | null
   isPublished: boolean
   // ── CMS (migration 0096) ──
   status: BlogPostStatus
@@ -401,7 +403,11 @@ export interface BlogPostInput {
   metaDescription: string
 }
 
-/** Minimal profile shape for the author picker and post byline. */
+/** Minimal profile shape for the author picker and post byline. Real
+ *  people come from `profiles`; "house" bylines come from `blog_personas`
+ *  (migration 0099/0100) and are normalized into this same shape with
+ *  `is_persona: true` and `is_founder: false` so BlogEditorModal and
+ *  BlogPostPage don't need to care which table an author came from. */
 export interface BlogAuthor {
   id: string
   username: string
@@ -409,4 +415,16 @@ export interface BlogAuthor {
   avatar: string
   bio: string | null
   is_founder: boolean
+  is_persona: boolean
+}
+
+/** Raw row shape of `blog_personas` — house bylines that aren't real
+ *  accounts (no signup/auth.users row), e.g. "Willam", "Engineering Crew". */
+export interface BlogPersona {
+  id: string
+  username: string
+  display_name: string
+  avatar: string | null
+  bio: string | null
+  created_at: string
 }
