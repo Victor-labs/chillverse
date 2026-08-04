@@ -35,6 +35,10 @@ export interface Post {
   id: string
   author_id: string | null
   author_type: PostAuthorType
+  /** Optional headline (migration 0101) — mainly for staff/system posts,
+   *  used as the article title in the public Editorial Room. Null on
+   *  regular user posts and on older staff posts predating this column. */
+  title?: string | null
   body: string
   tags: PostTag[]
   likes_count: number

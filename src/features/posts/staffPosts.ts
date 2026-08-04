@@ -48,6 +48,7 @@ export async function uploadFeedImage(authorId: string, file: File): Promise<str
  *  Always inserted with author_type 'admin' — RLS requires is_staff(). */
 export async function createAnnouncement(input: {
   authorId: string
+  title?: string | null
   body: string
   postKind: PostKind
   mediaUrl: string | null
@@ -59,12 +60,16 @@ export async function createAnnouncement(input: {
   if (containsProfanity(input.body)) {
     return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
   }
+  if (input.title && containsProfanity(input.title)) {
+    return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
+  }
 
   const { data, error } = await supabase
     .from('posts')
     .insert({
       author_id: input.authorId,
       author_type: 'admin',
+      title: input.title?.trim() || null,
       body: input.body,
       tags: [],
       commentable: input.commentable,

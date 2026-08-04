@@ -249,6 +249,11 @@ export default function PostCard({ post, onDeleted, truncate = true }: { post: P
         <HiddenContentNotice reason={post.hidden_reason} isOwner={isAuthor} />
       ) : (
         <>
+          {post.title && (
+            <h3 style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.35, margin: '10px 0 0' }}>
+              {post.title}
+            </h3>
+          )}
           <PostBody body={isClipped ? clippedBody : post.body} />
           {isClipped && (
             <button

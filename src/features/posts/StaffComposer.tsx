@@ -31,6 +31,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
 
   const [postKind, setPostKind] = useState<PostKind>('announcement')
   const [rankTagGroup, setRankTagGroup] = useState<RankGroupId | null>(null)
+  const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
@@ -47,6 +48,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
     if (!open) return
     setPostKind('announcement')
     setRankTagGroup(null)
+    setTitle('')
     setBody('')
     setImageFile(null)
     setImagePreviewUrl(prev => {
@@ -96,6 +98,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
 
       const { error } = await createAnnouncement({
         authorId: user.id,
+        title: title.trim() || null,
         body: body.trim(),
         postKind,
         mediaUrl,
@@ -185,6 +188,19 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
             ))}
           </div>
         )}
+
+        <input
+          type="text"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          maxLength={150}
+          placeholder="Headline (optional — shown in the Editorial Room)"
+          style={{
+            width: '100%', background: 'var(--surface2)', borderRadius: 12, padding: '11px 12px',
+            fontSize: 14, fontWeight: 700, fontFamily: 'inherit', color: 'var(--text)',
+            border: 'none', outline: 'none', marginBottom: 10,
+          }}
+        />
 
         <textarea
           value={body}
