@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Sparkles, MoreVertical, Share2, Trash2, Check, Flag } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
+import { useModRole } from '../moderation/useModRole'
 import { toggleLike, deletePost } from './posts'
 import { ripple } from '../../shared/lib/ripple'
 import CommentThread from './CommentThread'
@@ -25,9 +26,16 @@ const TAG_ICON: Record<string, string> = {
   streak: '🔥', mission: '📋', user: '👤', avatar: '🖼️', artifact: '💎', mall_item: '🛍️',
 }
 
-export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (postId: string) => void }) {
+// Long-form staff posts (see migration 0100) get clipped on the card with a
+// "Read more" link into /feed/:id (SinglePostPage), same shape as the blog
+// card → blog article pattern. Regular user posts are capped at 500 chars
+// server-side, so this never fires for them.
+const CARD_TRUNCATE_AT = 600
+
+export default function PostCard({ post, onDeleted, truncate = true }: { post: Post; onDeleted?: (postId: string) => void; truncate?: boolean }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { isStaff } = useModRole()
   const preview = useProfilePreviewOptional()
   const [liked, setLiked] = useState(post.liked_by_me ?? false)
   const [likesCount, setLikesCount] = useState(post.likes_count)
@@ -42,6 +50,10 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
   const menuRef = useRef<HTMLDivElement>(null)
 
   const isAuthor = !!user && post.author_type === 'user' && post.author_id === user.id
+  // Staff/mod/admin can delete any announcement/system post (RLS in
+  // migration 0028 already allows this server-side) — not just their own.
+  const isStaffPost = post.author_type === 'admin' || post.author_type === 'system'
+  const canDelete = isAuthor || (isStaff && isStaffPost)
   const rankTagInfo = post.post_kind === 'rank_tag' && post.rank_tag_group
     ? getRankGroupInfo(post.rank_tag_group as RankGroupId)
     : null
@@ -73,6 +85,12 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
 
   const isSystemOrAdmin = post.author_type !== 'user'
   const singleAchievementTag = post.tags.length === 1 && post.tags[0].type === 'achievement' ? post.tags[0] : null
+
+  const isClipped = truncate && post.body.length > CARD_TRUNCATE_AT
+  // Cut at the last whole word before the limit so we don't slice a word in half.
+  const clippedBody = isClipped
+    ? `${post.body.slice(0, CARD_TRUNCATE_AT).replace(/\s+\S*$/, '')}…`
+    : post.body
 
   async function handleLike() {
     if (!user) return
@@ -204,7 +222,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
                 {linkCopied ? <Check size={14} color="var(--gold)" /> : <Share2 size={14} />}
                 {linkCopied ? 'Link copied!' : 'Share'}
               </button>
-              {isAuthor && (
+              {canDelete && (
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); setConfirmingDelete(true) }}
@@ -230,7 +248,21 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       {post.hidden ? (
         <HiddenContentNotice reason={post.hidden_reason} isOwner={isAuthor} />
       ) : (
-        <PostBody body={post.body} />
+        <>
+          <PostBody body={isClipped ? clippedBody : post.body} />
+          {isClipped && (
+            <button
+              type="button"
+              onClick={() => navigate(`/feed/${post.id}`)}
+              style={{
+                background: 'none', border: 'none', padding: 0, marginTop: 4,
+                color: 'var(--accent)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Read more
+            </button>
+          )}
+        </>
       )}
 
       {!post.hidden && isBlogFeature && (

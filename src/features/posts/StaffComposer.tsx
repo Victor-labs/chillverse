@@ -189,15 +189,18 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
-          maxLength={500}
-          placeholder="What's the announcement?"
-          rows={4}
+          maxLength={8000}
+          placeholder="What's the announcement? (long-form is fine — write a full update if you need to)"
+          rows={8}
           style={{
             width: '100%', background: 'var(--surface2)', borderRadius: 12, padding: 12,
             fontSize: 14, lineHeight: 1.45, fontFamily: 'inherit', color: 'var(--text)',
-            border: 'none', outline: 'none', resize: 'none',
+            border: 'none', outline: 'none', resize: 'vertical', minHeight: 140,
           }}
         />
+        <p style={{ fontSize: 10.5, color: 'var(--text-dim)', textAlign: 'right', marginTop: 4 }}>
+          {body.length.toLocaleString()} / 8,000
+        </p>
 
         {/* Image attach */}
         <div style={{ marginTop: 10 }}>
