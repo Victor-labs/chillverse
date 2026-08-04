@@ -58,9 +58,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function PatternMemory({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function PatternMemory({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'countdown' | 'flash' | 'recall' | 'feedback' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -250,6 +251,7 @@ export default function PatternMemory({ rank: initialRank, onEnd, onBack, sessio
       streakRequired={rankCfg.streakRequired}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

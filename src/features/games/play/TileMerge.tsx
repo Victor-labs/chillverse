@@ -137,9 +137,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 2 }: Props) {
+export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 2, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState } = useRankStreak(GAME_ID, initialRank)
@@ -305,6 +306,7 @@ export default function TileMerge({ rank: initialRank, onEnd, onBack, sessionsLe
       streakRequired={0}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

@@ -69,11 +69,19 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  /** Skip TacZone's own info/rules screen — used when the caller (the
+   *  Games lobby's detail sheet) already showed the rules and collected
+   *  the difficulty choice, so this would otherwise be a redundant
+   *  second intro screen stacked on top of that one. */
+  skipIntro?: boolean
+  /** AI difficulty chosen up front (e.g. in GameDetailModal) when
+   *  skipIntro is set. Falls back to the in-game picker's default. */
+  initialMode?: TacMode
 }
 
-export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro, initialMode }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'result' | 'quit'>('info')
-  const [mode, setMode] = useState<TacMode>('hard')
+  const [mode, setMode] = useState<TacMode>(initialMode ?? 'hard')
   useGamePresence(GAME_ID)
   const { rankState } = useRankStreak(GAME_ID, initialRank)
 
@@ -185,6 +193,7 @@ export default function TacZone({ rank: initialRank, onEnd, onBack, sessionsLeft
       streakRequired={0}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
       extraContent={
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, justifyContent: 'center' }}>
           {(['easy', 'hard', 'expert'] as TacMode[]).map(m => (

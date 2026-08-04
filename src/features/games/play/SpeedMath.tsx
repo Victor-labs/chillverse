@@ -80,9 +80,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function SpeedMath({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function SpeedMath({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -225,6 +226,7 @@ export default function SpeedMath({ rank: initialRank, onEnd, onBack, sessionsLe
       streakRequired={rankCfg.streakRequired}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

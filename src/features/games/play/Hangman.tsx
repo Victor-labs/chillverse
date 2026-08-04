@@ -263,9 +263,9 @@ function DiffProgressBar({ difficulty, winsInDiff, winsNeeded }: { difficulty: D
   )
 }
 
-interface Props { rank: GameRank; onEnd: (payload: GameEndPayload) => void; onBack: () => void; sessionsLeft?: number; sessionCost?: number }
+interface Props { rank: GameRank; onEnd: (payload: GameEndPayload) => void; onBack: () => void; sessionsLeft?: number; sessionCost?: number; skipIntro?: boolean }
 
-export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   useGamePresence('hangman')
   const [phase, setPhase] = useState<'info' | 'play' | 'result' | 'quit'>('info')
 
@@ -414,6 +414,7 @@ export default function Hangman({ rank: _rank, onEnd, onBack, sessionsLeft = 99,
       streakRequired={rankCfg.streakRequired}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

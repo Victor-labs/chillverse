@@ -195,9 +195,9 @@ function TimerRing({ timeLeft, total }: { timeLeft: number; total: number }) {
   )
 }
 
-interface Props { rank: GameRank; onEnd: (payload: GameEndPayload) => void; onBack: () => void; sessionsLeft?: number; sessionCost?: number }
+interface Props { rank: GameRank; onEnd: (payload: GameEndPayload) => void; onBack: () => void; sessionsLeft?: number; sessionCost?: number; skipIntro?: boolean }
 
-export default function CloseCall({ rank: _rank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function CloseCall({ rank: _rank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   useGamePresence('close-call')
   const [phase, setPhase]         = useState<'info' | 'play' | 'result' | 'quit'>('info')
   const [qIndex, setQIndex]       = useState(0)
@@ -347,6 +347,7 @@ export default function CloseCall({ rank: _rank, onEnd, onBack, sessionsLeft = 9
       streakRequired={rankCfg.streakRequired}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

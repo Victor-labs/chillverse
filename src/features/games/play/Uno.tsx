@@ -117,9 +117,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 4 }: Props) {
+export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 4, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'colorPick' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -529,6 +530,7 @@ export default function Uno({ rank: initialRank, onEnd, onBack, sessionsLeft = 9
       streakRequired={rankCfg.streakRequired}
       onStart={newGame}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

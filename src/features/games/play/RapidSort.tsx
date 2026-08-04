@@ -179,9 +179,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function RapidSort({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function RapidSort({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
 
@@ -352,6 +353,7 @@ export default function RapidSort({ rank: initialRank, onEnd, onBack, sessionsLe
         streakRequired={rankCfg.streakRequired}
         onStart={loadQuestions}
         onClose={onBack}
+        autoStart={skipIntro && phase === 'info'}
         rules={[
           { icon: '🎌', text: `${TOTAL_Q[currentRank]} questions from the anime universe` },
           { icon: '⏱️', text: `Starts at ${getTimeForStreak(0, currentRank)}s per question — shrinks every 3 correct` },

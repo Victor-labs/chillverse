@@ -36,9 +36,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function TriviaClash({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function TriviaClash({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'play' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -186,6 +187,7 @@ export default function TriviaClash({ rank: initialRank, onEnd, onBack, sessions
         streakRequired={rankCfg.streakRequired}
         onStart={handleStart}
         onClose={onBack}
+        autoStart={skipIntro}
       />
 
       {/* Loading overlay — shown while fetching questions */}

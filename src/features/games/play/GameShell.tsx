@@ -1,5 +1,5 @@
 // src/pages/games/GameShell.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { X, Zap, Flame, Trophy, ChevronRight, Camera, Check } from 'lucide-react'
 import type { GameRank, GameEndPayload, PlayerRankState } from './types'
 import { getRankConfig, getNextRank, RANK_CONFIGS } from './types'
@@ -24,11 +24,18 @@ interface PreGameModalProps {
   onStart: () => void
   onClose: () => void
   extraContent?: React.ReactNode
+  /** When true, this info/rules screen is skipped entirely — it calls
+   *  onStart() itself (before the browser paints, so there's no visible
+   *  flash) and renders nothing. Used when the caller already showed an
+   *  equivalent "about this game" screen (GameDetailModal, a hub's
+   *  pre-game sheet, etc.) so this one would just be a redundant second
+   *  intro stacked on top of it. */
+  autoStart?: boolean
 }
 
 export function PreGameModal({
   gameName, tagline, accent, icon, rules,
-  rankState, streakRequired, onStart, onClose, extraContent,
+  rankState, streakRequired, onStart, onClose, extraContent, autoStart,
 }: PreGameModalProps) {
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
   useEffect(() => {
@@ -36,6 +43,14 @@ export function PreGameModal({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useLayoutEffect(() => {
+    if (autoStart) onStart()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  if (autoStart) return null
 
   const rank = getRankConfig(rankState.rank)
   const next = getNextRank(rankState.rank)

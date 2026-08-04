@@ -103,9 +103,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function PatternKing({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1 }: Props) {
+export default function PatternKing({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 1, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'peek' | 'play' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -421,6 +422,7 @@ export default function PatternKing({ rank: initialRank, onEnd, onBack, sessions
       streakRequired={rankCfg.streakRequired}
       onStart={beginSession}
       onClose={onBack}
+      autoStart={skipIntro}
     />
   )
 

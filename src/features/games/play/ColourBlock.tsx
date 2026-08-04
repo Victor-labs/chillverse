@@ -111,9 +111,10 @@ interface Props {
   onBack: () => void
   sessionsLeft?: number
   sessionCost?: number
+  skipIntro?: boolean
 }
 
-export default function ColourBlock({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 3 }: Props) {
+export default function ColourBlock({ rank: initialRank, onEnd, onBack, sessionsLeft = 99, sessionCost = 3, skipIntro }: Props) {
   const [phase, setPhase] = useState<'info' | 'memorize' | 'shuffle' | 'pick' | 'result' | 'quit'>('info')
   useGamePresence(GAME_ID)
   const { rankState, onCorrect, onWrong } = useRankStreak(GAME_ID, initialRank)
@@ -350,6 +351,7 @@ export default function ColourBlock({ rank: initialRank, onEnd, onBack, sessions
       streakRequired={rankCfg.streakRequired}
       onStart={start}
       onClose={onBack}
+      autoStart={skipIntro}
       extraContent={
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
