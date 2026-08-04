@@ -196,10 +196,7 @@ export default function BlogPostPage() {
         )}
       </div>
 
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
-        padding: '28px 30px', marginBottom: 24, boxShadow: 'var(--elev-raise-sm)',
-      }}>
+      <div style={{ marginBottom: 24 }}>
         {renderLiteMarkdown(post.content)}
       </div>
 
