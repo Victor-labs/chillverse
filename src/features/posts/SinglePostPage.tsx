@@ -55,7 +55,7 @@ export default function SinglePostPage() {
             Loading post…
           </div>
         ) : post ? (
-          <PostCard post={post} onDeleted={() => navigate('/feed')} truncate={false} />
+          <PostCard post={post} onDeleted={() => navigate('/feed')} truncate={false} card={false} />
         ) : (
           <div className="neu-card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-dim)', fontSize: 12.5 }}>
             This post doesn't exist or was deleted.

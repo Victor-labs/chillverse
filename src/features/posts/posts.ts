@@ -26,6 +26,19 @@ export async function hydratePosts(rows: PostRow[], userId: string | null): Prom
     for (const a of authors ?? []) authorsById.set(a.id, a)
   }
 
+  // Persona bylines ("post as Willam") — see migration 0100. Joined the
+  // same way as author profiles, from blog_personas instead of profiles.
+  const personaIds = [...new Set(rows.map(p => p.persona_author_id).filter(Boolean))] as string[]
+  const personasById = new Map<string, { id: string; username: string; display_name: string; avatar: string | null }>()
+
+  if (personaIds.length > 0) {
+    const { data: personas } = await supabase
+      .from('blog_personas')
+      .select('id, username, display_name, avatar')
+      .in('id', personaIds)
+    for (const p of personas ?? []) personasById.set(p.id, p)
+  }
+
   let likedPostIds = new Set<string>()
   if (userId) {
     const { data: likes } = await supabase
@@ -39,6 +52,7 @@ export async function hydratePosts(rows: PostRow[], userId: string | null): Prom
   return rows.map(p => ({
     ...p,
     author: p.author_id ? authorsById.get(p.author_id) : undefined,
+    persona_author: p.persona_author_id ? personasById.get(p.persona_author_id) ?? null : null,
     liked_by_me: likedPostIds.has(p.id),
   }))
 }
@@ -92,13 +106,19 @@ export async function fetchPostById(postId: string, userId: string | null): Prom
     author = data ?? undefined
   }
 
+  let personaAuthor: { id: string; username: string; display_name: string; avatar: string | null } | null = null
+  if (post.persona_author_id) {
+    const { data } = await supabase.from('blog_personas').select('id, username, display_name, avatar').eq('id', post.persona_author_id).maybeSingle()
+    personaAuthor = data ?? null
+  }
+
   let likedByMe = false
   if (userId) {
     const { data } = await supabase.from('post_likes').select('post_id').eq('post_id', postId).eq('user_id', userId).maybeSingle()
     likedByMe = !!data
   }
 
-  return { ...post, author, liked_by_me: likedByMe } as Post
+  return { ...post, author, persona_author: personaAuthor, liked_by_me: likedByMe } as Post
 }
 
 // ── Delete ────────────────────────────────────────────────────

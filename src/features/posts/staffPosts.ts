@@ -6,9 +6,27 @@
 import { supabase } from '../../shared/lib/supabase'
 import { containsProfanity, PROFANITY_BLOCKED_MESSAGE } from '../../shared/lib/profanityFilter'
 import { hydratePosts, type PostRow } from './posts'
-import type { Post, PostKind } from './types'
+import type { Post, PostKind, PostPersonaAuthor } from './types'
 import type { RankGroupId } from '../profile/ranks'
 import { notifyRankTag } from '../achievements/achievements'
+
+/** The one house persona announcements are allowed to post as. Deliberately
+ *  scoped to just "willam" — blog_personas also has "Engineering Crew",
+ *  but that one is not offered here, by design. Returns null (rather than
+ *  throwing) if the persona has been renamed/removed, so the composer can
+ *  just fall back to "post as yourself" instead of erroring. */
+export async function fetchAnnouncementPersona(): Promise<PostPersonaAuthor | null> {
+  const { data, error } = await supabase
+    .from('blog_personas')
+    .select('id, username, display_name, avatar')
+    .eq('username', 'willam')
+    .maybeSingle()
+  if (error) {
+    console.error('fetchAnnouncementPersona error:', error)
+    return null
+  }
+  return data ?? null
+}
 
 const FEED_IMAGES_BUCKET = 'feed-images'
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5MB
@@ -56,6 +74,10 @@ export async function createAnnouncement(input: {
   commentable: boolean
   /** Required (and only meaningful) when postKind === 'rank_tag'. */
   rankTagGroup?: RankGroupId | null
+  /** Set when the staffer chose "Post as Willam" — see migration 0100.
+   *  author_id/author_type still record the real poster; this only
+   *  overrides how the post is displayed. */
+  personaAuthorId?: string | null
 }): Promise<{ data: Post | null; error: { message: string } | null }> {
   if (containsProfanity(input.body)) {
     return { data: null, error: { message: PROFANITY_BLOCKED_MESSAGE } }
@@ -78,6 +100,7 @@ export async function createAnnouncement(input: {
       media_type: input.mediaUrl ? 'image' : null,
       pinned: input.pinned,
       rank_tag_group: input.postKind === 'rank_tag' ? input.rankTagGroup ?? null : null,
+      persona_author_id: input.personaAuthorId ?? null,
     })
     .select()
     .single()

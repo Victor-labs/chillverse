@@ -32,7 +32,7 @@ const TAG_ICON: Record<string, string> = {
 // server-side, so this never fires for them.
 const CARD_TRUNCATE_AT = 600
 
-export default function PostCard({ post, onDeleted, truncate = true }: { post: Post; onDeleted?: (postId: string) => void; truncate?: boolean }) {
+export default function PostCard({ post, onDeleted, truncate = true, card = true }: { post: Post; onDeleted?: (postId: string) => void; truncate?: boolean; card?: boolean }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { isStaff } = useModRole()
@@ -77,13 +77,20 @@ export default function PostCard({ post, onDeleted, truncate = true }: { post: P
   }, [menuOpen])
 
   const author = post.author
-  const authorName = post.author_type === 'system'
-    ? 'Chillverse'
-    : post.author_type === 'admin'
-      ? (author?.display_name || author?.username || 'Admin')
-      : (author?.display_name || author?.username || 'Unknown')
+  // A staff post can be "posted as" a house persona (Willam) — see
+  // migration 0100. When set, the persona's name/avatar take over the
+  // byline entirely; author_type/author still reflect the real poster
+  // underneath (for RLS/audit) so this is purely a display swap.
+  const persona = post.persona_author
+  const authorName = persona
+    ? persona.display_name
+    : post.author_type === 'system'
+      ? 'Chillverse'
+      : post.author_type === 'admin'
+        ? (author?.display_name || author?.username || 'Admin')
+        : (author?.display_name || author?.username || 'Unknown')
 
-  const isSystemOrAdmin = post.author_type !== 'user'
+  const isSystemOrAdmin = post.author_type !== 'user' || !!persona
   const singleAchievementTag = post.tags.length === 1 && post.tags[0].type === 'achievement' ? post.tags[0] : null
 
   const isClipped = truncate && post.body.length > CARD_TRUNCATE_AT
@@ -161,10 +168,10 @@ export default function PostCard({ post, onDeleted, truncate = true }: { post: P
   }
 
   return (
-    <div className="neu-card" style={{ padding: 16, marginBottom: 12, ...(rankTagInfo ? { background: `${rankTagInfo.color}0d`, border: `1px solid ${rankTagInfo.color}55` } : {}) }}>
+    <div className={card ? 'neu-card' : undefined} style={{ ...(card ? { padding: 16, marginBottom: 12 } : {}), ...(rankTagInfo ? { background: `${rankTagInfo.color}0d`, border: `1px solid ${rankTagInfo.color}55`, ...(card ? {} : { padding: 16, borderRadius: 14 }) } : {}) }}>
       <div className="flex items-center gap-3">
         <Avatar
-          src={author?.avatar}
+          src={persona ? persona.avatar : author?.avatar}
           name={authorName}
           userId={isSystemOrAdmin ? null : post.author_id}
           size={38}
@@ -184,9 +191,14 @@ export default function PostCard({ post, onDeleted, truncate = true }: { post: P
               }}
             >
               {authorName}
-              {isSystemOrAdmin && (
+              {isSystemOrAdmin && !persona && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', padding: '1px 6px', borderRadius: 6 }}>
                   {post.author_type === 'system' ? 'SYSTEM' : 'ADMIN'}
+                </span>
+              )}
+              {persona && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', padding: '1px 6px', borderRadius: 6 }}>
+                  STAFF
                 </span>
               )}
               {rankTagInfo && (
@@ -293,17 +305,9 @@ export default function PostCard({ post, onDeleted, truncate = true }: { post: P
             <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
               📰 From the blog
             </span>
-            <h4 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: '4px 0 4px', lineHeight: 1.3 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: '4px 0 0', lineHeight: 1.3 }}>
               {post.blog_title}
             </h4>
-            {post.blog_excerpt && (
-              <p style={{
-                fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.4, margin: 0,
-                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>
-                {post.blog_excerpt}
-              </p>
-            )}
           </div>
         </button>
       )}

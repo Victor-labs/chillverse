@@ -31,6 +31,17 @@ export interface PostAuthor {
   avatar: string
 }
 
+/** A house persona byline (see migration 0099/0100) — e.g. "Willam" — used
+ *  in place of the real poster's name/avatar when post.persona_author_id
+ *  is set. Joined client-side from `blog_personas`, same table the blog
+ *  editor's persona picker reads from. */
+export interface PostPersonaAuthor {
+  id: string
+  username: string
+  display_name: string
+  avatar: string | null
+}
+
 export interface Post {
   id: string
   author_id: string | null
@@ -64,8 +75,14 @@ export interface Post {
   blog_title?: string | null
   blog_excerpt?: string | null
   blog_hero_image_url?: string | null
+  /** Set only on staff posts, when the staffer chose to "post as" a house
+   *  persona instead of themselves (migration 0100). author_id/author_type
+   *  are still the real poster for RLS/audit purposes — this is a display
+   *  override only, resolved client-side into `persona_author` below. */
+  persona_author_id?: string | null
   // joined client-side, not a real column
   author?: PostAuthor
+  persona_author?: PostPersonaAuthor | null
   liked_by_me?: boolean
 }
 

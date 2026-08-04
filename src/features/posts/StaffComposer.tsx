@@ -9,9 +9,10 @@ import { createPortal } from 'react-dom'
 import { X, Megaphone, Image as ImageIcon, Sparkles } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
-import { createAnnouncement, uploadFeedImage } from './staffPosts'
-import type { PostKind } from './types'
+import { createAnnouncement, fetchAnnouncementPersona, uploadFeedImage } from './staffPosts'
+import type { PostKind, PostPersonaAuthor } from './types'
 import { RANK_GROUPS, type RankGroupId } from '../profile/ranks'
+import Avatar from '../../shared/components/Avatar'
 
 interface StaffComposerProps {
   open: boolean
@@ -31,6 +32,12 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
 
   const [postKind, setPostKind] = useState<PostKind>('announcement')
   const [rankTagGroup, setRankTagGroup] = useState<RankGroupId | null>(null)
+  // "Post as" — mirrors the blog editor's persona picker, but scoped to
+  // just Willam (see fetchAnnouncementPersona in staffPosts.ts). Loaded
+  // once; stays null (and the picker just doesn't render) if the persona
+  // has been removed/renamed rather than erroring the whole composer.
+  const [persona, setPersona] = useState<PostPersonaAuthor | null>(null)
+  const [postAsPersona, setPostAsPersona] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -57,8 +64,14 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
     })
     setPinned(false)
     setCommentable(true)
+    setPostAsPersona(false)
     setSubmitError('')
   }, [open])
+
+  useEffect(() => {
+    if (!open || persona) return
+    fetchAnnouncementPersona().then(setPersona).catch(() => {})
+  }, [open, persona])
 
   useEffect(() => {
     return () => {
@@ -105,6 +118,7 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
         pinned,
         commentable,
         rankTagGroup,
+        personaAuthorId: postAsPersona && persona ? persona.id : null,
       })
 
       if (error) {
@@ -165,6 +179,44 @@ export default function StaffComposer({ open, onClose, onPosted }: StaffComposer
             </button>
           ))}
         </div>
+
+        {/* Post as — same idea as the blog editor's author picker, scoped
+            to just the Willam persona. Only rendered once the persona has
+            actually loaded (staff still post as themselves by default). */}
+        {persona && (
+          <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)' }}>Post as:</span>
+            <button
+              type="button"
+              className="ripple-wrap"
+              onClick={(e) => { ripple(e); setPostAsPersona(false) }}
+              style={{
+                padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                border: !postAsPersona ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
+                background: !postAsPersona ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--surface2)',
+                color: !postAsPersona ? 'var(--accent)' : 'var(--text-dim)',
+                cursor: 'pointer',
+              }}
+            >
+              Myself
+            </button>
+            <button
+              type="button"
+              className="ripple-wrap"
+              onClick={(e) => { ripple(e); setPostAsPersona(true) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px 5px 6px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                border: postAsPersona ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.08)',
+                background: postAsPersona ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--surface2)',
+                color: postAsPersona ? 'var(--accent)' : 'var(--text-dim)',
+                cursor: 'pointer',
+              }}
+            >
+              <Avatar src={persona.avatar} name={persona.display_name} userId={null} size={18} radius={6} disabled />
+              {persona.display_name}
+            </button>
+          </div>
+        )}
 
         {postKind === 'rank_tag' && (
           <div className="flex flex-wrap gap-2" style={{ marginBottom: 12 }}>
