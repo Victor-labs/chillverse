@@ -4,8 +4,13 @@ import { useState, useMemo, useCallback, useEffect, createContext, useContext } 
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ChevronRight, Image as ImageIcon, Shirt, Zap,
-  Lock, Star, X, ShoppingBag, Heart, Users, Eye, Sparkles,
+  Lock, X, ShoppingBag, Heart, Users, Eye, Sparkles,
 } from 'lucide-react'
+
+// Hero banner for the Profile Card Effects category, shown at the top of
+// the Mall for quick discovery — matches the promo-banner pattern used
+// for other categories below it.
+const EFFECT_BANNER_URL = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/profile-pics/Normal%20tier/Profileeffect.png'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { updateMissionProgress } from '../missions/weeklyMissions'
@@ -786,8 +791,8 @@ function SubPage({ title, onBack, children }: { title: string; onBack: () => voi
 // animated effects — same pattern as the Avatar sub-tabs below.
 const PROFILE_PIC_SUB_CATEGORIES = ['Classic', 'Profile card effect']
 
-function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number> }) {
-  const [activeTab, setActiveTab] = useState(PROFILE_PIC_SUB_CATEGORIES[0])
+function ProfilePicsPage({ items, onBack, onSelect, onWishlist, wishlisted, likeCounts, initialTab }: { items: MallItem[]; onBack: () => void; onSelect: (item: MallItem) => void; onWishlist?: (item: MallItem) => void; wishlisted?: Set<string>; likeCounts?: Record<string, number>; initialTab?: string }) {
+  const [activeTab, setActiveTab] = useState(initialTab ?? PROFILE_PIC_SUB_CATEGORIES[0])
   const profilePics = items.filter(i => i.category === 'profile_pic' && (activeTab === 'Classic' ? !i.sub_category : i.sub_category === activeTab))
 
   return (
@@ -930,6 +935,7 @@ export default function Mall() {
   const { isEnabled: isMallFlagEnabled, loading: mallFlagLoading } = useFeatureFlags()
   const { isStaff: mallIsStaff } = useModRole()
   const [openSection, setOpenSection] = useState<string | null>(null)
+  const [profilePicsInitialTab, setProfilePicsInitialTab] = useState<string>('Classic')
   const [selectedItem, setSelectedItem] = useState<MallItem | null>(null)
   const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
@@ -999,19 +1005,21 @@ export default function Mall() {
     if (userId) updateMissionProgress(userId, 'wishlist_adds', 1).catch(console.error)
   }, [userId, wishlisted])
 
-  // Featured: 3 items picked pseudo-randomly, rotating every 2 days
-  // Seed changes every 2 days so the same 3 show for all users that day
-  const featured = useMemo(() => {
-    if (!items.length) return []
-    const twoDayEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 2))
-    // Simple seeded shuffle — deterministic for the same epoch
-    const seeded = [...items].sort((a, b) => {
-      const ha = (a.id + twoDayEpoch).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-      const hb = (b.id + twoDayEpoch).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-      return ha - hb
-    })
-    return seeded.slice(0, 3)
-  }, [items])
+  // Quick-access row under the hero banner: the 4 Profile Card Effect items
+  const effectItems = useMemo(
+    () => items.filter(i => i.category === 'profile_pic' && i.sub_category === 'Profile card effect').slice(0, 4),
+    [items]
+  )
+
+  // Per-category preview strips for the "Shop" advertisement rows —
+  // each SECTIONS entry gets a horizontal-scroll sample of its catalog
+  // plus a "Shop All" button that opens the full category page.
+  const categoryPreviews = useMemo(() => ({
+    profile_pics: items.filter(i => i.category === 'profile_pic' && !i.sub_category).slice(0, 8),
+    avatars:      items.filter(i => i.category === 'avatar_skin').slice(0, 8),
+    consumables:  items.filter(i => i.category === 'xp_booster' || i.is_consumable).slice(0, 8),
+    banners:      items.filter(i => i.sub_category === 'album' || i.category === 'banner').slice(0, 8),
+  } as Record<string, MallItem[]>), [items])
 
   if (!mallFlagLoading && !isMallFlagEnabled('system:mall') && !mallIsStaff) {
     return (
@@ -1071,74 +1079,85 @@ export default function Mall() {
           <ChevronRight size={16} color="var(--text-muted)" />
         </div>
 
-        {/* Section menu */}
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 }}>Browse</div>
-        {SECTIONS.map((section, i) => (
-          <div
-            key={section.id}
-            onClick={(e) => { ripple(e); setOpenSection(section.id) }}
-            className="ripple-wrap"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 18, padding: 16, marginBottom: 11, cursor: 'pointer',
-              boxShadow: 'var(--elev-raise)',
-              animation: 'feedIn 0.35s ease-out both', animationDelay: `${i * 0.05}s`,
-            }}
-          >
-            <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, background: section.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor, boxShadow: 'var(--elev-raise-sm)' }}>
-              <section.Icon size={19} />
+        {/* Hero banner — Profile Card Effects, the newest category */}
+        <div
+          onClick={(e) => { ripple(e); setProfilePicsInitialTab('Profile card effect'); setOpenSection('profile_pics') }}
+          className="ripple-wrap"
+          style={{
+            position: 'relative', width: '100%', aspectRatio: '2.15 / 1', borderRadius: 20, overflow: 'hidden',
+            marginBottom: 14, cursor: 'pointer', boxShadow: 'var(--elev-raise)',
+            background: `url(${EFFECT_BANNER_URL}) center/cover, var(--surface2)`,
+            animation: 'feedIn 0.35s ease-out both',
+          }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,0.6) 100%)' }} />
+          <div style={{ position: 'absolute', left: 16, right: 16, bottom: 14, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: 3 }}>New</div>
+              <div style={{ fontSize: 21, fontWeight: 800, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Profile Effects</div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{section.label}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{section.sub}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', padding: '7px 12px', borderRadius: 20, color: '#fff', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>
+              Shop All <ChevronRight size={14} />
             </div>
-            <ChevronRight size={16} color="var(--text-muted)" />
           </div>
-        ))}
+        </div>
+
+        {/* Quick-access row: 4 effect cards from that category */}
+        {effectItems.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, marginBottom: 20 }}>
+            {effectItems.map(item => (
+              <div key={item.id} style={{ flex: '0 0 108px' }}>
+                <SquareCard item={item} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted.has(item.id)} likeCount={likeCounts[item.id] ?? 0} compact />
+              </div>
+            ))}
+          </div>
+        )}
 
         {itemsLoading && (
           <div style={{ textAlign: 'center', padding: 20, fontSize: 12, color: 'var(--text-muted)' }}>Loading catalog…</div>
         )}
 
-        {/* Featured — 3 items, rotates every 2 days */}
-        {featured.length > 0 && (
-          <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>Featured</div>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6 }}>
-              {featured.map(item => (
-                <div
-                  key={item.id}
-                  onClick={(e) => { ripple(e); setSelectedItem(item) }}
+        {/* Shop — every category gets its own advertisement row with a Shop All button */}
+        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Shop</div>
+        {SECTIONS.map((section, i) => {
+          const preview = categoryPreviews[section.id] ?? []
+          if (!preview.length) return null
+          return (
+            <div key={section.id} style={{ marginBottom: 26, animation: 'feedIn 0.35s ease-out both', animationDelay: `${i * 0.05}s` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{section.label}</div>
+                <button
+                  onClick={(e) => { ripple(e); setProfilePicsInitialTab('Classic'); setOpenSection(section.id) }}
                   className="ripple-wrap"
                   style={{
-                    flex: '0 0 auto', width: 200, background: 'var(--surface)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                    borderRadius: 18, padding: 14, cursor: 'pointer',
-                    boxShadow: 'var(--elev-raise)',
+                    display: 'flex', alignItems: 'center', gap: 2, background: 'var(--surface2)', border: '1px solid var(--border)',
+                    borderRadius: 20, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text-dim)',
+                    cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,var(--accent),#f5c542)', color: '#1a1108', fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>
-                    <Star size={10} /> Featured
+                  Shop All <ChevronRight size={12} />
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+                {preview.map(item => (
+                  <div
+                    key={item.id}
+                    onClick={(e) => { ripple(e); setSelectedItem(item) }}
+                    className="ripple-wrap"
+                    style={{ flex: '0 0 96px', cursor: 'pointer' }}
+                  >
+                    <CardThumb item={item} style={{ width: 96, height: 96, borderRadius: 14, boxShadow: 'var(--elev-raise-sm)' }} />
                   </div>
-                  <CardThumb item={item} style={{ width: '100%', height: 90, borderRadius: 13, marginBottom: 10, overflow: 'hidden' }} />
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{item.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <RarityBadge rarity={item.rarity} />
-                    {item.price_gems != null && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
-                        💎 {item.price_gems.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })}
       </div>
       )}
 
       {/* Sub-pages */}
-      {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
+      {openSection === 'profile_pics' && <ProfilePicsPage items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} initialTab={profilePicsInitialTab} />}
       {openSection === 'avatars'      && <AvatarsPage      items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
       {openSection === 'consumables'  && <ConsumablesPage  items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
       {openSection === 'banners'      && <BannersPage       items={items} onBack={() => setOpenSection(null)} onSelect={setSelectedItem} onWishlist={handleWishlist} wishlisted={wishlisted} likeCounts={likeCounts} />}
