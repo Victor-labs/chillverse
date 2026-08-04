@@ -77,7 +77,9 @@ export default function AnnouncementPage() {
       </div>
 
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.3, marginBottom: 8 }}>
-        {post.body.length > 90 ? `${post.body.slice(0, 90).trim()}…` : post.body}
+        {/* Prefer the real headline (migration 0101); falls back to a body
+            slice for older announcements posted before titles existed. */}
+        {post.title || (post.body.length > 90 ? `${post.body.slice(0, 90).trim()}…` : post.body)}
       </h1>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>{publishedLabel}</div>
 

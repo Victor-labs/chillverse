@@ -223,7 +223,9 @@ function StatCard({ value, label }: { value: string; label: string }) {
 function AnnouncementCard({ post }: { post: Post }) {
   const navigate = useNavigate()
   const publishedLabel = new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  const excerpt = post.body.length > 140 ? `${post.body.slice(0, 140).trim()}…` : post.body
+  // Prefer the real headline (migration 0101). Falls back to a body slice
+  // for older announcements posted before staff could set a title.
+  const excerpt = post.title || (post.body.length > 140 ? `${post.body.slice(0, 140).trim()}…` : post.body)
 
   return (
     <button
