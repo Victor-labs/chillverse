@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ImageOff, Languages, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
-import { fetchAuthorById, fetchBlogPostBySlug, fetchRelatedPosts, fetchTranslationCounterpart } from './api'
+import { fetchAuthorForPost, fetchBlogPostBySlug, fetchRelatedPosts, fetchTranslationCounterpart } from './api'
 import { getBlogCategoryMeta, getSeriesLabel, BLOG_LOCALES, BLOG_LOCALE_STORAGE_KEY } from './constants'
 import { renderLiteMarkdown } from '../../shared/lib/markdownLite'
 import BlogPostCard from './BlogPostCard'
@@ -50,7 +50,9 @@ export default function BlogPostPage() {
               found.id
             )
           : Promise.resolve(null)
-        const authorPromise = found.author_id ? fetchAuthorById(found.author_id) : Promise.resolve(null)
+        // Resolves from whichever of persona_author_id/author_id is set
+        // (house byline vs. real person — see migration 0099).
+        const authorPromise = fetchAuthorForPost(found)
 
         const [relatedPosts, translationPost, authorProfile] = await Promise.all([relatedPromise, translationPromise, authorPromise])
         if (!active) return
@@ -163,6 +165,16 @@ export default function BlogPostPage() {
                   borderRadius: 999, padding: '2px 8px',
                 }}>
                   <BadgeCheck size={11} /> Founder
+                </span>
+              )}
+              {author.is_persona && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase',
+                  color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--text-muted) 14%, transparent)',
+                  borderRadius: 999, padding: '2px 8px',
+                }}>
+                  <BadgeCheck size={11} /> Official
                 </span>
               )}
             </div>

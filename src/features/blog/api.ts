@@ -1,7 +1,7 @@
 // src/features/blog/api.ts
 import { supabase } from '../../shared/lib/supabase'
 import type {
-  BlogAuthor, BlogCategory, BlogCategoryRow, BlogLocale, BlogMediaItem, BlogPost,
+  BlogAuthor, BlogCategory, BlogCategoryRow, BlogLocale, BlogMediaItem, BlogPersona, BlogPost,
   BlogPostInput, BlogPostRevision, BlogSearchResult, BlogTagRow,
 } from '../../shared/types'
 
@@ -196,6 +196,7 @@ function inputToRow(input: BlogPostInput) {
     locale: input.locale,
     translation_group_id: input.translationGroupId,
     author_id: input.authorId,
+    persona_author_id: input.personaAuthorId,
     status: input.status,
     scheduled_at: input.status === 'scheduled' ? input.scheduledAt : null,
     seo_title: input.seoTitle.trim() || null,
@@ -261,6 +262,7 @@ export async function duplicateBlogPost(post: BlogPost, currentUserId: string): 
       locale: post.locale,
       translation_group_id: null,
       author_id: currentUserId,
+      persona_author_id: null,
       status: 'draft',
       seo_title: post.seo_title,
       meta_description: post.meta_description,
@@ -428,11 +430,29 @@ export async function fetchPostRevisions(postId: string): Promise<BlogPostRevisi
 }
 
 // ── Authors ──────────────────────────────────────────────────────────────
+//
+// A blog post's byline can point at either a real person (`profiles`, via
+// `author_id`) or a "house" persona (`blog_personas`, via
+// `persona_author_id`) — see migration 0099. Both are normalized into the
+// same BlogAuthor shape so BlogEditorModal's picker and BlogPostPage's
+// byline don't need to know which table a given author came from.
 
 const AUTHOR_COLUMNS = 'id, username, display_name, avatar, bio, is_founder'
 
-/** Profiles eligible to be picked as a post's author, for the admin editor. */
-export async function fetchAuthorCandidates(): Promise<BlogAuthor[]> {
+function personaToAuthor(p: BlogPersona): BlogAuthor {
+  return {
+    id: p.id,
+    username: p.username,
+    display_name: p.display_name,
+    avatar: p.avatar ?? '',
+    bio: p.bio,
+    is_founder: false,
+    is_persona: true,
+  }
+}
+
+/** Real profiles eligible to be picked as a post's author (can_author = true). */
+async function fetchAuthorProfileCandidates(): Promise<BlogAuthor[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(AUTHOR_COLUMNS)
@@ -440,10 +460,32 @@ export async function fetchAuthorCandidates(): Promise<BlogAuthor[]> {
     .order('username', { ascending: true })
 
   if (error) throw error
-  return (data as BlogAuthor[]) ?? []
+  return ((data ?? []) as Array<{ id: string; username: string; display_name: string | null; avatar: string; bio: string | null; is_founder: boolean }>)
+    .map(row => ({ ...row, is_persona: false }))
 }
 
-/** A single author's byline info, for the post page. Null if the author was removed/unset. */
+/** All house bylines (Willam, Engineering Crew, etc.), for the admin editor. */
+export async function fetchPersonaCandidates(): Promise<BlogAuthor[]> {
+  const { data, error } = await supabase
+    .from('blog_personas')
+    .select('*')
+    .order('display_name', { ascending: true })
+
+  if (error) throw error
+  return ((data as BlogPersona[]) ?? []).map(personaToAuthor)
+}
+
+/**
+ * The merged author picker list for BlogEditorModal: real staff (from
+ * `profiles`) plus house personas (from `blog_personas`), personas last
+ * and labeled "(house)" by the caller via `is_persona`.
+ */
+export async function fetchAuthorCandidates(): Promise<BlogAuthor[]> {
+  const [authors, personas] = await Promise.all([fetchAuthorProfileCandidates(), fetchPersonaCandidates()])
+  return [...authors, ...personas]
+}
+
+/** A single real author's byline info, for the post page. Null if removed/unset. */
 export async function fetchAuthorById(authorId: string): Promise<BlogAuthor | null> {
   const { data, error } = await supabase
     .from('profiles')
@@ -452,5 +494,30 @@ export async function fetchAuthorById(authorId: string): Promise<BlogAuthor | nu
     .maybeSingle()
 
   if (error) throw error
-  return (data as BlogAuthor | null) ?? null
+  if (!data) return null
+  return { ...(data as { id: string; username: string; display_name: string | null; avatar: string; bio: string | null; is_founder: boolean }), is_persona: false }
+}
+
+/** A single house persona's byline info, for the post page. Null if removed/unset. */
+export async function fetchPersonaById(personaId: string): Promise<BlogAuthor | null> {
+  const { data, error } = await supabase
+    .from('blog_personas')
+    .select('*')
+    .eq('id', personaId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data ? personaToAuthor(data as BlogPersona) : null
+}
+
+/**
+ * Resolves a post's byline from whichever of `persona_author_id` /
+ * `author_id` is set (persona takes precedence, since the two are meant
+ * to be mutually exclusive). Null if neither is set or the author was
+ * removed.
+ */
+export async function fetchAuthorForPost(post: Pick<BlogPost, 'author_id' | 'persona_author_id'>): Promise<BlogAuthor | null> {
+  if (post.persona_author_id) return fetchPersonaById(post.persona_author_id)
+  if (post.author_id) return fetchAuthorById(post.author_id)
+  return null
 }
