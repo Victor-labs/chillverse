@@ -318,6 +318,8 @@ export interface BlogPost {
   seo_title: string | null
   meta_description: string | null
   last_edited_by: string | null
+  // ── Pinning (migration 0100) ──
+  is_pinned: boolean
 }
 
 export interface BlogCategoryRow {
