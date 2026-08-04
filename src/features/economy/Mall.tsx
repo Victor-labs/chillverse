@@ -1042,6 +1042,14 @@ export default function Mall() {
           to   { opacity:1; transform: translateX(-50%) translateY(0) }
         }
         @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+        /* Hero banner: aspect-ratio steps up on wider viewports (phone →
+           tablet) so background-size:contain never has to shrink the
+           artwork more than necessary to avoid cropping it. */
+        .mall-hero-banner { aspect-ratio: 1.6 / 1; }
+        @media (min-width: 420px) { .mall-hero-banner { aspect-ratio: 1.9 / 1; } }
+        @media (min-width: 700px) { .mall-hero-banner { aspect-ratio: 2.4 / 1; } }
+        @media (min-width: 1000px) { .mall-hero-banner { aspect-ratio: 3 / 1; } }
       `}</style>
 
       {!openSection && (
@@ -1079,26 +1087,23 @@ export default function Mall() {
           <ChevronRight size={16} color="var(--text-muted)" />
         </div>
 
-        {/* Hero banner — Profile Card Effects, the newest category */}
+        {/* Hero banner — Profile Card Effects, the newest category.
+            The artwork already carries its own "PROFILE EFFECTS" title, so
+            we show it with background-size: contain (never cropped) instead
+            of cover, and just float NEW / Shop All on top of it. */}
         <div
           onClick={(e) => { ripple(e); setProfilePicsInitialTab('Profile card effect'); setOpenSection('profile_pics') }}
-          className="ripple-wrap"
+          className="ripple-wrap mall-hero-banner"
           style={{
-            position: 'relative', width: '100%', aspectRatio: '2.15 / 1', borderRadius: 20, overflow: 'hidden',
+            position: 'relative', width: '100%', borderRadius: 20, overflow: 'hidden',
             marginBottom: 14, cursor: 'pointer', boxShadow: 'var(--elev-raise)',
-            background: `url(${EFFECT_BANNER_URL}) center/cover, var(--surface2)`,
+            background: `#0a0a10 url(${EFFECT_BANNER_URL}) center/contain no-repeat`,
             animation: 'feedIn 0.35s ease-out both',
           }}
         >
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,0.6) 100%)' }} />
-          <div style={{ position: 'absolute', left: 16, right: 16, bottom: 14, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: 3 }}>New</div>
-              <div style={{ fontSize: 21, fontWeight: 800, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Profile Effects</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', padding: '7px 12px', borderRadius: 20, color: '#fff', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>
-              Shop All <ChevronRight size={14} />
-            </div>
+          <div style={{ position: 'absolute', top: 12, left: 14, fontSize: 10, fontWeight: 800, letterSpacing: 1.3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', padding: '4px 9px', borderRadius: 20 }}>New</div>
+          <div style={{ position: 'absolute', bottom: 12, right: 14, display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', padding: '7px 12px', borderRadius: 20, color: '#fff', fontSize: 11.5, fontWeight: 700 }}>
+            Shop All <ChevronRight size={14} />
           </div>
         </div>
 
