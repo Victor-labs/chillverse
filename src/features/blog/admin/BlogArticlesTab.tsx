@@ -1,10 +1,10 @@
 // src/features/blog/admin/BlogArticlesTab.tsx
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Pencil, Copy, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { Search, Pencil, Copy, Archive, ArchiveRestore, Trash2, Pin, PinOff } from 'lucide-react'
 import { ripple } from '../../../shared/lib/ripple'
 import {
   fetchAllBlogPostsForAdmin, fetchBlogCategoryRows, fetchAuthorCandidates,
-  duplicateBlogPost, setBlogPostStatus, deleteBlogPost, friendlyBlogError,
+  duplicateBlogPost, setBlogPostStatus, setBlogPostPinned, deleteBlogPost, friendlyBlogError,
 } from '../api'
 import type { BlogAuthor, BlogCategoryRow, BlogPost } from '../../../shared/types'
 import { inputStyle, statusBadgeStyle, statusMeta } from './styles'
@@ -96,6 +96,23 @@ export default function BlogArticlesTab({
     }
   }
 
+  async function handlePin(post: BlogPost) {
+    setBusyId(post.id)
+    try {
+      const nextPinned = !post.is_pinned
+      const updated = await setBlogPostPinned(post.id, nextPinned)
+      // Pinning one post unpins every other one server-side — mirror that locally too.
+      setPosts(prev => prev.map(p => {
+        if (p.id === post.id) return updated
+        return nextPinned && p.is_pinned ? { ...p, is_pinned: false } : p
+      }))
+    } catch (err) {
+      alert(friendlyBlogError(err as Error))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function handleDelete(post: BlogPost) {
     if (!window.confirm(`Permanently delete "${post.title}"? This can't be undone.`)) return
     setBusyId(post.id)
@@ -170,7 +187,10 @@ export default function BlogArticlesTab({
                 )}
 
                 <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.title}</p>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {post.is_pinned && <Pin size={11} color="var(--accent)" fill="var(--accent)" style={{ flexShrink: 0 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.title}</span>
+                  </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
                     {cat && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: cat.color, fontWeight: 700 }}>
@@ -196,6 +216,14 @@ export default function BlogArticlesTab({
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                   <ActionButton title={editable ? 'Edit' : 'View'} icon={Pencil} onClick={() => onEdit(post)} />
                   <ActionButton title="Duplicate" icon={Copy} onClick={() => handleDuplicate(post)} disabled={busy} />
+                  {isEditorPlus && post.status === 'published' && (
+                    <ActionButton
+                      title={post.is_pinned ? 'Unpin from top' : 'Pin to top'}
+                      icon={post.is_pinned ? PinOff : Pin}
+                      onClick={() => handlePin(post)}
+                      disabled={busy}
+                    />
+                  )}
                   {isEditorPlus && (
                     <ActionButton
                       title={post.status === 'archived' ? 'Restore to draft' : 'Archive'}
