@@ -9,7 +9,7 @@ import { ripple } from '../../../shared/lib/ripple'
 import { useAuth } from '../../auth/useAuth'
 import {
   uploadBlogImage, createBlogPost, updateBlogPost, fetchBlogCategoryRows, fetchBlogTagRows,
-  fetchAuthorCandidates, fetchPostRevisions, fetchMediaLibrary, friendlyBlogError,
+  fetchAuthorCandidates, fetchAuthorById, fetchPersonaById, fetchPostRevisions, fetchMediaLibrary, friendlyBlogError,
 } from '../api'
 import { applyMarkdownAction, extractYouTubeId, renderLiteMarkdown, type MarkdownAction } from '../../../shared/lib/markdownLite'
 import type {
@@ -31,8 +31,15 @@ function toLocalDateTimeValue(iso: string | null): string {
 const EMPTY_FORM: BlogPostInput = {
   slug: '', title: '', excerpt: '', content: '', heroImageUrl: '',
   category: '', series: '', tags: [], locale: 'en',
-  translationGroupId: null, authorId: null, isPublished: false,
+  translationGroupId: null, authorId: null, personaAuthorId: null, isPublished: false,
   status: 'draft', scheduledAt: null, seoTitle: '', metaDescription: '',
+}
+
+/** Encodes the merged author picker's selected value: real profiles and
+ *  house personas both have plain UUID ids, so the <select> value needs a
+ *  prefix to know which of form.authorId / form.personaAuthorId to set. */
+function authorOptionValue(a: BlogAuthor): string {
+  return `${a.is_persona ? 'persona' : 'user'}:${a.id}`
 }
 
 export default function BlogEditorModal({
@@ -73,7 +80,7 @@ export default function BlogEditorModal({
     return {
       slug: p.slug, title: p.title, excerpt: p.excerpt ?? '', content: p.content, heroImageUrl: p.hero_image_url ?? '',
       category: p.category, series: p.series ?? '', tags: p.tags, locale: p.locale,
-      translationGroupId: p.translation_group_id, authorId: p.author_id, isPublished: p.is_published,
+      translationGroupId: p.translation_group_id, authorId: p.author_id, personaAuthorId: p.persona_author_id, isPublished: p.is_published,
       status: p.status, scheduledAt: p.scheduled_at, seoTitle: p.seo_title ?? '', metaDescription: p.meta_description ?? '',
     }
   }
@@ -95,6 +102,29 @@ export default function BlogEditorModal({
       })
       .catch(() => {})
   }, [])
+
+  // Belt-and-suspenders: the dropdown only lists can_author=true profiles
+  // plus current personas, but form.authorId/personaAuthorId can
+  // legitimately point at someone/something outside that set (a
+  // newly-promoted staffer whose flag hasn't synced, a historical post by
+  // someone since demoted, or a persona since removed). Without this, the
+  // select silently falls back to "Unassigned" even though the real
+  // author_id/persona_author_id is intact.
+  useEffect(() => {
+    if (!form.authorId) return
+    if (authors.some(a => a.id === form.authorId)) return
+    fetchAuthorById(form.authorId)
+      .then(a => { if (a) setAuthors(prev => prev.some(p => p.id === a.id) ? prev : [...prev, a]) })
+      .catch(() => {})
+  }, [form.authorId, authors])
+
+  useEffect(() => {
+    if (!form.personaAuthorId) return
+    if (authors.some(a => a.id === form.personaAuthorId)) return
+    fetchPersonaById(form.personaAuthorId)
+      .then(a => { if (a) setAuthors(prev => prev.some(p => p.id === a.id) ? prev : [...prev, a]) })
+      .catch(() => {})
+  }, [form.personaAuthorId, authors])
 
   useEffect(() => {
     if (postId) fetchPostRevisions(postId).then(setRevisions).catch(() => {})
@@ -169,7 +199,10 @@ export default function BlogEditorModal({
       if (postId) {
         saved = await updateBlogPost(postId, payload)
       } else {
-        saved = await createBlogPost({ ...payload, authorId: payload.authorId ?? user.id })
+        saved = await createBlogPost({
+          ...payload,
+          authorId: payload.personaAuthorId ? null : payload.authorId ?? user.id,
+        })
         setPostId(saved.id)
       }
       setForm(f => ({ ...f, status: saved.status, scheduledAt: saved.scheduled_at }))
@@ -263,9 +296,31 @@ export default function BlogEditorModal({
                 </select>
               </Field>
               <Field label="Author">
-                <select value={form.authorId ?? ''} onChange={(e) => update('authorId', e.target.value || null)} style={inputStyle} disabled={readOnly || currentUserRole === 'staff'}>
+                <select
+                  value={form.personaAuthorId ? `persona:${form.personaAuthorId}` : form.authorId ? `user:${form.authorId}` : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (!raw) {
+                      setForm(f => ({ ...f, authorId: null, personaAuthorId: null }))
+                      dirtyRef.current = true
+                      return
+                    }
+                    const [kind, id] = raw.split(':')
+                    dirtyRef.current = true
+                    setForm(f => kind === 'persona'
+                      ? { ...f, authorId: null, personaAuthorId: id }
+                      : { ...f, authorId: id, personaAuthorId: null })
+                  }}
+                  style={inputStyle}
+                  disabled={readOnly || currentUserRole === 'staff'}
+                >
                   <option value="">Unassigned</option>
-                  {authors.map(a => <option key={a.id} value={a.id}>{a.display_name || a.username}</option>)}
+                  {/* Real staff first, house personas last — matches fetchAuthorCandidates' order. */}
+                  {[...authors].sort((a, b) => Number(a.is_persona) - Number(b.is_persona)).map(a => (
+                    <option key={a.id} value={authorOptionValue(a)}>
+                      {a.display_name || a.username}{a.is_persona ? ' (house)' : ''}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>

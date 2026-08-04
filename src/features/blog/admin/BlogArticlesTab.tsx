@@ -152,7 +152,9 @@ export default function BlogArticlesTab({
           {visible.map(post => {
             const cat = categoryBySlug.get(post.category)
             const CatIcon = getBlogIconComponent(cat?.icon)
-            const author = post.author_id ? authorById.get(post.author_id) : null
+            const author = post.persona_author_id
+              ? authorById.get(post.persona_author_id)
+              : post.author_id ? authorById.get(post.author_id) : null
             const editable = canEdit(post)
             const busy = busyId === post.id
             return (
