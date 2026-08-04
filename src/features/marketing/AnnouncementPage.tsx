@@ -8,7 +8,7 @@
 // instead of getting bounced to a login wall.
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ImageOff, Sparkles } from 'lucide-react'
+import { ChevronLeft, ImageOff, Sparkles, ChevronDown } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { fetchPostById } from '../posts/posts'
@@ -23,12 +23,14 @@ export default function AnnouncementPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
 
   useEffect(() => {
     if (!postId) return
     let active = true
     setLoading(true)
     setNotFound(false)
+    setShowSummary(false)
 
     fetchPostById(postId, user?.id ?? null)
       .then(found => {
@@ -94,29 +96,49 @@ export default function AnnouncementPage() {
         )}
       </div>
 
-      {/* Quick summary — auto-generated from the announcement text itself,
-          skipped entirely when the post is already short (the summary
-          would just repeat the full body). */}
+      {/* Quick summary — auto-generated from the announcement text itself
+          (see announcementSummary.ts), collapsed behind a button rather
+          than always shown, since not every reader wants the condensed
+          version before the real thing. Skipped entirely when the post is
+          already short (the summary would just repeat the full body). */}
       {!isFullBody && (
-        <div style={{
-          display: 'flex', gap: 12, background: 'var(--surface2)', border: '1px solid var(--border)',
-          borderRadius: 16, padding: '18px 20px', marginBottom: 24,
-        }}>
-          <Sparkles size={16} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
+        <div style={{ marginBottom: 24 }}>
+          <button
+            type="button"
+            onClick={(e) => { ripple(e); setShowSummary(s => !s) }}
+            className="ripple-wrap"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: showSummary ? '16px 16px 0 0' : 16, padding: '14px 20px', cursor: 'pointer',
+            }}
+          >
+            <Sparkles size={16} color="var(--accent)" style={{ flexShrink: 0 }} />
+            <span style={{
+              fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: 'var(--text)', flex: 1, textAlign: 'left',
+            }}>
               Quick summary
+            </span>
+            <ChevronDown
+              size={16}
+              color="var(--text-muted)"
+              style={{ transform: showSummary ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}
+            />
+          </button>
+          {showSummary && (
+            <div style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)', borderTop: 'none',
+              borderRadius: '0 0 16px 16px', padding: '4px 20px 18px',
+            }}>
+              <p style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.55, margin: 0 }}>{summary}</p>
             </div>
-            <p style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.55, margin: 0 }}>{summary}</p>
-          </div>
+          )}
         </div>
       )}
 
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
-        padding: '28px 30px', marginBottom: 24, boxShadow: 'var(--elev-raise-sm)',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>
           Full announcement
         </div>
         <PostBody body={post.body} />
