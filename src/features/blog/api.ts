@@ -61,6 +61,7 @@ export async function fetchBlogPosts(params: {
     .select('*')
     .eq('is_published', true)
     .eq('locale', locale)
+    .order('is_pinned', { ascending: false })
     .order('published_at', { ascending: false })
     .range(offset, offset + limit) // fetch one extra row to detect "has more"
 
@@ -167,6 +168,7 @@ export function friendlyBlogError(error: { message: string } | null | undefined)
   if (msg.includes('CV_BLOG_OWN_ONLY')) return 'Writers can only create or edit their own posts.'
   if (msg.includes('CV_BLOG_WRITER_DRAFT_ONLY')) return 'Writers can save drafts only — ask an editor to publish, schedule, or archive this post.'
   if (msg.includes('CV_BLOG_SCHEDULE_REQUIRED')) return 'Choose a publish date and time before scheduling.'
+  if (msg.includes('CV_BLOG_PIN_FORBIDDEN')) return 'Only moderators/admins can pin or unpin a post.'
   return error?.message || 'Something went wrong. Please try again.'
 }
 
@@ -234,6 +236,15 @@ export async function setBlogPostStatus(id: string, status: BlogPost['status'], 
   const patch: Record<string, unknown> = { status }
   if (status === 'scheduled') patch.scheduled_at = scheduledAt
   const { data, error } = await supabase.from('blog_posts').update(patch).eq('id', id).select('*').single()
+  if (error) throw error
+  return data as BlogPost
+}
+
+/** Pins/unpins a post so it leads the /blog hero slot. Moderator/admin only
+ *  (enforced server-side); pinning a post automatically unpins any other
+ *  pinned post — see migration 0100. */
+export async function setBlogPostPinned(id: string, pinned: boolean): Promise<BlogPost> {
+  const { data, error } = await supabase.rpc('set_blog_post_pinned', { p_post_id: id, p_pinned: pinned })
   if (error) throw error
   return data as BlogPost
 }
