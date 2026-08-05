@@ -49,8 +49,8 @@ const COMPARISON_ROWS: { label: string; orbit: boolean | string; void: boolean |
   { label: 'Pick any movie', orbit: false, void: true },
   { label: 'Pick any theme', orbit: false, void: true },
   { label: 'Feed posting', orbit: false, void: true },
-  { label: 'No movie lockdown', orbit: false, void: true },
-  { label: 'Multiplayer access', orbit: false, void: true },
+  { label: 'No movie lockdown', orbit: true, void: true },
+  { label: 'Multiplayer access', orbit: true, void: true },
   { label: 'Early updates', orbit: false, void: true },
 ]
 
