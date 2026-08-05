@@ -414,7 +414,7 @@ function Ticker({ secsLeft: initialSecs, neverCloses }: { secsLeft: number; neve
     return (
       <div style={{ position: 'sticky', bottom: 0, zIndex: 20, padding: '10px 16px 16px', background: 'linear-gradient(0deg,rgba(17,17,19,1) 60%,transparent)' }}>
         <div style={{ background: 'rgba(155,109,255,0.08)', border: '1px solid rgba(155,109,255,0.35)', borderRadius: 12, padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--purple)', fontWeight: 800, fontSize: 12 }}>✦ Void perk · Movie page never closes</span>
+          <span style={{ color: 'var(--purple)', fontWeight: 800, fontSize: 12 }}>✦ Pro perk · Movie page never closes</span>
         </div>
       </div>
     )
@@ -468,8 +468,10 @@ export default function Watch() {
   const { session } = useAuth()
   const myId = session?.user?.id ?? null
   const { profile } = useProfile()
-  const isVoid = isProActive(profile) && profile?.pro_tier === 'void'
-  const [open, setOpen] = useState(() => isMovieOpen(isVoid))
+  // "No movie lockdown" is now an Orbit + Void perk (previously Void-only) —
+  // any active Pro tier keeps the movie page open around the clock.
+  const noLockdown = isProActive(profile)
+  const [open, setOpen] = useState(() => isMovieOpen(noLockdown))
   const [screen, setScreen] = useState<Screen>('category')
   const [category, setCategory] = useState<Category | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -531,14 +533,14 @@ export default function Watch() {
     })()
   }, [])
 
-  // Check open/close every 30s — also re-run whenever isVoid changes (e.g.
+  // Check open/close every 30s — also re-run whenever noLockdown changes (e.g.
   // profile finishes loading after mount, or plan is upgraded/downgraded
-  // mid-session) so Void's "never closes" perk applies immediately.
+  // mid-session) so the "never closes" perk applies immediately.
   useEffect(() => {
-    setOpen(isMovieOpen(isVoid))
-    const t = setInterval(() => setOpen(isMovieOpen(isVoid)), 30000)
+    setOpen(isMovieOpen(noLockdown))
+    const t = setInterval(() => setOpen(isMovieOpen(noLockdown)), 30000)
     return () => clearInterval(t)
-  }, [isVoid])
+  }, [noLockdown])
 
   // 5-hour refresh cycle
   useEffect(() => {
@@ -571,7 +573,7 @@ export default function Watch() {
           onBack={() => setScreen('category')}
           secsLeft={getSecondsUntilClose()}
           userId={myId}
-          neverCloses={isVoid}
+          neverCloses={noLockdown}
         />
       </>
     )
@@ -579,7 +581,7 @@ export default function Watch() {
   return (
     <>
       <PageOnboarding pageKey="watch" />
-      <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} neverCloses={isVoid} />
+      <CategoryPicker onPick={handlePick} onExit={goToDashboard} secsLeft={getSecondsUntilClose()} neverCloses={noLockdown} />
     </>
   )
 }
