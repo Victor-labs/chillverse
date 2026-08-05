@@ -42,7 +42,7 @@ export default function BlogPostPage() {
         // re-reading the same article doesn't inflate progress.
         if (user) trackWeeklyUniqueValue(user.id, 'blog_posts_read', found.id).catch(console.error)
 
-        const relatedPromise = fetchRelatedPosts(found, 3)
+        const relatedPromise = fetchRelatedPosts(found, 2)
         const translationPromise = found.translation_group_id
           ? fetchTranslationCounterpart(
               found.translation_group_id,
