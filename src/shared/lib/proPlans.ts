@@ -76,13 +76,13 @@ export const TIERS: ProTierInfo[] = [
     cardFeatures: [
       'Everything in Free',
       '19 sessions a day (up from 15 on Free)',
-      'Version 2.0 – 4.0 unlocked',
+      'Multiplayer access',
       'More games',
     ],
     features: [
       'Everything in Free',
       '19 sessions a day (up from 15 on Free)',
-      'Version 2.0 – 4.0 unlocked',
+      'Multiplayer access',
       'More games',
       'Exclusive Orbit tag on your profile',
       'Ability to set polls',
