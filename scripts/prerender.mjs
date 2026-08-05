@@ -560,18 +560,29 @@ function renderAndWrite(route) {
 for (const route of [...ROUTES, ...BLOG_ROUTES]) renderAndWrite(route)
 
 // ── sitemap.xml — add blog URLs so crawlers can discover posts without search ──
-function sitemapEntry(loc, { lastmod, changefreq = 'weekly', priority = '0.6' } = {}) {
-  return `  <url>\n    <loc>${SITE_URL}${loc}</loc>\n${lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : ''}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`
+// image: optional { loc, title } — adds an <image:image> entry so Google Images
+// has a signal to crawl the post's hero image, same as the homepage already does.
+function sitemapEntry(loc, { lastmod, changefreq = 'weekly', priority = '0.6', image } = {}) {
+  const imageXml = image
+    ? `    <image:image>\n      <image:loc>${image.loc}</image:loc>\n      <image:title>${escapeHtml(image.title)}</image:title>\n    </image:image>\n`
+    : ''
+  return `  <url>\n    <loc>${SITE_URL}${loc}</loc>\n${lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : ''}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n${imageXml}  </url>\n`
 }
 try {
   let additions = sitemapEntry('/blog', { changefreq: 'daily', priority: '0.9' })
   if (updateLogPosts.length) additions += sitemapEntry('/blog/updates', { changefreq: 'daily', priority: '0.7' })
   for (const series of seriesSlugs) additions += sitemapEntry(`/blog/series/${series}`, { priority: '0.5' })
   for (const post of blogPosts) {
+    // hero_image_url may be a relative path (e.g. from Supabase storage) or
+    // already-absolute — normalize to a full URL so it's valid in the sitemap.
+    const heroUrl = post.hero_image_url
+      ? (post.hero_image_url.startsWith('http') ? post.hero_image_url : `${SITE_URL}${post.hero_image_url.startsWith('/') ? '' : '/'}${post.hero_image_url}`)
+      : null
     additions += sitemapEntry(`/blog/${post.slug}`, {
       lastmod: (post.updated_at || post.published_at || '').slice(0, 10) || undefined,
       changefreq: 'monthly',
       priority: '0.7',
+      image: heroUrl ? { loc: heroUrl, title: post.title } : undefined,
     })
   }
   const sitemapPath = join(DIST, 'sitemap.xml')
