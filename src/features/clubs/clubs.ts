@@ -29,6 +29,16 @@ export interface ClubRoom {
   description: string | null
   welcome_message: string | null
   muted: boolean
+  default_channel_id: string | null
+}
+
+export interface ClubChannel {
+  id: string
+  room_id: string
+  name: string
+  position: number
+  created_at: string
+  created_by: string | null
 }
 
 export interface MyClub extends ClubRoom {
@@ -59,6 +69,9 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   'club not found': "That club doesn't exist, or the code is wrong.",
   'already a member of this club': "They're already a member of this club.",
   'not authorized': "Only the president or VP can do that.",
+  channel_limit_reached: "This club already has the max of 4 channels.",
+  'cannot delete the only channel': "A club needs at least one channel — create another before deleting this one.",
+  'channel not found': "That channel doesn't exist anymore.",
 }
 
 function friendlyError(e: any): Error {
@@ -77,7 +90,7 @@ export function buildClubInviteLink(roomId: string, joinCode: string): string {
 export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted)')
+    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id)')
     .eq('user_id', userId)
     .eq('chat_rooms.type', 'club')
   if (error) throw new Error(error.message)
@@ -107,7 +120,7 @@ export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
 export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted')
+    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id')
     .eq('id', roomId)
     .eq('type', 'club')
     .maybeSingle()
@@ -228,5 +241,40 @@ export async function clubUnpinMessage(roomId: string): Promise<void> {
 
 export async function clubDeleteMessage(messageId: string): Promise<void> {
   const { error } = await supabase.rpc('club_delete_message', { p_message_id: messageId })
+  if (error) throw friendlyError(error)
+}
+
+// Phase 3 — channels. A club can have up to 4; every club always has at
+// least one ('general', auto-created by create_club). Reads go straight
+// to the table (RLS scopes to members of the club's room); writes are
+// RPC-only, same pattern as everything else in this file.
+export async function fetchClubChannels(roomId: string): Promise<ClubChannel[]> {
+  const { data, error } = await supabase
+    .from('club_channels')
+    .select('id, room_id, name, position, created_at, created_by')
+    .eq('room_id', roomId)
+    .order('position', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as ClubChannel[]
+}
+
+export async function createClubChannel(roomId: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_club_channel', { p_room_id: roomId, p_name: name })
+  if (error) throw friendlyError(error)
+  return data as string
+}
+
+export async function renameClubChannel(channelId: string, name: string): Promise<void> {
+  const { error } = await supabase.rpc('rename_club_channel', { p_channel_id: channelId, p_name: name })
+  if (error) throw friendlyError(error)
+}
+
+export async function deleteClubChannel(channelId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_club_channel', { p_channel_id: channelId })
+  if (error) throw friendlyError(error)
+}
+
+export async function setDefaultClubChannel(roomId: string, channelId: string): Promise<void> {
+  const { error } = await supabase.rpc('set_default_club_channel', { p_room_id: roomId, p_channel_id: channelId })
   if (error) throw friendlyError(error)
 }

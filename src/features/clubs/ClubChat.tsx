@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings } from 'lucide-react'
+import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings, Hash, Plus, Star } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -19,7 +19,8 @@ import {
 } from '../chat/MessageBubble'
 import {
   fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage, joinClub,
-  type ClubRoom, type ClubMemberRow, type ClubRole,
+  fetchClubChannels, createClubChannel, setDefaultClubChannel,
+  type ClubRoom, type ClubMemberRow, type ClubRole, type ClubChannel,
 } from './clubs'
 import ClubMembersPanel from './ClubMembersPanel'
 import ClubSettingsModal from './ClubSettingsModal'
@@ -36,6 +37,7 @@ interface RawClubMessage {
   hidden_reason: string | null
   reply_to_id: string | null
   type: string
+  channel_id: string | null
 }
 
 const MARK_READ_THROTTLE_MS = 2000 // matches Chat.tsx — minimum gap between last_read_at writes
@@ -60,6 +62,10 @@ export default function ClubChat() {
 
   const [club, setClub] = useState<ClubRoom | null>(null)
   const [members, setMembers] = useState<ClubMemberRow[]>([])
+  const [channels, setChannels] = useState<ClubChannel[]>([])
+  const [channelId, setChannelId] = useState<string | null>(null)
+  const [channelError, setChannelError] = useState('')
+  const [creatingChannel, setCreatingChannel] = useState(false)
   const [rawMessages, setRawMessages] = useState<RawClubMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -159,15 +165,26 @@ export default function ClubChat() {
       // re-trigger a join attempt.
       if (inviteCode) setSearchParams({}, { replace: true })
 
-      const mem = await fetchClubMembers(roomId)
+      const [mem, chans] = await Promise.all([fetchClubMembers(roomId), fetchClubChannels(roomId)])
       setClub(c)
       setMembers(mem)
       membersRef.current = mem
+      setChannels(chans)
+
+      // Which channel to land in: a ?ch= link wins if it's still valid,
+      // otherwise the club's landing channel, otherwise just the first one.
+      const chParam = searchParams.get('ch')
+      const activeChannelId =
+        (chParam && chans.some(ch => ch.id === chParam) ? chParam : null) ??
+        (c.default_channel_id && chans.some(ch => ch.id === c!.default_channel_id) ? c.default_channel_id : null) ??
+        chans[0]?.id ?? null
+      setChannelId(activeChannelId)
 
       const { data: msgs, error: msgErr } = await supabase
         .from('messages')
-        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type')
+        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id')
         .eq('room_id', roomId)
+        .eq('channel_id', activeChannelId)
         .order('created_at', { ascending: false })
         .limit(50)
       if (msgErr) throw new Error(msgErr.message)
@@ -195,6 +212,9 @@ export default function ClubChat() {
   }, [roomId, myId, loading, markRoomAsRead])
 
   // Realtime: new messages, edits (delete tombstone), and pin changes.
+  // The Postgres changes filter can only scope to room_id server-side (one
+  // column), so INSERT/UPDATE on `messages` are further filtered to the
+  // active channel client-side below.
   useEffect(() => {
     if (!roomId) return
     if (subRef.current) supabase.removeChannel(subRef.current)
@@ -202,40 +222,93 @@ export default function ClubChat() {
       .channel(`club-chat:${roomId}:${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
+        if (raw.channel_id !== channelId) return
         setRawMessages(ms => ms.find(m => m.id === raw.id) ? ms : [...ms, raw])
         if (myId) markRoomAsRead(roomId, myId)
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
+        if (raw.channel_id !== channelId) return
         setRawMessages(ms => ms.map(m => m.id === raw.id ? { ...m, deleted: raw.deleted, hidden_reason: raw.hidden_reason, content: raw.deleted ? m.content : raw.content } : m))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as any
-        setClub(c => c ? { ...c, pinned_message_id: raw.pinned_message_id, archived_at: raw.archived_at, grace_started_at: raw.grace_started_at, name: raw.name, is_private: raw.is_private } : c)
+        setClub(c => c ? { ...c, pinned_message_id: raw.pinned_message_id, archived_at: raw.archived_at, grace_started_at: raw.grace_started_at, name: raw.name, is_private: raw.is_private, default_channel_id: raw.default_channel_id } : c)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` }, () => {
         fetchClubMembers(roomId).then(m => { setMembers(m); membersRef.current = m })
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'club_channels', filter: `room_id=eq.${roomId}` }, () => {
+        fetchClubChannels(roomId).then(setChannels)
+      })
       .subscribe()
     return () => { if (subRef.current) supabase.removeChannel(subRef.current) }
-  }, [roomId])
+  }, [roomId, channelId])
+
+  // Switching channels: reload just the messages for the newly selected
+  // channel, and reflect it in the URL so links to a specific channel work.
+  const switchChannel = useCallback(async (id: string) => {
+    if (!roomId || id === channelId) return
+    setChannelId(id)
+    setReplyTo(null)
+    setError('')
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('ch', id); return p }, { replace: true })
+    const { data: msgs, error: msgErr } = await supabase
+      .from('messages')
+      .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id')
+      .eq('room_id', roomId)
+      .eq('channel_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (msgErr) { setError(msgErr.message); return }
+    setRawMessages([...(msgs ?? [])].reverse())
+  }, [roomId, channelId, setSearchParams])
+
+  async function handleCreateChannel() {
+    if (!roomId || channels.length >= 4) return
+    const name = window.prompt('Channel name')
+    if (!name || !name.trim()) return
+    setCreatingChannel(true)
+    setChannelError('')
+    try {
+      const id = await createClubChannel(roomId, name.trim())
+      const chans = await fetchClubChannels(roomId)
+      setChannels(chans)
+      switchChannel(id)
+    } catch (e: any) {
+      setChannelError(e.message)
+    } finally {
+      setCreatingChannel(false)
+    }
+  }
+
+  async function handleSetDefaultChannel(id: string) {
+    if (!roomId) return
+    setChannelError('')
+    try {
+      await setDefaultClubChannel(roomId, id)
+      setClub(c => c ? { ...c, default_channel_id: id } : c)
+    } catch (e: any) {
+      setChannelError(e.message)
+    }
+  }
 
   async function sendMsg() {
     const trimmed = text.trim()
-    if (!trimmed || !roomId || !myId || sending) return
+    if (!trimmed || !roomId || !myId || !channelId || sending) return
     if (trimmed.length > MAX_MESSAGE_LENGTH) return
     if (containsProfanity(trimmed)) { setComposerError(PROFANITY_BLOCKED_MESSAGE); return }
 
     setSending(true)
     setComposerError('')
     try {
-      const payload: { room_id: string; sender_id: string; content: string; reply_to_id?: string } = {
-        room_id: roomId, sender_id: myId, content: trimmed,
+      const payload: { room_id: string; sender_id: string; content: string; reply_to_id?: string; channel_id: string } = {
+        room_id: roomId, sender_id: myId, content: trimmed, channel_id: channelId,
       }
       if (replyTo) payload.reply_to_id = replyTo.id
       const { data: inserted, error: sendErr } = await supabase
         .from('messages').insert(payload)
-        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type').single()
+        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id').single()
       if (sendErr) throw new Error(sendErr.message)
       if (inserted) setRawMessages(ms => ms.find(m => m.id === inserted.id) ? ms : [...ms, inserted])
       setText('')
@@ -311,6 +384,54 @@ export default function ClubChat() {
           </button>
         )}
       </div>
+
+      {channels.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+          {channels.map(ch => {
+            const active = ch.id === channelId
+            const isDefault = ch.id === club.default_channel_id
+            return (
+              <button
+                key={ch.id}
+                onClick={() => switchChannel(ch.id)}
+                title={isDefault ? `${ch.name} (landing channel)` : ch.name}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+                  padding: '6px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: active ? 'var(--accent)' : 'var(--surface)',
+                  color: active ? '#fff' : 'var(--text-dim)',
+                  fontSize: 12, fontWeight: 700,
+                }}
+              >
+                <Hash size={11} />{ch.name}
+                {isDefault && <Star size={10} style={{ opacity: 0.85 }} />}
+              </button>
+            )
+          })}
+          {canModerate && channels.length < 4 && (
+            <button
+              onClick={handleCreateChannel}
+              disabled={creatingChannel}
+              title="New channel"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', border: '1px dashed var(--border-strong)', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0 }}
+            >
+              <Plus size={13} />
+            </button>
+          )}
+          {canModerate && channelId && channelId !== club.default_channel_id && (
+            <button
+              onClick={() => handleSetDefaultChannel(channelId)}
+              title="Make this the landing channel"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, padding: '6px 10px', borderRadius: 20, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11.5 }}
+            >
+              <Star size={11} /> Set as landing
+            </button>
+          )}
+        </div>
+      )}
+      {channelError && (
+        <div style={{ padding: '6px 14px 0', fontSize: 11.5, color: '#ff6b6b' }}>{channelError}</div>
+      )}
 
       {isArchived && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(255,107,107,0.1)', borderBottom: '1px solid rgba(255,107,107,0.25)', color: '#ff6b6b', fontSize: 12 }}>
