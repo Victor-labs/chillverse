@@ -6,11 +6,11 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://chillverse.com.ng/og-image.png</image:loc>
+      <image:loc>https://chillverse.com.ng/og-image-banner.png</image:loc>
       <image:title>Chillverse — Play. Win. Dominate.</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chillverse.com.ng/og-image-2.jpg</image:loc>
+      <image:loc>https://chillverse.com.ng/og-image-group.png</image:loc>
       <image:title>Chillverse landing page</image:title>
     </image:image>
     <image:image>
@@ -27,6 +27,15 @@
     <loc>https://chillverse.com.ng/faq</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://chillverse.com.ng/work</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://chillverse.com.ng/og-image-work.jpg</image:loc>
+      <image:title>Work at Chillverse — Careers</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://chillverse.com.ng/login</loc>
