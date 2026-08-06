@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings, Hash, Plus, Star } from 'lucide-react'
+import { ArrowLeft, Send, Pin, PinOff, Reply, X, Trash2, Flag, Archive, Settings, Plus, MoreVertical, Hash } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -19,7 +19,7 @@ import {
 } from '../chat/MessageBubble'
 import {
   fetchClub, fetchClubMembers, clubPinMessage, clubUnpinMessage, clubDeleteMessage, joinClub,
-  fetchClubChannels, createClubChannel, setDefaultClubChannel,
+  fetchClubChannels, createClubChannel, renameClubChannel, deleteClubChannel, setDefaultClubChannel,
   type ClubRoom, type ClubMemberRow, type ClubRole, type ClubChannel,
 } from './clubs'
 import ClubMembersPanel from './ClubMembersPanel'
@@ -63,10 +63,9 @@ export default function ClubChat() {
   const [club, setClub] = useState<ClubRoom | null>(null)
   const [members, setMembers] = useState<ClubMemberRow[]>([])
   const [channels, setChannels] = useState<ClubChannel[]>([])
-  const [channelId, setChannelId] = useState<string | null>(null)
-  const [channelError, setChannelError] = useState('')
-  const [creatingChannel, setCreatingChannel] = useState(false)
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
   const [rawMessages, setRawMessages] = useState<RawClubMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [text, setText] = useState('')
@@ -75,8 +74,17 @@ export default function ClubChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [ctxMsg, setCtxMsg] = useState<Message | null>(null)
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 })
+  const [ctxChannel, setCtxChannel] = useState<ClubChannel | null>(null)
+  const [ctxChannelPos, setCtxChannelPos] = useState({ x: 0, y: 0 })
+  const [addChannelOpen, setAddChannelOpen] = useState(false)
+  const [newChannelName, setNewChannelName] = useState('')
+  const [channelBusy, setChannelBusy] = useState(false)
+  const [channelError, setChannelError] = useState('')
   const [membersOpen, setMembersOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const activeChannelIdRef = useRef<string | null>(null)
+  activeChannelIdRef.current = activeChannelId
 
   const subRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -139,6 +147,26 @@ export default function ClubChat() {
     return out
   }, [groupedMessages])
 
+  const loadMessages = useCallback(async (channelId: string) => {
+    if (!roomId) return
+    setMessagesLoading(true)
+    try {
+      const { data: msgs, error: msgErr } = await supabase
+        .from('messages')
+        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id')
+        .eq('room_id', roomId)
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (msgErr) throw new Error(msgErr.message)
+      setRawMessages([...(msgs ?? [])].reverse())
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setMessagesLoading(false)
+    }
+  }, [roomId])
+
   const load = useCallback(async () => {
     if (!roomId) return
     setLoading(true)
@@ -171,31 +199,26 @@ export default function ClubChat() {
       membersRef.current = mem
       setChannels(chans)
 
-      // Which channel to land in: a ?ch= link wins if it's still valid,
-      // otherwise the club's landing channel, otherwise just the first one.
-      const chParam = searchParams.get('ch')
-      const activeChannelId =
-        (chParam && chans.some(ch => ch.id === chParam) ? chParam : null) ??
-        (c.default_channel_id && chans.some(ch => ch.id === c!.default_channel_id) ? c.default_channel_id : null) ??
-        chans[0]?.id ?? null
-      setChannelId(activeChannelId)
-
-      const { data: msgs, error: msgErr } = await supabase
-        .from('messages')
-        .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id')
-        .eq('room_id', roomId)
-        .eq('channel_id', activeChannelId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-      if (msgErr) throw new Error(msgErr.message)
-
-      setRawMessages([...(msgs ?? [])].reverse())
+      // Land on the club's designated channel; fall back to the first one
+      // if default_channel_id is somehow stale/missing.
+      const landing = chans.find(ch => ch.id === c!.default_channel_id) ?? chans[0] ?? null
+      const landingId = landing?.id ?? null
+      setActiveChannelId(landingId)
+      if (landingId) await loadMessages(landingId)
+      else setRawMessages([])
     } catch (e: any) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [roomId, inviteCode, setSearchParams])
+  }, [roomId, inviteCode, setSearchParams, loadMessages])
+
+  function switchChannel(channelId: string) {
+    if (channelId === activeChannelId) return
+    setActiveChannelId(channelId)
+    setReplyTo(null)
+    loadMessages(channelId)
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -211,10 +234,8 @@ export default function ClubChat() {
     markRoomAsRead(roomId, myId)
   }, [roomId, myId, loading, markRoomAsRead])
 
-  // Realtime: new messages, edits (delete tombstone), and pin changes.
-  // The Postgres changes filter can only scope to room_id server-side (one
-  // column), so INSERT/UPDATE on `messages` are further filtered to the
-  // active channel client-side below.
+  // Realtime: new messages, edits (delete tombstone), pin changes, and the
+  // channel list itself (another mod adding/renaming/deleting a channel).
   useEffect(() => {
     if (!roomId) return
     if (subRef.current) supabase.removeChannel(subRef.current)
@@ -222,13 +243,12 @@ export default function ClubChat() {
       .channel(`club-chat:${roomId}:${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
-        if (raw.channel_id !== channelId) return
+        if (raw.channel_id !== activeChannelIdRef.current) return // different channel — not our list
         setRawMessages(ms => ms.find(m => m.id === raw.id) ? ms : [...ms, raw])
         if (myId) markRoomAsRead(roomId, myId)
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
         const raw = payload.new as RawClubMessage
-        if (raw.channel_id !== channelId) return
         setRawMessages(ms => ms.map(m => m.id === raw.id ? { ...m, deleted: raw.deleted, hidden_reason: raw.hidden_reason, content: raw.deleted ? m.content : raw.content } : m))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomId}` }, (payload) => {
@@ -243,59 +263,11 @@ export default function ClubChat() {
       })
       .subscribe()
     return () => { if (subRef.current) supabase.removeChannel(subRef.current) }
-  }, [roomId, channelId])
-
-  // Switching channels: reload just the messages for the newly selected
-  // channel, and reflect it in the URL so links to a specific channel work.
-  const switchChannel = useCallback(async (id: string) => {
-    if (!roomId || id === channelId) return
-    setChannelId(id)
-    setReplyTo(null)
-    setError('')
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('ch', id); return p }, { replace: true })
-    const { data: msgs, error: msgErr } = await supabase
-      .from('messages')
-      .select('id, sender_id, content, created_at, deleted, hidden_reason, reply_to_id, type, channel_id')
-      .eq('room_id', roomId)
-      .eq('channel_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (msgErr) { setError(msgErr.message); return }
-    setRawMessages([...(msgs ?? [])].reverse())
-  }, [roomId, channelId, setSearchParams])
-
-  async function handleCreateChannel() {
-    if (!roomId || channels.length >= 4) return
-    const name = window.prompt('Channel name')
-    if (!name || !name.trim()) return
-    setCreatingChannel(true)
-    setChannelError('')
-    try {
-      const id = await createClubChannel(roomId, name.trim())
-      const chans = await fetchClubChannels(roomId)
-      setChannels(chans)
-      switchChannel(id)
-    } catch (e: any) {
-      setChannelError(e.message)
-    } finally {
-      setCreatingChannel(false)
-    }
-  }
-
-  async function handleSetDefaultChannel(id: string) {
-    if (!roomId) return
-    setChannelError('')
-    try {
-      await setDefaultClubChannel(roomId, id)
-      setClub(c => c ? { ...c, default_channel_id: id } : c)
-    } catch (e: any) {
-      setChannelError(e.message)
-    }
-  }
+  }, [roomId])
 
   async function sendMsg() {
     const trimmed = text.trim()
-    if (!trimmed || !roomId || !myId || !channelId || sending) return
+    if (!trimmed || !roomId || !myId || !activeChannelId || sending) return
     if (trimmed.length > MAX_MESSAGE_LENGTH) return
     if (containsProfanity(trimmed)) { setComposerError(PROFANITY_BLOCKED_MESSAGE); return }
 
@@ -303,7 +275,7 @@ export default function ClubChat() {
     setComposerError('')
     try {
       const payload: { room_id: string; sender_id: string; content: string; reply_to_id?: string; channel_id: string } = {
-        room_id: roomId, sender_id: myId, content: trimmed, channel_id: channelId,
+        room_id: roomId, sender_id: myId, content: trimmed, channel_id: activeChannelId,
       }
       if (replyTo) payload.reply_to_id = replyTo.id
       const { data: inserted, error: sendErr } = await supabase
@@ -333,6 +305,76 @@ export default function ClubChat() {
   async function handleDelete(messageId: string) {
     setCtxMsg(null)
     try { await clubDeleteMessage(messageId) } catch (e: any) { setError(e.message) }
+  }
+
+  const [renameTarget, setRenameTarget] = useState<ClubChannel | null>(null)
+
+  function openAddChannel() {
+    setNewChannelName('')
+    setChannelError('')
+    setAddChannelOpen(true)
+  }
+  function openRenameChannel(ch: ClubChannel) {
+    setCtxChannel(null)
+    setNewChannelName(ch.name)
+    setChannelError('')
+    setRenameTarget(ch)
+  }
+  function closeChannelModal() {
+    setAddChannelOpen(false)
+    setRenameTarget(null)
+  }
+
+  async function submitChannelModal() {
+    const name = newChannelName.trim()
+    if (!name || !roomId) return
+    setChannelBusy(true)
+    setChannelError('')
+    try {
+      if (renameTarget) {
+        await renameClubChannel(renameTarget.id, name)
+        setChannels(cs => cs.map(c => c.id === renameTarget.id ? { ...c, name } : c))
+      } else {
+        const newId = await createClubChannel(roomId, name)
+        const fresh = await fetchClubChannels(roomId)
+        setChannels(fresh)
+        switchChannel(newId)
+      }
+      closeChannelModal()
+    } catch (e: any) {
+      setChannelError(e.message)
+    } finally {
+      setChannelBusy(false)
+    }
+  }
+
+  async function handleSetDefaultChannel(ch: ClubChannel) {
+    if (!roomId) return
+    setCtxChannel(null)
+    try {
+      await setDefaultClubChannel(roomId, ch.id)
+      setClub(c => c ? { ...c, default_channel_id: ch.id } : c)
+    } catch (e: any) {
+      setChannelError(e.message)
+    }
+  }
+
+  async function handleDeleteChannel(ch: ClubChannel) {
+    if (!roomId) return
+    setCtxChannel(null)
+    try {
+      await deleteClubChannel(ch.id)
+      const fresh = await fetchClubChannels(roomId)
+      setChannels(fresh)
+      if (activeChannelId === ch.id) {
+        const c2 = await fetchClub(roomId)
+        const landing = fresh.find(c => c.id === c2?.default_channel_id) ?? fresh[0] ?? null
+        setClub(c2)
+        if (landing) switchChannel(landing.id)
+      }
+    } catch (e: any) {
+      setChannelError(e.message)
+    }
   }
 
   const avatarForBurst = (msg: Message, isMine: boolean): string | null => isMine ? null : avatarFor(msg.sender_id)
@@ -371,7 +413,7 @@ export default function ClubChat() {
             background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
           }}>
-            <ClubIcon iconKey={club.icon_key} size={18} />
+            <ClubIcon iconKey={club.icon_key} iconUrl={club.icon_url} size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
@@ -385,52 +427,39 @@ export default function ClubChat() {
         )}
       </div>
 
+      {/* Channel switcher — up to 4 per club (server-enforced). Tap to
+          switch; "..." (president/vp only) opens rename/set-default/delete. */}
       {channels.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 2px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>
           {channels.map(ch => {
-            const active = ch.id === channelId
-            const isDefault = ch.id === club.default_channel_id
+            const active = ch.id === activeChannelId
             return (
-              <button
-                key={ch.id}
-                onClick={() => switchChannel(ch.id)}
-                title={isDefault ? `${ch.name} (landing channel)` : ch.name}
+              <button key={ch.id} onClick={() => switchChannel(ch.id)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-                  padding: '6px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, padding: '6px 10px', borderRadius: 20,
+                  border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
                   background: active ? 'var(--accent)' : 'var(--surface)',
                   color: active ? '#fff' : 'var(--text-dim)',
-                  fontSize: 12, fontWeight: 700,
                 }}
               >
-                <Hash size={11} />{ch.name}
-                {isDefault && <Star size={10} style={{ opacity: 0.85 }} />}
+                <Hash size={11} /> {ch.name}
+                {canModerate && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setCtxChannel(ch); setCtxChannelPos({ x: e.clientX, y: e.clientY }) }}
+                    style={{ display: 'flex', marginLeft: 2, opacity: active ? 0.85 : 0.6 }}
+                  >
+                    <MoreVertical size={11} />
+                  </span>
+                )}
               </button>
             )
           })}
           {canModerate && channels.length < 4 && (
-            <button
-              onClick={handleCreateChannel}
-              disabled={creatingChannel}
-              title="New channel"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', border: '1px dashed var(--border-strong)', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0 }}
-            >
+            <button onClick={openAddChannel} title="Add a channel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: 28, height: 28, borderRadius: '50%', border: '1px dashed var(--border-strong)', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <Plus size={13} />
             </button>
           )}
-          {canModerate && channelId && channelId !== club.default_channel_id && (
-            <button
-              onClick={() => handleSetDefaultChannel(channelId)}
-              title="Make this the landing channel"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, padding: '6px 10px', borderRadius: 20, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11.5 }}
-            >
-              <Star size={11} /> Set as landing
-            </button>
-          )}
         </div>
-      )}
-      {channelError && (
-        <div style={{ padding: '6px 14px 0', fontSize: 11.5, color: '#ff6b6b' }}>{channelError}</div>
       )}
 
       {isArchived && (
@@ -462,7 +491,9 @@ export default function ClubChat() {
 
       {/* Messages — same MessageBurst/MessageLine bubbles as Global Chat and DMs */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column' }}>
-        {bursts.length === 0 ? (
+        {messagesLoading ? (
+          <div style={{ margin: 'auto', fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>Loading…</div>
+        ) : bursts.length === 0 ? (
           <div style={{ margin: 'auto', fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>No messages yet. Say hi!</div>
         ) : bursts.map(burst => {
           const first = burst[0]
@@ -515,6 +546,54 @@ export default function ClubChat() {
         </>
       )}
 
+      {/* Channel action menu — president/vp only, opened via the "..." on a channel pill. */}
+      {ctxChannel && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setCtxChannel(null)} />
+          <div style={{ position: 'fixed', left: Math.min(ctxChannelPos.x, window.innerWidth - 175), top: Math.min(ctxChannelPos.y, window.innerHeight - 160), zIndex: 100, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--elev-popover)', minWidth: 165 }}>
+            <button onClick={() => openRenameChannel(ctxChannel)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+              <Hash size={13} /> Rename
+            </button>
+            {club.default_channel_id !== ctxChannel.id && (
+              <button onClick={() => handleSetDefaultChannel(ctxChannel)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--text-dim)' }}>
+                <Pin size={13} /> Set as landing channel
+              </button>
+            )}
+            {channels.length > 1 && (
+              <button onClick={() => handleDeleteChannel(ctxChannel)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: '#ff6b6b' }}>
+                <Trash2 size={13} /> Delete channel
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Add / rename channel — small shared modal for both flows. */}
+      {(addChannelOpen || renameTarget) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={closeChannelModal}>
+          <div style={{ width: '100%', maxWidth: 320, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 20 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+              <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', flex: 1 }}>{renameTarget ? 'Rename channel' : 'Add a channel'}</p>
+              <button onClick={closeChannelModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex' }}><X size={16} /></button>
+            </div>
+            <input
+              value={newChannelName}
+              onChange={e => setNewChannelName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitChannelModal() }}
+              maxLength={40}
+              autoFocus
+              placeholder="Channel name"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', marginBottom: 10 }}
+            />
+            {channelError && <p style={{ fontSize: 11.5, color: '#ff6b6b', marginBottom: 8 }}>{channelError}</p>}
+            <button onClick={submitChannelModal} disabled={!newChannelName.trim() || channelBusy}
+              style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: !newChannelName.trim() || channelBusy ? 0.6 : 1 }}>
+              {channelBusy ? 'Saving…' : renameTarget ? 'Save' : 'Create channel'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Composer */}
       {isArchived ? (
         <div style={{ padding: '14px', textAlign: 'center', fontSize: 12.5, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
@@ -545,9 +624,9 @@ export default function ClubChat() {
             />
             <button
               onClick={(e) => { ripple(e); sendMsg() }}
-              disabled={!text.trim() || sending}
+              disabled={!text.trim() || sending || !activeChannelId}
               className="ripple-wrap"
-              style={{ width: 42, height: 42, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: !text.trim() || sending ? 0.6 : 1 }}
+              style={{ width: 42, height: 42, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: !text.trim() || sending || !activeChannelId ? 0.6 : 1 }}
             >
               <Send size={16} />
             </button>

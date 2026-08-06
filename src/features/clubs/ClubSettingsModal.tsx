@@ -144,7 +144,7 @@ export default function ClubSettingsModal({ club, members, myId, myRole, onClose
         {/* Header — everyone sees this */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'linear-gradient(135deg, var(--accent), #7c5cff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-            <ClubIcon iconKey={club.icon_key} size={22} />
+            <ClubIcon iconKey={club.icon_key} iconUrl={club.icon_url} size={22} />
           </div>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</p>

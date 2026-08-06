@@ -17,15 +17,15 @@ import { parseInviteCode, getInvitePreview, joinByInviteCode, joinGlobalDirect, 
 import ClubIcon from './clubIcons'
 import CreateClubModal from './CreateClubModal'
 
-function ClubBadge({ iconKey, size = 34 }: { iconKey: string | null; size?: number }) {
+function ClubBadge({ iconKey, iconUrl, size = 34 }: { iconKey: string | null; iconUrl?: string | null; size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 10, flexShrink: 0,
       background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff',
+      color: '#fff', overflow: 'hidden',
     }}>
-      <ClubIcon iconKey={iconKey} size={Math.round(size * 0.52)} />
+      <ClubIcon iconKey={iconKey} iconUrl={iconUrl} size={Math.round(size * 0.52)} />
     </div>
   )
 }
@@ -224,7 +224,7 @@ export default function ClubsList({ embedded = false }: ClubsListProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
           {myClubs.map(club => (
             <div key={club.id} onClick={() => navigate(`/clubs/${club.id}`)} className="ripple-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer' }}>
-              <ClubBadge iconKey={club.icon_key} />
+              <ClubBadge iconKey={club.icon_key} iconUrl={club.icon_url} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{club.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>

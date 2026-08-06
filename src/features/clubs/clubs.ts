@@ -1,14 +1,21 @@
 // src/features/clubs/clubs.ts
-// Thin typed layer over the Clubs RPCs (see supabase/migrations/0083 +
-// 0092). Clubs are `chat_rooms` with type = 'club'. All mutations go
-// through these RPCs — direct table writes to chat_rooms are blocked by
-// RLS for this room type. Reading rooms/members/messages still goes
-// straight to the tables, same as everywhere else in the app.
+// Thin typed layer over the Clubs RPCs. Clubs are `chat_rooms` with
+// type = 'club'. All mutations go through these RPCs — direct table
+// writes to chat_rooms/club_channels are blocked by RLS. Reading rooms/
+// members/messages/channels still goes straight to the tables, same as
+// everywhere else in the app.
 //
-// Phase 1 of the redesign (see /areas/chillverse-clubs-redesign.md):
-// every club is invite-only, always. There's no public browse list and
-// no DM-invite/awaiting-list feature anymore — join_club always needs a
-// code, and it either lets you straight in or it doesn't.
+// Phase 1 (see /areas/chillverse-clubs-redesign.md): every club is
+// invite-only, always — join_club always needs a code.
+//
+// Phase 3: clubs are multi-channel now, capped at 4 (enforced server-
+// side in create_club_channel). Every club gets a `general` channel on
+// creation, set as chat_rooms.default_channel_id — that's the channel a
+// new joiner lands in. See ClubChat.tsx for the channel switcher.
+//
+// Phase 4: creation supports an uploaded icon (uploadClubIcon, bucket
+// 'club-icons') and picking up to 3 extra channels at creation time on
+// top of the auto-created `general`. See CreateClubModal.tsx.
 
 import { supabase } from '../../shared/lib/supabase'
 
@@ -21,6 +28,7 @@ export interface ClubRoom {
   is_private: boolean
   max_members: number
   icon_key: string | null
+  icon_url: string | null
   join_code: string | null
   archived_at: string | null
   grace_started_at: string | null
@@ -64,14 +72,13 @@ export interface ClubMemberRow {
 const FRIENDLY_ERRORS: Record<string, string> = {
   club_limit_reached: "You've reached the 2-club limit for free accounts. Go Pro to create more.",
   club_vp_limit_reached: 'This club already has 2 VPs — demote one before promoting another.',
+  channel_limit_reached: 'A club can only have 4 channels.',
+  'cannot delete the only channel': "You can't delete a club's last channel.",
   'this club is invite-only': 'This club is invite-only — you need a join code or link.',
   'club is full': 'This club is full.',
   'club not found': "That club doesn't exist, or the code is wrong.",
   'already a member of this club': "They're already a member of this club.",
   'not authorized': "Only the president or VP can do that.",
-  channel_limit_reached: "This club already has the max of 4 channels.",
-  'cannot delete the only channel': "A club needs at least one channel — create another before deleting this one.",
-  'channel not found': "That channel doesn't exist anymore.",
 }
 
 function friendlyError(e: any): Error {
@@ -90,7 +97,7 @@ export function buildClubInviteLink(roomId: string, joinCode: string): string {
 export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id)')
+    .select('role, chat_rooms!inner(id,name,created_by,is_private,max_members,icon_key,icon_url,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id)')
     .eq('user_id', userId)
     .eq('chat_rooms.type', 'club')
   if (error) throw new Error(error.message)
@@ -120,7 +127,7 @@ export async function fetchMyClubs(userId: string): Promise<MyClub[]> {
 export async function fetchClub(roomId: string): Promise<ClubRoom | null> {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id,name,created_by,is_private,max_members,icon_key,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id')
+    .select('id,name,created_by,is_private,max_members,icon_key,icon_url,join_code,archived_at,grace_started_at,created_at,pinned_message_id,description,welcome_message,muted,default_channel_id')
     .eq('id', roomId)
     .eq('type', 'club')
     .maybeSingle()
@@ -152,10 +159,41 @@ export async function fetchClubMembers(roomId: string): Promise<ClubMemberRow[]>
     .sort((a, b) => roleOrder[a.role] - roleOrder[b.role])
 }
 
-export async function createClub(opts: { name: string }): Promise<string> {
+const MAX_ICON_BYTES = 5 * 1024 * 1024 // 5MB — matches the pattern used for feed images elsewhere
+
+function extensionForFile(file: File): string {
+  const fromName = file.name.split('.').pop()?.toLowerCase()
+  if (fromName && /^(jpg|jpeg|png|gif|webp)$/.test(fromName)) return fromName
+  if (file.type.includes('png')) return 'png'
+  if (file.type.includes('gif')) return 'gif'
+  if (file.type.includes('webp')) return 'webp'
+  return 'jpg'
+}
+
+/** Uploads a club icon to the `club-icons` storage bucket and returns its
+ *  public URL. Path is `{userId}/{uuid}.{ext}` — required by the bucket's
+ *  RLS (folder[1] must equal auth.uid()). Called before createClub() so
+ *  the URL can go straight into create_club's p_icon_url. */
+export async function uploadClubIcon(userId: string, file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Please pick an image file for the club icon.')
+  if (file.size > MAX_ICON_BYTES) throw new Error('Icon image is too large — please use a file under 5MB.')
+
+  const path = `${userId}/${crypto.randomUUID()}.${extensionForFile(file)}`
+  const { error } = await supabase.storage
+    .from('club-icons')
+    .upload(path, file, { contentType: file.type, upsert: false })
+  if (error) throw new Error(`Failed to upload icon: ${error.message}`)
+
+  const { data } = supabase.storage.from('club-icons').getPublicUrl(path)
+  return data.publicUrl
+}
+
+export async function createClub(opts: { name: string; iconUrl?: string; extraChannels?: string[] }): Promise<string> {
   const { data, error } = await supabase.rpc('create_club', {
     p_name: opts.name,
     p_is_private: true,
+    p_icon_url: opts.iconUrl ?? null,
+    p_extra_channels: opts.extraChannels ?? [],
   })
   if (error) throw friendlyError(error)
   return data as string
@@ -244,10 +282,8 @@ export async function clubDeleteMessage(messageId: string): Promise<void> {
   if (error) throw friendlyError(error)
 }
 
-// Phase 3 — channels. A club can have up to 4; every club always has at
-// least one ('general', auto-created by create_club). Reads go straight
-// to the table (RLS scopes to members of the club's room); writes are
-// RPC-only, same pattern as everything else in this file.
+// ── Channels (Phase 3) ──────────────────────────────────────────────────
+
 export async function fetchClubChannels(roomId: string): Promise<ClubChannel[]> {
   const { data, error } = await supabase
     .from('club_channels')
