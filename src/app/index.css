@@ -5,7 +5,7 @@
    Architecture:
    1. Brand primitives   — fixed hues shared by app + marketing.
    2. Structural tokens  — radius, type scale, motion, focus.
-   3. Theme blocks       — six complete themes; every theme defines the
+   3. Theme blocks       — twelve complete themes; every theme defines the
                            full semantic scale (no silent inheritance):
                            bg → nav → surface → surface2 → surface3 →
                            active → popover, plus border/text/shadow/
@@ -91,13 +91,16 @@
     --ltext-muted:   #5a5678;
   }
 
-  /* ══ 3. THEMES — six complete blocks ══
+  /* ══ 3. THEMES — complete blocks, one per theme ══
      Every block defines the full scale. Free themes share the constant
      orange accent (branding never shifts). Premium themes carry their
      own accent + colored light + glow identity. */
 
   /* ── GREY (free, default) — neutral system dark ── */
   :root, [data-theme="grey"] {
+    /* Themes that want a gradient wash instead of a flat fill override
+       --bg-image; every other theme leaves it `none` and nothing changes. */
+    --bg-image:  none;
     --bg:        #2b2d31;
     --nav:       #232428;
     --surface:   #313338;
@@ -264,6 +267,186 @@
     --neu-light: #22392e;
   }
 
+  /* ══ 3b. VOID PASTELS + DEEP TONES ══
+     Six extra premium themes. The four pastels are LIGHT themes built on
+     a soft two-stop gradient wash (--bg-image) rather than a flat fill —
+     that gradient is the whole character of the look, so it lives in a
+     token instead of a body rule and the theme picker can preview it.
+     The two deep tones are dark themes with colored light, same recipe
+     as Aurora/Sunset/Emerald. */
+
+  /* ── MORNING DEW (premium) — mint → cyan wash, the softest of the set ── */
+  [data-theme="morning-dew"] {
+    --bg:        #ddf7dc;
+    --bg-image:  linear-gradient(180deg, #d6f5b4 0%, #d5f7dd 46%, #b9f0fb 100%);
+    --nav:       rgba(255,255,255,0.62);
+    --surface:   rgba(255,255,255,0.74);
+    --surface2:  rgba(255,255,255,0.5);
+    --surface3:  rgba(255,255,255,0.36);
+    --active:    rgba(255,255,255,0.88);
+    --popover:   #f4fffa;
+    --text:          #0f2a25;
+    --text-secondary:#3c6158;
+    --text-dim:      #3c6158;
+    --text-muted:    #6d9188;
+    --border:        rgba(15,60,50,0.09);
+    --border-strong: rgba(15,60,50,0.18);
+    --sh:        rgba(28,80,70,0.14);
+    --sh-strong: rgba(28,80,70,0.2);
+    --hl:        rgba(255,255,255,0.95);
+    --hl-faint:  rgba(255,255,255,0.6);
+    --glow:      rgba(64,214,180,0.32);
+    --accent:      #12b48a;
+    --accent2:     #58d7d2;
+    --accent-soft: rgba(18,180,138,0.15);
+    --overlay-scrim: rgba(10,40,35,0.36);
+    --neu-dark:  #b9dcc9;
+    --neu-light: #ffffff;
+  }
+
+  /* ── SAKURA (premium) — blossom pink, warm rose light ── */
+  [data-theme="sakura"] {
+    --bg:        #ffe6ef;
+    --bg-image:  linear-gradient(180deg, #ffd9e8 0%, #ffe7ef 52%, #fff1f0 100%);
+    --nav:       rgba(255,255,255,0.64);
+    --surface:   rgba(255,255,255,0.78);
+    --surface2:  rgba(255,255,255,0.52);
+    --surface3:  rgba(255,255,255,0.38);
+    --active:    rgba(255,255,255,0.9);
+    --popover:   #fff6f9;
+    --text:          #35131f;
+    --text-secondary:#7a4257;
+    --text-dim:      #7a4257;
+    --text-muted:    #a87b8b;
+    --border:        rgba(80,20,45,0.08);
+    --border-strong: rgba(80,20,45,0.17);
+    --sh:        rgba(120,40,70,0.13);
+    --sh-strong: rgba(120,40,70,0.19);
+    --hl:        rgba(255,255,255,0.95);
+    --hl-faint:  rgba(255,255,255,0.6);
+    --glow:      rgba(255,120,170,0.3);
+    --accent:      #e5487f;
+    --accent2:     #ff9ec4;
+    --accent-soft: rgba(229,72,127,0.14);
+    --overlay-scrim: rgba(60,15,35,0.36);
+    --neu-dark:  #f0c7d6;
+    --neu-light: #ffffff;
+  }
+
+  /* ── PEACH (premium) — cream → apricot, warm paper light ── */
+  [data-theme="peach"] {
+    --bg:        #fff0e2;
+    --bg-image:  linear-gradient(180deg, #ffe3cc 0%, #fff1e4 54%, #fffaf0 100%);
+    --nav:       rgba(255,255,255,0.66);
+    --surface:   rgba(255,255,255,0.8);
+    --surface2:  rgba(255,255,255,0.54);
+    --surface3:  rgba(255,255,255,0.4);
+    --active:    rgba(255,255,255,0.92);
+    --popover:   #fff9f2;
+    --text:          #33200f;
+    --text-secondary:#7a5537;
+    --text-dim:      #7a5537;
+    --text-muted:    #a98a6c;
+    --border:        rgba(70,40,15,0.08);
+    --border-strong: rgba(70,40,15,0.17);
+    --sh:        rgba(110,70,30,0.13);
+    --sh-strong: rgba(110,70,30,0.19);
+    --hl:        rgba(255,255,255,0.95);
+    --hl-faint:  rgba(255,255,255,0.6);
+    --glow:      rgba(255,160,80,0.3);
+    --accent:      var(--brand-orange);
+    --accent2:     var(--brand-orange2);
+    --accent-soft: rgba(255,107,0,0.14);
+    --overlay-scrim: rgba(55,32,14,0.36);
+    --neu-dark:  #f2d7bd;
+    --neu-light: #ffffff;
+  }
+
+  /* ── LILAC (premium) — pale violet wash, cool light ── */
+  [data-theme="lilac"] {
+    --bg:        #f0e7ff;
+    --bg-image:  linear-gradient(180deg, #e9dcff 0%, #f1e9ff 52%, #eaf0ff 100%);
+    --nav:       rgba(255,255,255,0.64);
+    --surface:   rgba(255,255,255,0.78);
+    --surface2:  rgba(255,255,255,0.52);
+    --surface3:  rgba(255,255,255,0.38);
+    --active:    rgba(255,255,255,0.9);
+    --popover:   #faf7ff;
+    --text:          #1f1636;
+    --text-secondary:#57497c;
+    --text-dim:      #57497c;
+    --text-muted:    #8a7fac;
+    --border:        rgba(45,25,90,0.08);
+    --border-strong: rgba(45,25,90,0.17);
+    --sh:        rgba(70,45,130,0.13);
+    --sh-strong: rgba(70,45,130,0.19);
+    --hl:        rgba(255,255,255,0.95);
+    --hl-faint:  rgba(255,255,255,0.6);
+    --glow:      rgba(140,110,255,0.3);
+    --accent:      #7a5cff;
+    --accent2:     #b79bff;
+    --accent-soft: rgba(122,92,255,0.14);
+    --overlay-scrim: rgba(30,20,55,0.38);
+    --neu-dark:  #ddd0f5;
+    --neu-light: #ffffff;
+  }
+
+  /* ── VELVET (premium) — deep plum/wine, magenta edge-light ── */
+  [data-theme="velvet"] {
+    --bg:        #150610;
+    --nav:       #1a0814;
+    --surface:   #200b19;
+    --surface2:  #290f20;
+    --surface3:  #321327;
+    --active:    #3d1830;
+    --popover:   #2b1022;
+    --text:          #fbe9f4;
+    --text-secondary:#c39ab4;
+    --text-dim:      #c39ab4;
+    --text-muted:    #8a5f75;
+    --border:        rgba(255,110,190,0.13);
+    --border-strong: rgba(255,110,190,0.27);
+    --sh:        rgba(10,2,8,0.58);
+    --sh-strong: rgba(10,2,8,0.74);
+    --hl:        rgba(255,140,210,0.08);
+    --hl-faint:  rgba(190,120,255,0.04);
+    --glow:      rgba(226,64,150,0.36);
+    --accent:      #e2408f;
+    --accent2:     #b06bff;
+    --accent-soft: rgba(226,64,143,0.16);
+    --overlay-scrim: rgba(14,3,11,0.72);
+    --neu-dark:  #0c0308;
+    --neu-light: #3a1730;
+  }
+
+  /* ── COCOA (premium) — warm dark roast, caramel light ── */
+  [data-theme="cocoa"] {
+    --bg:        #150f0b;
+    --nav:       #19120d;
+    --surface:   #1f1712;
+    --surface2:  #261d16;
+    --surface3:  #2e241c;
+    --active:    #392c22;
+    --popover:   #281f18;
+    --text:          #f5ece2;
+    --text-secondary:#bfa590;
+    --text-dim:      #bfa590;
+    --text-muted:    #8a7362;
+    --border:        rgba(232,180,120,0.12);
+    --border-strong: rgba(232,180,120,0.25);
+    --sh:        rgba(10,6,3,0.56);
+    --sh-strong: rgba(10,6,3,0.72);
+    --hl:        rgba(255,205,150,0.07);
+    --hl-faint:  rgba(255,205,150,0.035);
+    --glow:      rgba(214,150,86,0.32);
+    --accent:      #d69656;
+    --accent2:     #f0c48a;
+    --accent-soft: rgba(214,150,86,0.16);
+    --overlay-scrim: rgba(12,7,4,0.72);
+    --neu-dark:  #0b0705;
+    --neu-light: #35291f;
+  }
+
   /* ── ELEVATION RECIPES — derived, never hand-rolled per component ── */
   :root {
     --elev-raise:
@@ -293,7 +476,11 @@
   html { scroll-behavior: smooth; }
 
   body {
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: var(--bg-image);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
     color: var(--text);
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
@@ -523,6 +710,13 @@
   padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center;
 }
 
+/* ── Support topic bubbles — lift on hover, settle on press ── */
+.support-bubble-card:hover { transform: translateY(-3px); box-shadow: var(--elev-hover); }
+.support-bubble-card:active { transform: translateY(0) scale(0.985); }
+@media (hover: none) {
+  .support-bubble-card:hover { transform: none; box-shadow: var(--elev-raise); }
+}
+
 /* ── Ambient Bubbles — quiet by default; premium themes tint them ── */
 .bubble-bg { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
 .bubble {
@@ -531,7 +725,15 @@
 }
 [data-theme="aurora"] .bubble,
 [data-theme="sunset"] .bubble,
-[data-theme="emerald"] .bubble { opacity: 0.1; background: var(--glow); }
+[data-theme="emerald"] .bubble,
+[data-theme="velvet"] .bubble,
+[data-theme="cocoa"] .bubble { opacity: 0.1; background: var(--glow); }
+/* The pastels already carry their own gradient wash — a second blurred
+   layer on top just muddies it, so their bubbles stay near-invisible. */
+[data-theme="morning-dew"] .bubble,
+[data-theme="sakura"] .bubble,
+[data-theme="peach"] .bubble,
+[data-theme="lilac"] .bubble { opacity: 0.05; background: var(--glow); }
 @keyframes floatBubble {
   0%   { transform: translateY(0) scale(1); }
   33%  { transform: translateY(-40px) scale(1.05); }
