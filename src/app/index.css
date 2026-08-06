@@ -710,6 +710,34 @@
   padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center;
 }
 
+/* ── Theme picker rails ──
+   One rail per tier. `overflow-x:auto` forces overflow-y to compute as auto
+   too, so the selected swatch's scale(1.07) and glow would be sheared off
+   vertically — the track's padding buys that room back instead. The negative
+   margin lets a scrolled row run to the screen edge rather than stopping
+   short at the dock's side padding. */
+.theme-rail {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 0 16px;
+  scroll-padding-inline: 16px;
+}
+.theme-rail::-webkit-scrollbar { height: 0; width: 0; display: none; }
+
+.theme-track {
+  display: flex;
+  gap: 10px;
+  width: fit-content;
+  /* Centres a short row; collapses to 0 automatically once the row is wider
+     than the rail, so a long row starts flush left and scrolls all the way
+     back — which centring via justify-content cannot do. */
+  margin-inline: auto;
+  padding: 6px 2px 8px;
+}
+
 /* ── Support topic bubbles — lift on hover, settle on press ── */
 .support-bubble-card:hover { transform: translateY(-3px); box-shadow: var(--elev-hover); }
 .support-bubble-card:active { transform: translateY(0) scale(0.985); }
