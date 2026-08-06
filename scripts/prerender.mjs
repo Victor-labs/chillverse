@@ -505,11 +505,187 @@ const BLOG_ROUTES = [
   }),
 ]
 
+// ── Help center prerendering ─────────────────────────────────────────────
+// Same problem as the blog, worse consequences: a help center that only
+// exists after JS runs is invisible to search engines, which is where
+// essentially all help-center traffic comes from. Someone Googling
+// "chillverse streak reset" should land on the article, not on nothing.
+//
+// support.chillverse.com.ng is a 308 redirect to this path (see vercel.json),
+// not a separate origin, so there is only ever one canonical URL per article
+// and no duplicate-content split between two hostnames.
+const SUPPORT_URL = `${SITE_URL}/support`
+
+function supportBreadcrumb(trail) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Chillverse Support', item: SUPPORT_URL },
+      ...trail.map(([name, path], i) => ({
+        '@type': 'ListItem', position: i + 2, name, item: `${SUPPORT_URL}${path}`,
+      })),
+    ],
+  }
+}
+
+let supportCategories = []
+let supportArticles = []
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  try {
+    ;[supportCategories, supportArticles] = await Promise.all([
+      fetchSupabase('support_categories?select=id,slug,name,description,sort_order&order=sort_order.asc'),
+      fetchSupabase(
+        'support_articles?select=slug,title,summary,content,tags,category_id,view_count,created_at,updated_at' +
+          '&is_published=eq.true&order=sort_order.asc&limit=1000'
+      ),
+    ])
+    console.log(`✓ fetched ${supportArticles.length} published support article(s) in ${supportCategories.length} categories`)
+  } catch (err) {
+    console.warn(`⚠ could not fetch support content — skipping help center prerendering: ${err.message}`)
+    supportCategories = []
+    supportArticles = []
+  }
+}
+
+const categoryById = Object.fromEntries(supportCategories.map((c) => [c.id, c]))
+const articlesByCategory = {}
+for (const article of supportArticles) {
+  const category = categoryById[article.category_id]
+  if (!category) continue // orphaned article — no route to render it at
+  ;(articlesByCategory[category.slug] ??= []).push(article)
+}
+
+function supportShell(heading, subtitle, inner) {
+  return `
+    <main style="max-width:860px;margin:0 auto;padding:96px 24px 64px;font-family:Inter,sans-serif;color:#e8e8f0">
+      <h1 style="font-size:36px;font-weight:800;margin-bottom:8px">${escapeHtml(heading)}</h1>
+      ${subtitle ? `<p style="color:#a8a8b8;line-height:1.7;margin-bottom:32px">${escapeHtml(subtitle)}</p>` : ''}
+      ${inner}
+    </main>
+  `
+}
+
+function articleLinkList(categorySlug, articles) {
+  if (!articles.length) return `<p style="color:#a8a8b8">No articles here yet.</p>`
+  return `<ul style="line-height:2;padding-left:20px">${articles
+    .map(
+      (a) =>
+        `<li><a href="/support/${categorySlug}/${a.slug}" style="color:#e8e8f0">${escapeHtml(a.title)}</a>${
+          a.summary ? ` — <span style="color:#a8a8b8">${escapeHtml(a.summary)}</span>` : ''
+        }</li>`
+    )
+    .join('')}</ul>`
+}
+
+const SUPPORT_ROUTES = supportCategories.length
+  ? [
+      {
+        path: '/support',
+        canonicalPath: '',
+        siteUrl: SUPPORT_URL,
+        title: 'Chillverse Help Center',
+        description:
+          'Guides, answers, and troubleshooting for Chillverse — accounts, games, XP and streaks, Diamonds, Chillverse Pro, and safety.',
+        jsonLd: [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Chillverse Help Center',
+            url: SUPPORT_URL,
+            publisher: { '@type': 'Organization', name: 'Chillverse', url: SITE_URL },
+          },
+          supportBreadcrumb([]),
+        ],
+        content: supportShell(
+          'Chillverse Help Center',
+          'Find answers about your account, games, streaks, Diamonds, and everything else.',
+          `<ul style="line-height:2;padding-left:20px">${supportCategories
+            .map(
+              (c) =>
+                `<li><a href="/support/${c.slug}" style="color:#e8e8f0;font-weight:700">${escapeHtml(c.name)}</a>${
+                  c.description ? ` — <span style="color:#a8a8b8">${escapeHtml(c.description)}</span>` : ''
+                } <span style="color:#666">(${(articlesByCategory[c.slug] ?? []).length})</span></li>`
+            )
+            .join('')}</ul>
+           <p style="margin-top:32px"><a href="/support/feedback" style="color:#ff6b00;font-weight:700">Share feedback →</a></p>`
+        ),
+      },
+      ...supportCategories.map((category) => {
+        const articles = articlesByCategory[category.slug] ?? []
+        return {
+          path: `/support/${category.slug}`,
+          canonicalPath: `/${category.slug}`,
+          siteUrl: SUPPORT_URL,
+          title: `${category.name} — Chillverse Help Center`,
+          description:
+            category.description ||
+            `${articles.length} help article${articles.length === 1 ? '' : 's'} about ${category.name} on Chillverse.`,
+          jsonLd: [supportBreadcrumb([[category.name, `/${category.slug}`]])],
+          content: supportShell(category.name, category.description, articleLinkList(category.slug, articles)),
+        }
+      }),
+      ...supportArticles
+        .filter((article) => categoryById[article.category_id])
+        .map((article) => {
+          const category = categoryById[article.category_id]
+          const description = (article.summary || stripMd(article.content)).slice(0, 160)
+          const canonicalPath = `/${category.slug}/${article.slug}`
+          return {
+            path: `/support/${category.slug}/${article.slug}`,
+            canonicalPath,
+            siteUrl: SUPPORT_URL,
+            title: `${article.title} — Chillverse Help Center`,
+            description,
+            ogType: 'article',
+            jsonLd: [
+              {
+                '@context': 'https://schema.org',
+                // TechArticle is the schema type Google expects for
+                // support/how-to documentation, not BlogPosting.
+                '@type': 'TechArticle',
+                headline: article.title,
+                description,
+                datePublished: article.created_at,
+                dateModified: article.updated_at || article.created_at,
+                author: { '@type': 'Organization', name: 'Chillverse' },
+                publisher: {
+                  '@type': 'Organization',
+                  name: 'Chillverse',
+                  logo: { '@type': 'ImageObject', url: `${SITE_URL}/web-app-manifest-512x512.png` },
+                },
+                mainEntityOfPage: { '@type': 'WebPage', '@id': `${SUPPORT_URL}${canonicalPath}` },
+                articleSection: category.name,
+                ...(article.tags?.length ? { keywords: article.tags.join(', ') } : {}),
+              },
+              supportBreadcrumb([
+                [category.name, `/${category.slug}`],
+                [article.title, canonicalPath],
+              ]),
+            ],
+            content: `
+              <main style="max-width:720px;margin:0 auto;padding:96px 24px 64px;font-family:Inter,sans-serif;color:#e8e8f0">
+                <div style="font-size:13px;color:#888;margin-bottom:8px"><a href="/support" style="color:#888">Help Center</a> › <a href="/support/${category.slug}" style="color:#888">${escapeHtml(category.name)}</a></div>
+                <h1 style="font-size:34px;font-weight:800;margin:0 0 20px;line-height:1.15">${escapeHtml(article.title)}</h1>
+                ${article.summary ? `<p style="color:#a8a8b8;font-size:16px;line-height:1.6;margin-bottom:28px">${escapeHtml(article.summary)}</p>` : ''}
+                <article>${liteMarkdownToHtml(article.content)}</article>
+                ${article.tags?.length ? `<div style="margin-top:32px;font-size:13px;color:#888">${article.tags.map((t) => `#${escapeHtml(t)}`).join(' ')}</div>` : ''}
+                <p style="margin-top:40px"><a href="/support/${category.slug}" style="color:#ff6b00;font-weight:700">← Back to ${escapeHtml(category.name)}</a></p>
+              </main>
+            `,
+          }
+        }),
+    ]
+  : []
+
 // ── Build ─────────────────────────────────────────────────────────────────
 const template = readFileSync(join(DIST, 'index.html'), 'utf-8')
 
 function renderAndWrite(route) {
   let html = template
+  // Support pages are canonical on their own subdomain (see SUPPORT_URL);
+  // everything else is canonical on the apex domain.
+  const base = route.siteUrl ?? SITE_URL
 
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(route.title)}</title>`)
   html = html.replace(
@@ -518,12 +694,12 @@ function renderAndWrite(route) {
   )
   html = html.replace(
     /<link rel="canonical" href="[^"]*"\s*\/?>/,
-    `<link rel="canonical" href="${SITE_URL}${route.path}" />`
+    `<link rel="canonical" href="${base}${route.canonicalPath ?? route.path}" />`
   )
-  html = html.replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${SITE_URL}${route.path}" />`)
+  html = html.replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${base}${route.canonicalPath ?? route.path}" />`)
   html = html.replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${escapeHtml(route.title)}" />`)
   html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${escapeHtml(route.description)}" />`)
-  html = html.replace(/<meta name="twitter:url" content="[^"]*"\s*\/?>/, `<meta name="twitter:url" content="${SITE_URL}${route.path}" />`)
+  html = html.replace(/<meta name="twitter:url" content="[^"]*"\s*\/?>/, `<meta name="twitter:url" content="${base}${route.canonicalPath ?? route.path}" />`)
   html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${escapeHtml(route.title)}" />`)
   html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${escapeHtml(route.description)}" />`)
   if (route.ogType) {
@@ -557,16 +733,16 @@ function renderAndWrite(route) {
   console.log(`✓ prerendered ${route.path}`)
 }
 
-for (const route of [...ROUTES, ...BLOG_ROUTES]) renderAndWrite(route)
+for (const route of [...ROUTES, ...BLOG_ROUTES, ...SUPPORT_ROUTES]) renderAndWrite(route)
 
 // ── sitemap.xml — add blog URLs so crawlers can discover posts without search ──
 // image: optional { loc, title } — adds an <image:image> entry so Google Images
 // has a signal to crawl the post's hero image, same as the homepage already does.
-function sitemapEntry(loc, { lastmod, changefreq = 'weekly', priority = '0.6', image } = {}) {
+function sitemapEntry(loc, { lastmod, changefreq = 'weekly', priority = '0.6', image, base = SITE_URL } = {}) {
   const imageXml = image
     ? `    <image:image>\n      <image:loc>${image.loc}</image:loc>\n      <image:title>${escapeHtml(image.title)}</image:title>\n    </image:image>\n`
     : ''
-  return `  <url>\n    <loc>${SITE_URL}${loc}</loc>\n${lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : ''}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n${imageXml}  </url>\n`
+  return `  <url>\n    <loc>${base}${loc}</loc>\n${lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : ''}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n${imageXml}  </url>\n`
 }
 try {
   let additions = sitemapEntry('/blog', { changefreq: 'daily', priority: '0.9' })
@@ -593,6 +769,38 @@ try {
   console.warn(`⚠ could not update sitemap.xml: ${err.message}`)
 }
 
+// ── sitemap.xml — help center URLs.
+// These live on the apex domain under /support, the same host that serves
+// sitemap.xml, so they belong in the main sitemap rather than a separate one.
+// (A sitemap may only list URLs on the host serving it.) This runs after the
+// blog block above, so it re-reads the file and appends a second time.
+try {
+  if (supportCategories.length) {
+    let urls = sitemapEntry('', { base: SUPPORT_URL, changefreq: 'weekly', priority: '0.9' })
+    for (const category of supportCategories) {
+      urls += sitemapEntry(`/${category.slug}`, { base: SUPPORT_URL, changefreq: 'weekly', priority: '0.7' })
+    }
+    let articleUrlCount = 0
+    for (const article of supportArticles) {
+      const category = categoryById[article.category_id]
+      if (!category) continue // orphaned article — not reachable at any URL
+      articleUrlCount += 1
+      urls += sitemapEntry(`/${category.slug}/${article.slug}`, {
+        base: SUPPORT_URL,
+        lastmod: (article.updated_at || article.created_at || '').slice(0, 10) || undefined,
+        changefreq: 'monthly',
+        priority: '0.8',
+      })
+    }
+    const sitemapPath = join(DIST, 'sitemap.xml')
+    const withSupport = readFileSync(sitemapPath, 'utf-8').replace('</urlset>', `${urls}</urlset>`)
+    writeFileSync(sitemapPath, withSupport, 'utf-8')
+    console.log(`✓ sitemap.xml updated with ${articleUrlCount} help center article URL(s)`)
+  }
+} catch (err) {
+  console.warn(`⚠ could not write sitemap-support.xml: ${err.message}`)
+}
+
 // ── llms.txt — point AI assistants/crawlers straight at the blog ──────────
 try {
   if (enPosts.length) {
@@ -603,6 +811,17 @@ try {
     const llmsPath = join(DIST, 'llms.txt')
     writeFileSync(llmsPath, readFileSync(llmsPath, 'utf-8') + section, 'utf-8')
     console.log('✓ llms.txt updated with latest blog posts')
+  }
+  if (supportCategories.length) {
+    // Help articles are the single most useful thing an AI assistant can
+    // quote when someone asks it a question about Chillverse, so point at
+    // the categories explicitly rather than hoping crawlers find them.
+    const supportSection = `\n## Help Center\n- [Chillverse Help Center](${SUPPORT_URL}): guides and troubleshooting for accounts, games, streaks, Diamonds, and Chillverse Pro.\n${supportCategories
+      .map((c) => `- [${c.name}](${SUPPORT_URL}/${c.slug})${c.description ? `: ${c.description}` : ''}`)
+      .join('\n')}\n`
+    const llmsPath = join(DIST, 'llms.txt')
+    writeFileSync(llmsPath, readFileSync(llmsPath, 'utf-8') + supportSection, 'utf-8')
+    console.log('✓ llms.txt updated with help center categories')
   }
 } catch (err) {
   console.warn(`⚠ could not update llms.txt: ${err.message}`)
