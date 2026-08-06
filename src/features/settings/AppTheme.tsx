@@ -102,7 +102,7 @@ export default function AppTheme() {
 
   return (
     <>
-      <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 190px' }}>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 260px' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 22, position: 'relative' }}>
           <button
             onClick={(e) => { ripple(e); navigate(-1) }}
@@ -193,75 +193,87 @@ export default function AppTheme() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'flex-end', overflowX: 'auto', paddingBottom: 4 }}>
+        {/* Two stacked strips, each scrolling independently. They are NOT
+            nested inside a third scroller and they do NOT use
+            justify-content:center — a centered flex row that overflows gets
+            clipped at BOTH ends, and the clipped left half can never be
+            scrolled back to. Centering happens instead via an inner
+            width:fit-content track whose auto margins collapse to zero the
+            moment the content is wider than the rail, so a short row sits
+            centered and a long row starts flush left and scrolls cleanly. */}
+        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
           <div>
-            <div className="t-label" style={{ textAlign: 'center', marginBottom: 8 }}>Free</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {freeThemes.map(t => {
-                const selected = theme === t.id && previewId === null
-                return (
-                  <button
-                    key={t.id}
-                    onClick={(e) => { ripple(e); handlePick(t.id, false) }}
-                    className="ripple-wrap"
-                    aria-label={`${t.label} theme`}
-                    aria-pressed={selected}
-                    style={{
-                      ...swatchBase,
-                      border: selected ? '2px solid var(--accent)' : '1px solid var(--border-strong)',
-                      transform: selected ? 'scale(1.07)' : 'scale(1)',
-                      boxShadow: selected ? 'var(--elev-hover)' : 'var(--elev-raise-sm)',
-                    }}
-                  >
-                    <ThemeSwatch id={t.id} selected={selected} />
-                  </button>
-                )
-              })}
-              <button
-                onClick={(e) => { ripple(e); handleShuffle() }}
-                className="ripple-wrap"
-                aria-label="Random free theme"
-                style={{ ...swatchBase, width: 46, background: 'var(--surface2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}
-              >
-                <Shuffle size={16} />
-              </button>
+            <div className="t-label" style={{ textAlign: 'center', marginBottom: 7 }}>Free</div>
+            <div className="theme-rail">
+              <div className="theme-track">
+                {freeThemes.map(t => {
+                  const selected = theme === t.id && previewId === null
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={(e) => { ripple(e); handlePick(t.id, false) }}
+                      className="ripple-wrap"
+                      aria-label={`${t.label} theme`}
+                      aria-pressed={selected}
+                      style={{
+                        ...swatchBase,
+                        border: selected ? '2px solid var(--accent)' : '1px solid var(--border-strong)',
+                        transform: selected ? 'scale(1.07)' : 'scale(1)',
+                        boxShadow: selected ? 'var(--elev-hover)' : 'var(--elev-raise-sm)',
+                      }}
+                    >
+                      <ThemeSwatch id={t.id} selected={selected} />
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={(e) => { ripple(e); handleShuffle() }}
+                  className="ripple-wrap"
+                  aria-label="Random free theme"
+                  style={{ ...swatchBase, width: 46, background: 'var(--surface2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}
+                >
+                  <Shuffle size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
           <div>
-            <div className="t-label" style={{ textAlign: 'center', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <div className="t-label" style={{ marginBottom: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               {!isPro && <Lock size={9} />} Void
             </div>
-            {/* Void now holds nine themes — more than fits a phone width, so
-                this strip scrolls on its own instead of stretching the dock. */}
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', maxWidth: 'min(100%, 340px)', paddingBottom: 4 }}>
-              {premiumThemes.map(t => {
-                const selected = (theme === t.id && previewId === null) || previewId === t.id
-                return (
-                  <button
-                    key={t.id}
-                    onClick={(e) => { ripple(e); handlePick(t.id, true) }}
-                    className="ripple-wrap"
-                    aria-label={isPro ? `${t.label} theme` : `Preview ${t.label} theme (Void)`}
-                    aria-pressed={selected}
-                    style={{
-                      ...swatchBase,
-                      border: selected ? '2px solid var(--accent)' : '1px solid var(--border-strong)',
-                      transform: selected ? 'scale(1.07)' : 'scale(1)',
-                      boxShadow: selected ? 'var(--elev-hover)' : 'var(--elev-raise-sm)',
-                    }}
-                  >
-                    <ThemeSwatch id={t.id} selected={theme === t.id && previewId === null} />
-                    {!isPro && (
-                      <div style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 6, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Lock size={9} color="#fff" />
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
+            <div className="theme-rail">
+              <div className="theme-track">
+                {premiumThemes.map(t => {
+                  const selected = (theme === t.id && previewId === null) || previewId === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={(e) => { ripple(e); handlePick(t.id, true) }}
+                      className="ripple-wrap"
+                      aria-label={isPro ? `${t.label} theme` : `Preview ${t.label} theme (Void)`}
+                      aria-pressed={selected}
+                      style={{
+                        ...swatchBase,
+                        border: selected ? '2px solid var(--accent)' : '1px solid var(--border-strong)',
+                        transform: selected ? 'scale(1.07)' : 'scale(1)',
+                        boxShadow: selected ? 'var(--elev-hover)' : 'var(--elev-raise-sm)',
+                      }}
+                    >
+                      <ThemeSwatch id={t.id} selected={theme === t.id && previewId === null} />
+                      {!isPro && (
+                        <div style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 6, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Lock size={9} color="#fff" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
+
         </div>
 
         <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 10 }}>
