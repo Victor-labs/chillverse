@@ -9,6 +9,9 @@ import {
   submitArticleFeedback, fetchMyArticleFeedback,
 } from './api'
 import Breadcrumbs from './components/Breadcrumbs'
+import { renderLiteMarkdown } from '../../shared/lib/markdownLite'
+import { fetchAuthorById, fetchPersonaById } from '../blog/api'
+import type { BlogAuthor } from '../../shared/types'
 import type { SupportCategory, SupportArticle as SupportArticleType } from '../../shared/types'
 
 export default function SupportArticle() {
@@ -23,6 +26,7 @@ export default function SupportArticle() {
 
   const [myFeedback, setMyFeedback] = useState<boolean | null>(null)
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+  const [author, setAuthor] = useState<BlogAuthor | null>(null)
 
   const hasCountedView = useRef(false)
 
@@ -71,6 +75,26 @@ export default function SupportArticle() {
     return () => { active = false }
   }, [categorySlug, articleSlug, user])
 
+  // Byline is resolved after the article loads rather than joined into it:
+  // author_id and persona_author_id point at two different tables (profiles
+  // and blog_personas), and only one is ever set.
+  useEffect(() => {
+    if (!article) { setAuthor(null); return }
+    let active = true
+
+    const lookup = article.persona_author_id
+      ? fetchPersonaById(article.persona_author_id)
+      : article.author_id
+        ? fetchAuthorById(article.author_id)
+        : Promise.resolve(null)
+
+    lookup
+      .then(found => { if (active) setAuthor(found) })
+      .catch(() => { if (active) setAuthor(null) })
+
+    return () => { active = false }
+  }, [article])
+
   async function handleFeedback(isHelpful: boolean) {
     if (!article || !user || feedbackSubmitting) return
     setFeedbackSubmitting(true)
@@ -101,44 +125,43 @@ export default function SupportArticle() {
 
   if (error || !article || !category) {
     return (
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
-        <Breadcrumbs items={[{ label: 'All Collections', onClick: () => navigate('/support') }, { label: 'Not found' }]} />
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <Breadcrumbs items={[{ label: 'Help Center', onClick: () => navigate('/support') }, { label: 'Not found' }]} />
         <div style={errorBoxStyle}>{error || 'This article could not be found.'}</div>
       </div>
     )
   }
 
-  const paragraphs = article.content.split(/\n\s*\n/).filter(Boolean)
   const publishedDate = new Date(article.created_at).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <Breadcrumbs
         items={[
-          { label: 'All Collections', onClick: () => navigate('/support') },
+          { label: 'Help Center', onClick: () => navigate('/support') },
           { label: category.name, onClick: () => navigate(`/support/${category.slug}`) },
           { label: article.title },
         ]}
       />
 
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>{article.title}</h1>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18 }}>{publishedDate}</div>
+      <h1 style={{
+        fontSize: 'clamp(1.6rem, 5vw, 2.4rem)', lineHeight: 1.15, fontWeight: 900,
+        letterSpacing: '-0.02em', color: 'var(--text)', margin: '0 0 8px',
+      }}>{article.title}</h1>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 20 }}>
+        {author ? `${author.display_name || author.username} · ` : ''}{publishedDate}
+      </div>
       {article.summary && (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', marginBottom: 24 }}>{article.summary}</p>
       )}
 
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18,
-        padding: '22px 24px', marginBottom: 24,
-        boxShadow: 'var(--elev-raise-sm)',
-      }}>
-        {paragraphs.map((para, i) => (
-          <p key={i} style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', marginBottom: i === paragraphs.length - 1 ? 0 : 16 }}>
-            {para}
-          </p>
-        ))}
+      {/* No card around the body — an article is the page's main content,
+          not a widget on it. markdownLite here matches what the CMS editor
+          previews and what scripts/prerender.mjs bakes in for crawlers. */}
+      <div style={{ fontSize: 15.5, lineHeight: 1.8, color: 'var(--text)', marginBottom: 30 }}>
+        {renderLiteMarkdown(article.content)}
       </div>
 
       {article.tags.length > 0 && (
@@ -146,7 +169,8 @@ export default function SupportArticle() {
           {article.tags.map(tag => (
             <span key={tag} style={{
               fontSize: 11, fontWeight: 600, color: 'var(--text-dim)',
-              background: 'rgba(255,255,255,0.06)', borderRadius: 999, padding: '4px 10px',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 999, padding: '4px 10px',
             }}>
               #{tag}
             </span>
