@@ -5,9 +5,13 @@
 // static HTML at build time. Anything written here appears identically to a
 // reader, to Google, and to an AI crawler.
 import { useEffect, useRef, useState } from 'react'
-import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2, ImagePlus, Video, Loader2 } from 'lucide-react'
+import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2, ImagePlus, Video, Loader2, Highlighter } from 'lucide-react'
 import { ripple } from '../../../shared/lib/ripple'
-import { renderLiteMarkdown, applyMarkdownAction, type MarkdownAction } from '../../../shared/lib/markdownLite'
+import {
+  renderLiteMarkdown, applyMarkdownAction, calloutColorVar,
+  CALLOUT_COLORS, CALLOUT_ICONS, CALLOUT_ICON_NAMES,
+  type MarkdownAction,
+} from '../../../shared/lib/markdownLite'
 import {
   inputStyle, overlayStyle, modalStyle, errorBoxStyle,
   primaryButtonStyle, secondaryButtonStyle, iconButtonStyle, wordCount,
@@ -78,6 +82,11 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
   // slug breaks its URL, so an existing one is never rewritten silently.
   const [slugTouched, setSlugTouched] = useState(!isNew)
   const [preview, setPreview] = useState(false)
+  // Highlight picker: colour + icon are chosen before insertion, so the
+  // block that lands in the textarea is already the finished thing.
+  const [showHighlight, setShowHighlight] = useState(false)
+  const [highlightColor, setHighlightColor] = useState('blue')
+  const [highlightIcon, setHighlightIcon] = useState('Info')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -122,11 +131,11 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
     if (!slugTouched) setSlug(slugify(title))
   }, [title, slugTouched])
 
-  function runAction(action: MarkdownAction) {
+  function runAction(action: MarkdownAction, presetValue?: string) {
     const el = textareaRef.current
     if (!el) return
 
-    let promptValue: string | null | undefined
+    let promptValue: string | null | undefined = presetValue
     if (action === 'link') {
       promptValue = window.prompt('Link URL', 'https://')
       if (!promptValue) return
@@ -336,6 +345,22 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
               </button>
             ))}
 
+            {/* Highlight — opens the colour/icon picker below rather than
+                inserting immediately, since a callout without a deliberate
+                colour is just a paragraph with extra steps. */}
+            <button
+              type="button"
+              title="Highlight block"
+              onClick={() => setShowHighlight(v => !v)}
+              style={{
+                ...iconButtonStyle, width: 30, height: 30,
+                color: showHighlight ? 'var(--accent)' : 'var(--text-dim)',
+                background: showHighlight ? 'var(--accent-soft)' : undefined,
+              }}
+            >
+              <Highlighter size={13} />
+            </button>
+
             {/* Uploads to the shared blog-images bucket and drops an
                 ![](url) block at the cursor. */}
             <label
@@ -384,13 +409,92 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
           </div>
         )}
 
+        {!preview && showHighlight && (
+          <div style={{
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            borderRadius: 12, padding: 12, marginBottom: 8,
+          }}>
+            <MiniLabel>Colour</MiniLabel>
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 12 }}>
+              {CALLOUT_COLORS.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={c.label}
+                  onClick={() => setHighlightColor(c.id)}
+                  style={{
+                    width: 26, height: 26, borderRadius: '50%', cursor: 'pointer', padding: 0,
+                    background: c.cssVar,
+                    border: highlightColor === c.id ? '2px solid var(--text)' : '2px solid transparent',
+                    outline: highlightColor === c.id ? 'none' : '1px solid var(--border)',
+                  }}
+                />
+              ))}
+            </div>
+
+            <MiniLabel>Icon</MiniLabel>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              {CALLOUT_ICON_NAMES.map(name => {
+                const Icon = CALLOUT_ICONS[name]
+                const active = highlightIcon === name
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    title={name}
+                    onClick={() => setHighlightIcon(name)}
+                    style={{
+                      width: 30, height: 30, borderRadius: 9, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: active ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'var(--surface)',
+                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      color: active ? 'var(--accent)' : 'var(--text-dim)',
+                    }}
+                  >
+                    <Icon size={14} />
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Live sample of exactly what gets rendered. */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
+              padding: '10px 12px', borderRadius: 12,
+              background: `color-mix(in srgb, ${calloutColorVar(highlightColor)} 10%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${calloutColorVar(highlightColor)} 30%, transparent)`,
+              borderLeft: `3px solid ${calloutColorVar(highlightColor)}`,
+            }}>
+              {(() => {
+                const Icon = CALLOUT_ICONS[highlightIcon]
+                return <Icon size={15} color={calloutColorVar(highlightColor)} />
+              })()}
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>
+                Highlighted text appears like this.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                ripple(e)
+                runAction('callout', `${highlightColor}:${highlightIcon}`)
+                setShowHighlight(false)
+              }}
+              style={{ ...primaryButtonStyle, padding: '7px 14px', fontSize: 12 }}
+            >
+              Insert highlight
+            </button>
+          </div>
+        )}
+
         {preview ? (
           <div style={{
             minHeight: 240, padding: '14px 16px', borderRadius: 10,
             background: 'var(--surface2)', border: '1px solid var(--border)',
             fontSize: 14, lineHeight: 1.7, color: 'var(--text-secondary)',
           }}>
-            {content.trim() ? renderLiteMarkdown(content) : <span style={{ color: 'var(--text-muted)' }}>Nothing to preview yet.</span>}
+            {content.trim() ? renderLiteMarkdown(content, { ambientMedia: true }) : <span style={{ color: 'var(--text-muted)' }}>Nothing to preview yet.</span>}
           </div>
         ) : (
           <textarea
@@ -442,6 +546,17 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
           Published changes reach Google on the next deploy, when prerendering runs.
         </p>
       </div>
+    </div>
+  )
+}
+
+function MiniLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+      color: 'var(--text-muted)', marginBottom: 6,
+    }}>
+      {children}
     </div>
   )
 }
