@@ -123,7 +123,7 @@ export function renderLiteMarkdown(content: string): ReactNode[] {
     const videoMatch = VIDEO_BLOCK_RE.exec(trimmedBlock)
     if (videoMatch) {
       return createElement('video', {
-        key, src: videoMatch[1], controls: true, playsInline: true, style: VIDEO_BLOCK_STYLE,
+        key, src: videoMatch[1], controls: true, playsInline: true, loop: true, style: VIDEO_BLOCK_STYLE,
       })
     }
 
