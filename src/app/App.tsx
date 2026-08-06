@@ -66,6 +66,7 @@ const FeedbackHome        = lazy(() => import('../features/support/feedback/Feed
 const FeedbackTopic       = lazy(() => import('../features/support/feedback/FeedbackTopic'))
 const FeedbackPost        = lazy(() => import('../features/support/feedback/FeedbackPost'))
 const NewFeedback         = lazy(() => import('../features/support/feedback/NewFeedback'))
+const AdminSupport        = lazy(() => import('../features/support/AdminSupport'))
 const ModerationPanel     = lazy(() => import('../features/moderation/ModerationPanel'))
 const AdminDashboard      = lazy(() => import('../features/admin/AdminDashboard'))
 const AdminUserDetail     = lazy(() => import('../features/admin/AdminUserDetail'))
@@ -271,6 +272,7 @@ export default function App() {
             with a `next` param. NOT behind ProtectedRoute or AppLayout. */}
         <Route element={<SupportLayout />}>
           <Route path="/support"                           element={<Suspense fallback={<Fallback />}><Support /></Suspense>} />
+          <Route path="/support/admin"                     element={<Suspense fallback={<Fallback />}><AdminSupport /></Suspense>} />
           <Route path="/support/tickets"                   element={<Suspense fallback={<Fallback />}><MyTickets /></Suspense>} />
           <Route path="/support/tickets/new"               element={<Suspense fallback={<Fallback />}><NewTicket /></Suspense>} />
           <Route path="/support/feedback"                  element={<Suspense fallback={<Fallback />}><FeedbackHome /></Suspense>} />
