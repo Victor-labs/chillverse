@@ -430,3 +430,46 @@ export interface BlogPersona {
   bio: string | null
   created_at: string
 }
+
+// ── Support feedback board (migrations 0101–0103) ──────────────────────
+export type SupportFeedbackStatus =
+  | 'open' | 'planned' | 'in_progress' | 'completed' | 'declined'
+
+/** Row shape returned by the `list_support_feedback_topics` RPC. */
+export interface SupportFeedbackTopic {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  sort_order: number
+  post_count: number
+  follower_count: number
+}
+
+/** Row shape returned by `list_support_feedback_posts`. */
+export interface SupportFeedbackPost {
+  id: string
+  topic_slug: string
+  topic_name: string
+  title: string
+  body: string
+  status: SupportFeedbackStatus
+  vote_count: number
+  created_at: string
+  edited_at: string | null
+  author_username: string | null
+  has_voted: boolean
+}
+
+/** `get_support_feedback_post` returns everything above plus the author id. */
+export interface SupportFeedbackPostDetail extends SupportFeedbackPost {
+  author_id: string | null
+}
+
+export type SupportFeedbackSort = 'newest' | 'oldest' | 'top'
+
+export interface NewSupportFeedbackInput {
+  topicId: string
+  title: string
+  body: string
+}
