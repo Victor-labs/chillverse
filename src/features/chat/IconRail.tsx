@@ -112,7 +112,7 @@ export default function IconRail({ active, badges }: IconRailProps) {
               background: 'linear-gradient(135deg, var(--accent), #7c5cff)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
             }}>
-              <ClubIcon iconKey={c.icon_key} size={22} />
+              <ClubIcon iconKey={c.icon_key} iconUrl={c.icon_url} size={22} />
             </div>
           </RailIcon>
         ))}
