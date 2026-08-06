@@ -19,7 +19,7 @@ import { createArticle, updateArticle, fetchAllCategories, isSlugTaken } from '.
 import { uploadBlogImage, fetchAuthorCandidates, fetchAuthorById, fetchPersonaById } from '../../blog/api'
 // Videos get their own bucket (support-videos, migration 0107) rather than
 // reusing blog-images, since that bucket's mime/size limits are image-only.
-import { uploadSupportVideo } from './api'
+import { uploadSupportVideo } from './support-admin-api'
 import type { SupportArticle, SupportCategory, BlogAuthor } from '../../../shared/types'
 
 /** Real profiles and personas both have plain UUIDs, so the <select> value
