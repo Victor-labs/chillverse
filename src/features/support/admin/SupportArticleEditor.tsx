@@ -5,7 +5,7 @@
 // static HTML at build time. Anything written here appears identically to a
 // reader, to Google, and to an AI crawler.
 import { useEffect, useRef, useState } from 'react'
-import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2, ImagePlus, Loader2 } from 'lucide-react'
+import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2, ImagePlus, Video, Loader2 } from 'lucide-react'
 import { ripple } from '../../../shared/lib/ripple'
 import { renderLiteMarkdown, applyMarkdownAction, type MarkdownAction } from '../../../shared/lib/markdownLite'
 import {
@@ -17,6 +17,9 @@ import { createArticle, updateArticle, fetchAllCategories, isSlugTaken } from '.
 // same `blog-images` bucket (staff-only write, migration 0053), same merged
 // picker of real profiles + house personas (migration 0099).
 import { uploadBlogImage, fetchAuthorCandidates, fetchAuthorById, fetchPersonaById } from '../../blog/api'
+// Videos get their own bucket (support-videos, migration 0107) rather than
+// reusing blog-images, since that bucket's mime/size limits are image-only.
+import { uploadSupportVideo } from './api'
 import type { SupportArticle, SupportCategory, BlogAuthor } from '../../../shared/types'
 
 /** Real profiles and personas both have plain UUIDs, so the <select> value
@@ -68,6 +71,7 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
   const [authorId, setAuthorId] = useState<string | null>(article?.author_id ?? null)
   const [personaAuthorId, setPersonaAuthorId] = useState<string | null>(article?.persona_author_id ?? null)
   const [uploading, setUploading] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
   const [sortOrder, setSortOrder] = useState(article?.sort_order ?? 0)
 
   // Only auto-derive the slug for new articles. Changing a live article's
@@ -156,6 +160,28 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
       setError((err as Error).message || 'Could not upload that image.')
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleVideoUpload(file: File) {
+    if (!currentUserId) { setError('Sign in again before uploading videos.'); return }
+    setUploadingVideo(true)
+    setError(null)
+    try {
+      const url = await uploadSupportVideo(currentUserId, file)
+      const el = textareaRef.current
+      const start = el?.selectionStart ?? content.length
+      const end = el?.selectionEnd ?? content.length
+      const result = applyMarkdownAction(content, start, end, 'video', url)
+      setContent(result.value)
+      requestAnimationFrame(() => {
+        el?.focus()
+        el?.setSelectionRange(result.selectionStart, result.selectionEnd)
+      })
+    } catch (err) {
+      setError((err as Error).message || 'Could not upload that video.')
+    } finally {
+      setUploadingVideo(false)
     }
   }
 
@@ -327,6 +353,29 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (file) void handleImageUpload(file)
+                  e.target.value = ''
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
+
+            {/* Uploads to the staff-only support-videos bucket and drops a
+                {{video:url}} block at the cursor. */}
+            <label
+              title={uploadingVideo ? 'Uploading…' : 'Insert video'}
+              style={{
+                ...iconButtonStyle, width: 30, height: 30,
+                color: 'var(--text-dim)', cursor: uploadingVideo ? 'default' : 'pointer',
+              }}
+            >
+              {uploadingVideo ? <Loader2 size={13} /> : <Video size={13} />}
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                disabled={uploadingVideo}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleVideoUpload(file)
                   e.target.value = ''
                 }}
                 style={{ display: 'none' }}
