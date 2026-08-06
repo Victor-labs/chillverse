@@ -97,6 +97,7 @@ const ROUTES = [
     title: 'Frequently Asked Questions',
     description:
       'Answers to common Chillverse questions — games, XP and streaks, Diamonds, Chillverse Pro, referrals, privacy, and Halo AI.',
+    ogImage: `${SITE_URL}/og-image-banner.png`,
     jsonLd: [
       {
         '@context': 'https://schema.org',
@@ -128,6 +129,7 @@ const ROUTES = [
     title: 'About Chillverse',
     description:
       'Chillverse is a free, mobile-first Nigerian social gaming platform. Learn about our mission, features, progression system, and community.',
+    ogImage: `${SITE_URL}/og-image-group.png`,
     jsonLd: [
       {
         '@context': 'https://schema.org',
@@ -204,6 +206,7 @@ const ROUTES = [
     title: 'Log In — Chillverse',
     description:
       'Log in to Chillverse to keep your streak alive, jump into a game, and check your rank on the leaderboard.',
+    ogImage: `${SITE_URL}/og-image-banner.png`,
     jsonLd: [breadcrumb('Log In', '/login')],
     content: `
       <main style="max-width:640px;margin:0 auto;padding:64px 24px;font-family:Inter,sans-serif;color:#e8e8f0">
@@ -222,6 +225,7 @@ const ROUTES = [
     title: 'Sign Up Free — Chillverse',
     description:
       'Create your free Chillverse account in seconds. Start earning XP, building your streak, and climbing the leaderboard today.',
+    ogImage: `${SITE_URL}/og-image-group.png`,
     jsonLd: [breadcrumb('Sign Up', '/signup')],
     content: `
       <main style="max-width:640px;margin:0 auto;padding:64px 24px;font-family:Inter,sans-serif;color:#e8e8f0">
@@ -240,6 +244,7 @@ const ROUTES = [
     title: 'Privacy Policy — Chillverse',
     description:
       'How Chillverse collects, uses, and protects your data — covering account info, gameplay data, Halo AI, cookies, and your privacy rights.',
+    ogImage: `${SITE_URL}/og-image-banner.png`,
     jsonLd: [breadcrumb('Privacy Policy', '/privacy')],
     content: legalShell('Privacy Policy', [
       ['1. Introduction and Scope', `Chillverse ("we", "us", "our") is committed to protecting your privacy. This Privacy Policy describes how we collect, use, store, share, and protect your personal information when you access or use the Chillverse platform, website, mobile applications, games, and related services (collectively, "the Platform"). By using the Platform you consent to the collection, use, and sharing of your information as described here.`],
@@ -260,6 +265,7 @@ const ROUTES = [
     title: 'Terms & Conditions — Chillverse',
     description:
       'The rules for using Chillverse — accounts, fair play, Diamonds and Chillverse Pro purchases, Halo AI, and your rights as a player.',
+    ogImage: `${SITE_URL}/og-image-group.png`,
     jsonLd: [breadcrumb('Terms & Conditions', '/terms')],
     content: legalShell('Terms & Conditions', [
       ['1. Acceptance of Terms', `By accessing or using Chillverse (the "Platform"), you agree to be legally bound by these Terms and Conditions. Your use is also governed by our Privacy Policy, incorporated here by reference. We may modify these Terms at any time; continued use after changes constitutes acceptance.`],
@@ -279,6 +285,34 @@ const ROUTES = [
       ['15. General Provisions', `These Terms and the Privacy Policy form the entire agreement between you and Chillverse. If any provision is found invalid, the rest remains in effect. Failure to enforce a right is not a waiver of it.`],
       ['16. Contact Information', `Chillverse Legal Department — legal@chillverse.com · DMCA notices — dmca@chillverse.com · Privacy inquiries — privacy@chillverse.com`],
     ], 'Last Updated: July 12, 2026 · Effective Date: July 12, 2026'),
+  },
+  {
+    path: '/work',
+    title: 'Work at Chillverse — Careers',
+    description:
+      'Join the team building Chillverse. Explore open roles across community, marketing, and engineering — paid and voluntary positions available.',
+    ogImage: `${SITE_URL}/og-image-work.jpg`,
+    jsonLd: [breadcrumb('Work at Chillverse', '/work')],
+    content: `
+      <main style="max-width:760px;margin:0 auto;padding:96px 24px 64px;font-family:Inter,sans-serif;color:#e8e8f0">
+        <h1 style="font-size:36px;font-weight:800;margin-bottom:16px">Work at Chillverse</h1>
+        <p style="color:#a8a8b8;line-height:1.7;font-size:17px;margin-bottom:32px">
+          Join a team of creators, innovators, and problem-solvers building the future of
+          Chillverse. Your ideas, skills, and passion can help shape experiences for a
+          global community.
+        </p>
+        <h2 style="font-size:22px;font-weight:700;margin-bottom:12px">Build the future of Chillverse</h2>
+        <p style="color:#a8a8b8;line-height:1.7;font-size:15px;margin-bottom:32px">
+          Every great platform is built by passionate people. At Chillverse, you'll work on
+          meaningful projects, collaborate with talented teammates, and help shape the future
+          of our community — both paid and voluntary roles across community, marketing, and
+          engineering.
+        </p>
+        <p style="color:#a8a8b8;line-height:1.7;font-size:15px">
+          <a href="/work" style="color:#ff6b00;font-weight:700">Explore open roles →</a>
+        </p>
+      </main>
+    `,
   },
 ]
 
@@ -482,7 +516,7 @@ const BLOG_ROUTES = [
       title: `${post.title} — Chillverse`,
       description,
       ogType: 'article',
-      ogImage: post.hero_image_url || undefined,
+      ogImage: post.hero_image_url || `${SITE_URL}/cv-icon.png`,
       jsonLd: [
         {
           '@context': 'https://schema.org',
