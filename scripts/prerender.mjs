@@ -536,7 +536,7 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     ;[supportCategories, supportArticles] = await Promise.all([
       fetchSupabase('support_categories?select=id,slug,name,description,sort_order&order=sort_order.asc'),
       fetchSupabase(
-        'support_articles?select=slug,title,summary,content,tags,category_id,view_count,created_at,updated_at' +
+        'support_articles?select=slug,title,summary,content,tags,category_id,author_id,persona_author_id,view_count,created_at,updated_at' +
           '&is_published=eq.true&order=sort_order.asc&limit=1000'
       ),
     ])
@@ -545,6 +545,26 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     console.warn(`⚠ could not fetch support content — skipping help center prerendering: ${err.message}`)
     supportCategories = []
     supportArticles = []
+  }
+}
+
+// Bylines come from two tables — real profiles and house personas — because
+// support_articles mirrors blog_posts here (migration 0104).
+const supportAuthorsById = {}
+if (supportArticles.length) {
+  const profileIds = [...new Set(supportArticles.map((a) => a.author_id).filter(Boolean))]
+  const personaIds = [...new Set(supportArticles.map((a) => a.persona_author_id).filter(Boolean))]
+  try {
+    if (profileIds.length) {
+      const rows = await fetchSupabase(`profiles?select=id,username,display_name&id=in.(${profileIds.join(',')})`)
+      for (const r of rows) supportAuthorsById[r.id] = r.display_name || r.username
+    }
+    if (personaIds.length) {
+      const rows = await fetchSupabase(`blog_personas?select=id,username,display_name&id=in.(${personaIds.join(',')})`)
+      for (const r of rows) supportAuthorsById[r.id] = r.display_name || r.username
+    }
+  } catch (err) {
+    console.warn(`⚠ could not fetch help center author names: ${err.message}`)
   }
 }
 
@@ -631,6 +651,7 @@ const SUPPORT_ROUTES = supportCategories.length
           const category = categoryById[article.category_id]
           const description = (article.summary || stripMd(article.content)).slice(0, 160)
           const canonicalPath = `/${category.slug}/${article.slug}`
+          const authorName = supportAuthorsById[article.persona_author_id || article.author_id] || null
           return {
             path: `/support/${category.slug}/${article.slug}`,
             canonicalPath,
@@ -648,7 +669,9 @@ const SUPPORT_ROUTES = supportCategories.length
                 description,
                 datePublished: article.created_at,
                 dateModified: article.updated_at || article.created_at,
-                author: { '@type': 'Organization', name: 'Chillverse' },
+                author: authorName
+                  ? { '@type': 'Person', name: authorName }
+                  : { '@type': 'Organization', name: 'Chillverse' },
                 publisher: {
                   '@type': 'Organization',
                   name: 'Chillverse',
@@ -667,6 +690,7 @@ const SUPPORT_ROUTES = supportCategories.length
               <main style="max-width:720px;margin:0 auto;padding:96px 24px 64px;font-family:Inter,sans-serif;color:#e8e8f0">
                 <div style="font-size:13px;color:#888;margin-bottom:8px"><a href="/support" style="color:#888">Help Center</a> › <a href="/support/${category.slug}" style="color:#888">${escapeHtml(category.name)}</a></div>
                 <h1 style="font-size:34px;font-weight:800;margin:0 0 20px;line-height:1.15">${escapeHtml(article.title)}</h1>
+                ${authorName ? `<div style="font-size:13px;color:#888;margin-bottom:12px">By ${escapeHtml(authorName)}</div>` : ''}
                 ${article.summary ? `<p style="color:#a8a8b8;font-size:16px;line-height:1.6;margin-bottom:28px">${escapeHtml(article.summary)}</p>` : ''}
                 <article>${liteMarkdownToHtml(article.content)}</article>
                 ${article.tags?.length ? `<div style="margin-top:32px;font-size:13px;color:#888">${article.tags.map((t) => `#${escapeHtml(t)}`).join(' ')}</div>` : ''}
