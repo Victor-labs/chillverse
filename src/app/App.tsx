@@ -12,6 +12,7 @@ import Dashboard from '../features/dashboard/Dashboard'
 import ComingSoon from '../features/marketing/ComingSoon'
 import AppLayout from '../layout/AppLayout'
 import BlogLayout from '../layout/BlogLayout'
+import SupportLayout from '../layout/SupportLayout'
 import ProtectedRoute from '../features/auth/ProtectedRoute'
 import { supabase, supabaseConfigError } from '../shared/lib/supabase'
 import { updateStreak } from '../features/auth/auth'
@@ -61,6 +62,10 @@ const SupportCategory     = lazy(() => import('../features/support/SupportCatego
 const SupportArticle      = lazy(() => import('../features/support/SupportArticle'))
 const NewTicket           = lazy(() => import('../features/support/NewTicket'))
 const MyTickets           = lazy(() => import('../features/support/MyTickets'))
+const FeedbackHome        = lazy(() => import('../features/support/feedback/FeedbackHome'))
+const FeedbackTopic       = lazy(() => import('../features/support/feedback/FeedbackTopic'))
+const FeedbackPost        = lazy(() => import('../features/support/feedback/FeedbackPost'))
+const NewFeedback         = lazy(() => import('../features/support/feedback/NewFeedback'))
 const ModerationPanel     = lazy(() => import('../features/moderation/ModerationPanel'))
 const AdminDashboard      = lazy(() => import('../features/admin/AdminDashboard'))
 const AdminUserDetail     = lazy(() => import('../features/admin/AdminUserDetail'))
@@ -240,11 +245,6 @@ export default function App() {
           <Route path="/feed/:postId"     element={<Suspense fallback={<Fallback />}><SinglePostPage /></Suspense>} />
           <Route path="/referral"         element={<Suspense fallback={<Fallback />}><ReferralPage /></Suspense>} />
           <Route path="/search"           element={<Suspense fallback={<Fallback />}><SearchPage /></Suspense>} />
-          <Route path="/support"                          element={<Suspense fallback={<Fallback />}><Support /></Suspense>} />
-          <Route path="/support/tickets"                  element={<Suspense fallback={<Fallback />}><MyTickets /></Suspense>} />
-          <Route path="/support/tickets/new"               element={<Suspense fallback={<Fallback />}><NewTicket /></Suspense>} />
-          <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
-          <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
           <Route path="/moderation"       element={<Suspense fallback={<Fallback />}><ModerationPanel /></Suspense>} />
           <Route path="/admin"            element={<Suspense fallback={<Fallback />}><AdminDashboard /></Suspense>} />
           <Route path="/admin/users/:userId" element={<Suspense fallback={<Fallback />}><AdminUserDetail /></Suspense>} />
@@ -262,6 +262,23 @@ export default function App() {
           <Route path="/blog/:slug"          element={<Suspense fallback={<Fallback />}><BlogPostPage /></Suspense>} />
           <Route path="/editorial-room"                       element={<Suspense fallback={<Fallback />}><EditorialRoom /></Suspense>} />
           <Route path="/editorial-room/announcement/:postId"  element={<Suspense fallback={<Fallback />}><AnnouncementPage /></Suspense>} />
+        </Route>
+
+        {/* Help center — served at support.chillverse.com.ng (see vercel.json) and
+            also reachable at chillverse.com.ng/support. Public: articles, search
+            and the feedback board all read fine signed out, exactly like
+            support.discord.com. Voting and ticket submission bounce to /login
+            with a `next` param. NOT behind ProtectedRoute or AppLayout. */}
+        <Route element={<SupportLayout />}>
+          <Route path="/support"                           element={<Suspense fallback={<Fallback />}><Support /></Suspense>} />
+          <Route path="/support/tickets"                   element={<Suspense fallback={<Fallback />}><MyTickets /></Suspense>} />
+          <Route path="/support/tickets/new"               element={<Suspense fallback={<Fallback />}><NewTicket /></Suspense>} />
+          <Route path="/support/feedback"                  element={<Suspense fallback={<Fallback />}><FeedbackHome /></Suspense>} />
+          <Route path="/support/feedback/new"              element={<Suspense fallback={<Fallback />}><NewFeedback /></Suspense>} />
+          <Route path="/support/feedback/post/:postId"     element={<Suspense fallback={<Fallback />}><FeedbackPost /></Suspense>} />
+          <Route path="/support/feedback/:topicSlug"       element={<Suspense fallback={<Fallback />}><FeedbackTopic /></Suspense>} />
+          <Route path="/support/:categorySlug"             element={<Suspense fallback={<Fallback />}><SupportCategory /></Suspense>} />
+          <Route path="/support/:categorySlug/:articleSlug" element={<Suspense fallback={<Fallback />}><SupportArticle /></Suspense>} />
         </Route>
       </Routes>
     </>
