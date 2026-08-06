@@ -39,7 +39,10 @@ function ThemeSwatch({ id, selected }: { id: ThemeId; selected: boolean }) {
       aria-hidden
       style={{
         position: 'absolute', inset: 0, borderRadius: 'inherit', overflow: 'hidden',
-        background: 'var(--bg)', display: 'flex',
+        // Pastel themes carry their identity in --bg-image, so a swatch that
+        // painted only --bg would preview them as flat near-white squares.
+        backgroundColor: 'var(--bg)', backgroundImage: 'var(--bg-image)',
+        backgroundSize: 'cover', display: 'flex',
       }}
     >
       <div style={{ width: '26%', background: 'var(--nav)', borderRight: '1px solid var(--border)' }} />
@@ -118,7 +121,8 @@ export default function AppTheme() {
         <div
           data-theme={panelTheme}
           style={{
-            background: 'var(--surface)', color: 'var(--text)',
+            backgroundColor: 'var(--bg)', backgroundImage: 'var(--bg-image)',
+            backgroundSize: 'cover', color: 'var(--text)',
             border: '1px solid var(--border)', borderRadius: 20, padding: 18,
             boxShadow: 'var(--elev-raise)',
             transition: 'background-color var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out)',
@@ -228,7 +232,9 @@ export default function AppTheme() {
             <div className="t-label" style={{ textAlign: 'center', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               {!isPro && <Lock size={9} />} Void
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            {/* Void now holds nine themes — more than fits a phone width, so
+                this strip scrolls on its own instead of stretching the dock. */}
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', maxWidth: 'min(100%, 340px)', paddingBottom: 4 }}>
               {premiumThemes.map(t => {
                 const selected = (theme === t.id && previewId === null) || previewId === t.id
                 return (
@@ -258,7 +264,11 @@ export default function AppTheme() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
+        <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 10 }}>
+          {getTheme(panelTheme).label}
+        </div>
+
+        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
           {previewingLocked ? 'Previewing — your applied theme is unchanged.' : 'This will change the theme across all your devices.'}
         </div>
       </div>
