@@ -1,61 +1,48 @@
-// src/features/support/constants.ts
-import type { LucideIcon } from 'lucide-react'
-import {
-  Rocket, UserCircle, Gamepad2, Gem, Users, CreditCard, ShieldCheck,
-  HelpCircle, Users2, MessageCircle, Crown, Trophy, Newspaper, Bell,
-  Gift, Search, Settings,
-} from 'lucide-react'
-import type { SupportTicketPriority, SupportTicketStatus } from '../../shared/types'
+// src/features/support/feedback/constants.ts
+import type { SupportFeedbackStatus, SupportFeedbackSort } from '../../../shared/types'
 
-/** Maps the `icon` string stored on a support_categories row to a Lucide icon. */
-export const SUPPORT_CATEGORY_ICONS: Record<string, LucideIcon> = {
-  Rocket,
-  UserCircle,
-  Gamepad2,
-  Gem,
-  Users,
-  CreditCard,
-  ShieldCheck,
-  HelpCircle,
-  Users2,
-  MessageCircle,
-  Crown,
-  Trophy,
-  Newspaper,
-  Bell,
-  Gift,
-  Search,
-  Settings,
-}
-
-export function getSupportCategoryIcon(icon: string): LucideIcon {
-  return SUPPORT_CATEGORY_ICONS[icon] ?? HelpCircle
-}
-
-export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> = {
+export const FEEDBACK_STATUS_LABELS: Record<SupportFeedbackStatus, string> = {
   open: 'Open',
+  planned: 'Planned',
   in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  completed: 'Completed',
+  declined: 'Not Planned',
 }
 
-export const SUPPORT_TICKET_STATUS_COLORS: Record<SupportTicketStatus, string> = {
-  open: 'var(--blue)',
-  in_progress: 'var(--gold)',
-  resolved: 'var(--green)',
-  closed: 'var(--text-muted)',
+export const FEEDBACK_STATUS_COLORS: Record<SupportFeedbackStatus, string> = {
+  open: 'var(--text-muted)',
+  planned: 'var(--blue, #4a9eff)',
+  in_progress: 'var(--accent)',
+  completed: 'var(--green, #35c46a)',
+  declined: 'var(--text-muted)',
 }
 
-export const SUPPORT_TICKET_PRIORITY_LABELS: Record<SupportTicketPriority, string> = {
-  low: 'Low',
-  normal: 'Normal',
-  high: 'High',
-  urgent: 'Urgent',
+export const FEEDBACK_SORT_LABELS: Record<SupportFeedbackSort, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  top: 'Most votes',
 }
 
-export const SUPPORT_TICKET_PRIORITY_COLORS: Record<SupportTicketPriority, string> = {
-  low: 'var(--text-dim)',
-  normal: 'var(--blue)',
-  high: 'var(--gold)',
-  urgent: 'var(--red)',
+/** Compact "3 days ago" style stamp — matches how the ticket list reads dates. */
+export function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime()
+  const seconds = Math.max(Math.floor((Date.now() - then) / 1000), 0)
+
+  if (seconds < 45) return 'just now'
+
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'} ago`
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return plural(Math.max(minutes, 1), 'minute')
+
+  const hours = Math.floor(seconds / 3600)
+  if (hours < 24) return plural(hours, 'hour')
+
+  const days = Math.floor(seconds / 86400)
+  if (days < 30) return plural(days, 'day')
+
+  const months = Math.floor(days / 30)
+  if (months < 12) return plural(months, 'month')
+
+  return plural(Math.floor(days / 365), 'year')
 }
