@@ -83,10 +83,11 @@ function splitIntoRawBlocks(content: string): string[] {
 }
 
 const YOUTUBE_BLOCK_RE = /^\{\{youtube:([\w-]{11})\}\}$/
+const VIDEO_BLOCK_RE = /^\{\{video:(.+?)\}\}$/
 const IMAGE_BLOCK_RE = /^!\[(.*?)\]\((.+?)\)$/
 const TABLE_SEPARATOR_RE = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/
 
-/** Renders a blog post's plain-text/lite-markdown content into React nodes. Supports headings, lists, quotes, links, bold/italic/inline code, fenced code blocks, pipe tables, images, and `{{youtube:ID}}` embeds. */
+/** Renders a blog post's plain-text/lite-markdown content into React nodes. Supports headings, lists, quotes, links, bold/italic/inline code, fenced code blocks, pipe tables, images, `{{youtube:ID}}` embeds, and `{{video:URL}}` embeds (self-hosted uploads). */
 export function renderLiteMarkdown(content: string): ReactNode[] {
   const blocks = splitIntoRawBlocks(content)
 
@@ -116,6 +117,14 @@ export function renderLiteMarkdown(content: string): ReactNode[] {
           allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
         })
       )
+    }
+
+    // ── Self-hosted video embed ──
+    const videoMatch = VIDEO_BLOCK_RE.exec(trimmedBlock)
+    if (videoMatch) {
+      return createElement('video', {
+        key, src: videoMatch[1], controls: true, playsInline: true, style: VIDEO_BLOCK_STYLE,
+      })
     }
 
     // ── Standalone image ──
@@ -174,6 +183,7 @@ const CODE_BLOCK_STYLE: React.CSSProperties = {
 const YOUTUBE_WRAP_STYLE: React.CSSProperties = { position: 'relative', paddingTop: '56.25%', margin: '0 0 18px', borderRadius: 12, overflow: 'hidden', background: '#000' }
 const YOUTUBE_IFRAME_STYLE: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }
 const IMAGE_BLOCK_STYLE: React.CSSProperties = { width: '100%', borderRadius: 12, margin: '0 0 18px', display: 'block' }
+const VIDEO_BLOCK_STYLE: React.CSSProperties = { width: '100%', borderRadius: 12, margin: '0 0 18px', display: 'block', background: '#000' }
 const TABLE_WRAP_STYLE: React.CSSProperties = { margin: '0 0 18px', overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10 }
 const TABLE_STYLE: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 14 }
 const TH_STYLE: React.CSSProperties = { textAlign: 'left', padding: '9px 12px', background: 'var(--surface2)', color: 'var(--text)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
@@ -193,7 +203,7 @@ const QUOTE_STYLE: React.CSSProperties = {
 
 export type MarkdownAction =
   | 'bold' | 'italic' | 'code' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'link'
-  | 'codeblock' | 'table' | 'image' | 'youtube'
+  | 'codeblock' | 'table' | 'image' | 'youtube' | 'video'
 
 /** Ensures an insertion at `pos` starts on its own blank line (needed for block-level inserts like tables/code/images so they don't merge into a preceding paragraph). */
 function ensureBlockGap(value: string, pos: number): { prefix: string; pos: number } {
@@ -275,6 +285,12 @@ export function applyMarkdownAction(
       const id = promptValue?.trim()
       if (!id) return { value, selectionStart, selectionEnd }
       const template = `{{youtube:${id}}}`
+      return insertBlock(template, template.length)
+    }
+    case 'video': {
+      const url = promptValue?.trim()
+      if (!url) return { value, selectionStart, selectionEnd }
+      const template = `{{video:${url}}}`
       return insertBlock(template, template.length)
     }
   }
