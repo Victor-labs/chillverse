@@ -1,7 +1,7 @@
 // src/features/support/SupportCategory.tsx
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, Eye } from 'lucide-react'
+import { ChevronRight, Eye, FileText } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { fetchSupportCategoryBySlug, fetchArticlesByCategory } from './api'
 import { getSupportCategoryIcon } from './constants'
@@ -88,7 +88,16 @@ export default function SupportCategory() {
         </div>
       </div>
 
-      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 22 }}>
+      {/* The count that the topic bubble promised on the previous screen,
+          restated here so the tap resolves into something concrete. */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 22,
+        fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+        color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--accent) 24%, transparent)',
+        borderRadius: 999, padding: '5px 12px',
+      }}>
+        <FileText size={12} />
         {articles.length} article{articles.length === 1 ? '' : 's'}
       </div>
 

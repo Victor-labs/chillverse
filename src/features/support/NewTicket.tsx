@@ -1,11 +1,15 @@
 // src/features/support/NewTicket.tsx
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Send, Lock } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import { fetchSupportCategories, submitSupportTicket } from './api'
 import type { SupportCategory } from '../../shared/types'
+
+/** The address every ticket is routed to. Shown read-only on the form so
+ *  the person knows exactly which inbox their message lands in. */
+const SUPPORT_INBOX = 'Chillverserelationoffice@gmail.com'
 
 const SUBJECT_MAX = 120
 const MESSAGE_MAX = 2000
@@ -19,7 +23,6 @@ export default function NewTicket() {
   const [categoryId, setCategoryId] = useState<string>('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,10 +31,6 @@ export default function NewTicket() {
   useEffect(() => {
     fetchSupportCategories().then(setCategories).catch(() => { /* non-fatal — category is optional */ })
   }, [])
-
-  useEffect(() => {
-    if (user?.email) setContactEmail(user.email)
-  }, [user])
 
   const subjectValid = subject.trim().length > 0 && subject.trim().length <= SUBJECT_MAX
   const messageValid = message.trim().length >= MESSAGE_MIN && message.trim().length <= MESSAGE_MAX
@@ -52,7 +51,10 @@ export default function NewTicket() {
         categoryId: categoryId || null,
         subject,
         message,
-        contactEmail: contactEmail.trim() || null,
+        // Replies still need somewhere to go, so the account's own address
+        // travels with the ticket even though the form no longer exposes an
+        // editable field for it.
+        contactEmail: user.email ?? null,
       })
       setSuccess(true)
       setTimeout(() => navigate('/support/tickets'), 900)
@@ -130,13 +132,31 @@ export default function NewTicket() {
         </Field>
 
         <Field label="Contact email">
-          <input
-            type="email"
-            value={contactEmail}
-            onChange={e => setContactEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={inputStyle}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type="email"
+              value={SUPPORT_INBOX}
+              readOnly
+              disabled
+              aria-label="Support contact email (fixed)"
+              style={{
+                ...inputStyle,
+                paddingRight: 38,
+                color: 'var(--text-muted)',
+                background: 'var(--surface3)',
+                cursor: 'not-allowed',
+                opacity: 0.85,
+              }}
+            />
+            <Lock
+              size={14}
+              color="var(--text-muted)"
+              style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            />
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>
+            Your ticket goes to this inbox. We'll reply to the email on your Chillverse account.
+          </div>
         </Field>
 
         {error && <div style={errorBoxStyle}>{error}</div>}

@@ -157,32 +157,66 @@ export default function Support() {
           {/* Categories — one card per topic, showing its published article count */}
           {!loading && categories.length > 0 && (
             <>
-              <SectionTitle>All Collections</SectionTitle>
-              <div style={{ marginBottom: 28 }}>
-                {categories.map(category => {
+              <SectionTitle>Browse by topic</SectionTitle>
+              {/* Two-up bubble grid rather than a stacked list: a dozen full
+                  width rows reads as a wall, while paired cards with a
+                  floating icon give the page shape and halve its height. */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
+                gap: 14, marginBottom: 30,
+              }}>
+                {categories.map((category, i) => {
                   const Icon = getSupportCategoryIcon(category.icon)
+                  const tint = CATEGORY_TINTS[i % CATEGORY_TINTS.length]
                   return (
                     <button
                       key={category.id}
                       type="button"
                       onClick={(e) => { ripple(e); navigate(`/support/${category.slug}`) }}
-                      className="ripple-wrap"
-                      style={categoryCardStyle}
+                      className="ripple-wrap support-bubble-card"
+                      style={bubbleCardStyle}
                     >
+                      {/* Soft tint bloom behind the icon — the "floating" read
+                          comes from this plus the lifted shadow, not a border. */}
+                      <div
+                        aria-hidden
+                        style={{
+                          position: 'absolute', top: -30, right: -30, width: 110, height: 110,
+                          borderRadius: '50%', pointerEvents: 'none',
+                          background: `radial-gradient(circle, color-mix(in srgb, ${tint} 26%, transparent) 0%, transparent 70%)`,
+                        }}
+                      />
                       <div style={{
-                        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                        width: 46, height: 46, borderRadius: 16, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                        background: `color-mix(in srgb, ${tint} 16%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${tint} 28%, transparent)`,
+                        color: tint, marginBottom: 12,
+                        boxShadow: `0 8px 18px -10px ${tint}`,
                       }}>
-                        <Icon size={19} />
+                        <Icon size={22} />
                       </div>
-                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                        <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)' }}>{category.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {articleCountLabel(category.article_count)}
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', lineHeight: 1.25 }}>
+                        {category.name}
+                      </div>
+                      {category.description && (
+                        <div style={{
+                          fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        }}>
+                          {category.description}
                         </div>
+                      )}
+                      <div style={{
+                        marginTop: 'auto', paddingTop: 12,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
+                        color: tint,
+                      }}>
+                        {articleCountLabel(category.article_count)}
+                        <ChevronRight size={12} />
                       </div>
-                      <ChevronRight size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
                     </button>
                   )
                 })}
@@ -283,11 +317,21 @@ const quickActionStyle: React.CSSProperties = {
   padding: '14px 16px', boxShadow: 'var(--elev-raise-sm)',
 }
 
-const categoryCardStyle: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 12, width: '100%', cursor: 'pointer',
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-  padding: '14px 16px', marginBottom: 9,
-  boxShadow: 'var(--elev-raise-sm)',
+/** Per-card accent hues, cycled by index so a category list of any length
+ *  stays varied without every category needing a colour column. */
+const CATEGORY_TINTS = [
+  'var(--accent)', 'var(--blue)', 'var(--green)', 'var(--purple)',
+  'var(--gold)', 'var(--pink)',
+]
+
+const bubbleCardStyle: React.CSSProperties = {
+  position: 'relative', overflow: 'hidden',
+  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+  width: '100%', minHeight: 168, cursor: 'pointer', textAlign: 'left',
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22,
+  padding: '16px 16px 14px',
+  boxShadow: 'var(--elev-raise)',
+  transition: 'transform var(--dur-base) var(--ease-spring), box-shadow var(--dur-base) var(--ease-out)',
 }
 
 const articleRowStyle: React.CSSProperties = {

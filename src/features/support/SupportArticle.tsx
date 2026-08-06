@@ -1,7 +1,7 @@
 // src/features/support/SupportArticle.tsx
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ThumbsUp, ThumbsDown, MessageSquarePlus, Check } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageSquarePlus, Check, BadgeCheck } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { useAuth } from '../auth/useAuth'
 import {
@@ -9,6 +9,7 @@ import {
   submitArticleFeedback, fetchMyArticleFeedback,
 } from './api'
 import Breadcrumbs from './components/Breadcrumbs'
+import Avatar from '../../shared/components/Avatar'
 import { renderLiteMarkdown } from '../../shared/lib/markdownLite'
 import { fetchAuthorById, fetchPersonaById } from '../blog/api'
 import type { BlogAuthor } from '../../shared/types'
@@ -150,9 +151,36 @@ export default function SupportArticle() {
         fontSize: 'clamp(1.6rem, 5vw, 2.4rem)', lineHeight: 1.15, fontWeight: 900,
         letterSpacing: '-0.02em', color: 'var(--text)', margin: '0 0 8px',
       }}>{article.title}</h1>
-      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 20 }}>
-        {author ? `${author.display_name || author.username} · ` : ''}{publishedDate}
-      </div>
+      {/* Byline — same shape as a blog post's, so a reader who moves between
+          the two sees one consistent "who wrote this" treatment. Falls back
+          to a bare date when an article has no author set. */}
+      {author ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
+          <Avatar
+            src={author.avatar}
+            name={author.display_name ?? author.username}
+            userId={author.id}
+            size={36}
+            radius={11}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                {author.display_name ?? author.username}
+              </span>
+              {author.is_founder && <AuthorTag label="Founder" tone="var(--accent)" />}
+              {author.is_persona && <AuthorTag label="Official" tone="var(--text-muted)" />}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+              {publishedDate}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 20 }}>
+          {publishedDate}
+        </div>
+      )}
       {article.summary && (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', marginBottom: 24 }}>{article.summary}</p>
       )}
@@ -161,7 +189,7 @@ export default function SupportArticle() {
           not a widget on it. markdownLite here matches what the CMS editor
           previews and what scripts/prerender.mjs bakes in for crawlers. */}
       <div style={{ fontSize: 15.5, lineHeight: 1.8, color: 'var(--text)', marginBottom: 30 }}>
-        {renderLiteMarkdown(article.content)}
+        {renderLiteMarkdown(article.content, { ambientMedia: true })}
       </div>
 
       {article.tags.length > 0 && (
@@ -232,6 +260,19 @@ export default function SupportArticle() {
         </div>
       </button>
     </div>
+  )
+}
+
+function AuthorTag({ label, tone }: { label: string; tone: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      fontSize: 10, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+      borderRadius: 999, padding: '2px 8px',
+    }}>
+      <BadgeCheck size={11} /> {label}
+    </span>
   )
 }
 
