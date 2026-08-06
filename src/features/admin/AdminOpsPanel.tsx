@@ -12,12 +12,13 @@
 import { useEffect, useState } from 'react'
 import {
   Power, Megaphone, Download, Activity, AlertTriangle,
-  Gamepad2, Map as MapIcon, Settings2, Clock, Send, X, MessageSquare,
+  Gamepad2, Map as MapIcon, Settings2, Clock, Send, MessageSquare,
   Copy, Check, ChevronDown, ChevronUp, RefreshCw, Target, Zap, Gift, Search,
   Trash2, Plus,
 } from 'lucide-react'
 import { ripple } from '../../shared/lib/ripple'
 import { Row, ToggleRow, SectionTitle } from '../settings/settingsShared'
+import { Modal, fieldLabel, inputStyle } from './adminModal'
 import {
   fetchAppConfig, setMaintenanceMode, broadcastNotification,
   fetchFeatureFlags, setFeatureFlag, exportUsersCsv, exportTransactionsCsv,
@@ -27,31 +28,13 @@ import {
   type FeatureFlag, type SystemHealth, type ClientErrorLogRow, type GameGoalCycle, type GameGoalMallItem,
   type FlashSaleRule, type FlashSaleItemDraft,
 } from './adminOps'
+import StatusOpsSection from './StatusOpsSection'
 
 // ── Shared modal shell (mirrors Settings.tsx's Log out / Microphone popovers) ──
 
-function Modal({ title, onClose, children, width = 380 }: { title: string; onClose: () => void; children: React.ReactNode; width?: number }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'var(--overlay-scrim)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <style>{`@keyframes popIn { from { opacity:0; transform: scale(0.92) } to { opacity:1; transform: scale(1) } }`}</style>
-      <div style={{ background: 'var(--popover)', borderRadius: 20, padding: 22, width: '100%', maxWidth: width, maxHeight: '82vh', overflowY: 'auto', border: '1px solid var(--border)', boxShadow: 'var(--elev-popover)', animation: 'popIn 0.22s var(--ease-spring) both' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{title}</div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
-            <X size={14} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-const fieldLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)',
-  background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none',
-}
+// Modal / fieldLabel / inputStyle now live in ./adminModal.tsx (pulled out
+// so StatusOpsSection.tsx and other sub-sections can import them without a
+// circular dependency back on this file).
 
 // ── Maintenance ─────────────────────────────────────────────────────
 
@@ -1109,6 +1092,8 @@ export default function AdminOpsPanel() {
           onClick={(e) => { ripple(e); setModal('health') }}
         />
       </div>
+
+      <StatusOpsSection />
 
       {modal === 'maintenance-message' && (
         <MaintenanceMessageModal
