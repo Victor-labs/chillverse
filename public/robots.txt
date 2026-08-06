@@ -5,6 +5,7 @@ Allow: /signup
 Allow: /privacy
 Allow: /terms
 Allow: /blog
+Allow: /support
 
 Disallow: /dashboard
 Disallow: /games
