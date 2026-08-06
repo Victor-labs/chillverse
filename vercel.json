@@ -1,4 +1,24 @@
 {
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "support.chillverse.com.ng" }],
+      "destination": "https://chillverse.com.ng/support",
+      "permanent": false
+    },
+    {
+      "source": "/:path((?!support/).*)",
+      "has": [{ "type": "host", "value": "support.chillverse.com.ng" }],
+      "destination": "https://chillverse.com.ng/support/:path",
+      "permanent": false
+    },
+    {
+      "source": "/:path(support/.*)",
+      "has": [{ "type": "host", "value": "support.chillverse.com.ng" }],
+      "destination": "https://chillverse.com.ng/:path",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
