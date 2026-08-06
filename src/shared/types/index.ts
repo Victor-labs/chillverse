@@ -199,6 +199,10 @@ export interface SupportCategoryWithCount extends SupportCategory {
 export interface SupportArticle {
   id: string
   category_id: string
+  /** Real profile byline. Mutually exclusive with persona_author_id (migration 0104). */
+  author_id: string | null
+  /** House-persona byline, pointing at blog_personas. */
+  persona_author_id: string | null
   slug: string
   title: string
   summary: string | null
