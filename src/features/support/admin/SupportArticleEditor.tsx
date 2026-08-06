@@ -5,7 +5,7 @@
 // static HTML at build time. Anything written here appears identically to a
 // reader, to Google, and to an AI crawler.
 import { useEffect, useRef, useState } from 'react'
-import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2 } from 'lucide-react'
+import { X, Eye, Pencil, Bold, Italic, Heading2, List, ListOrdered, Quote, Link2, ImagePlus, Loader2 } from 'lucide-react'
 import { ripple } from '../../../shared/lib/ripple'
 import { renderLiteMarkdown, applyMarkdownAction, type MarkdownAction } from '../../../shared/lib/markdownLite'
 import {
@@ -13,7 +13,17 @@ import {
   primaryButtonStyle, secondaryButtonStyle, iconButtonStyle, wordCount,
 } from '../../blog/admin/styles'
 import { createArticle, updateArticle, fetchAllCategories, isSlugTaken } from './api'
-import type { SupportArticle, SupportCategory } from '../../../shared/types'
+// Authors and image hosting are shared with the blog rather than duplicated:
+// same `blog-images` bucket (staff-only write, migration 0053), same merged
+// picker of real profiles + house personas (migration 0099).
+import { uploadBlogImage, fetchAuthorCandidates, fetchAuthorById, fetchPersonaById } from '../../blog/api'
+import type { SupportArticle, SupportCategory, BlogAuthor } from '../../../shared/types'
+
+/** Real profiles and personas both have plain UUIDs, so the <select> value
+ *  needs a prefix to know which column the choice belongs in. */
+function authorOptionValue(a: BlogAuthor): string {
+  return `${a.is_persona ? 'persona' : 'user'}:${a.id}`
+}
 
 interface Props {
   article: SupportArticle | null
@@ -54,6 +64,10 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
   const [content, setContent] = useState(article?.content ?? '')
   const [tagsText, setTagsText] = useState((article?.tags ?? []).join(', '))
   const [isPublished, setIsPublished] = useState(article?.is_published ?? false)
+  const [authors, setAuthors] = useState<BlogAuthor[]>([])
+  const [authorId, setAuthorId] = useState<string | null>(article?.author_id ?? null)
+  const [personaAuthorId, setPersonaAuthorId] = useState<string | null>(article?.persona_author_id ?? null)
+  const [uploading, setUploading] = useState(false)
   const [sortOrder, setSortOrder] = useState(article?.sort_order ?? 0)
 
   // Only auto-derive the slug for new articles. Changing a live article's
@@ -71,6 +85,34 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
       })
       .catch((err: Error) => setError(err.message || 'Could not load categories.'))
   }, [])
+
+  useEffect(() => {
+    fetchAuthorCandidates()
+      .then(setAuthors)
+      .catch(() => { /* picker falls back to "Chillverse Team"; not worth blocking a save */ })
+  }, [])
+
+  // Default a new article to whoever is writing it.
+  useEffect(() => {
+    if (isNew && currentUserId && !authorId && !personaAuthorId) setAuthorId(currentUserId)
+  }, [isNew, currentUserId, authorId, personaAuthorId])
+
+  // The dropdown only lists current candidates, so an article written by
+  // someone since demoted (or a since-removed persona) would silently lose
+  // its byline on the next save. Pull the missing one in so it stays.
+  useEffect(() => {
+    if (!authorId || authors.some(a => !a.is_persona && a.id === authorId)) return
+    fetchAuthorById(authorId)
+      .then(a => { if (a) setAuthors(prev => prev.some(p => p.id === a.id) ? prev : [...prev, a]) })
+      .catch(() => {})
+  }, [authorId, authors])
+
+  useEffect(() => {
+    if (!personaAuthorId || authors.some(a => a.is_persona && a.id === personaAuthorId)) return
+    fetchPersonaById(personaAuthorId)
+      .then(a => { if (a) setAuthors(prev => prev.some(p => p.id === a.id) ? prev : [...prev, a]) })
+      .catch(() => {})
+  }, [personaAuthorId, authors])
 
   useEffect(() => {
     if (!slugTouched) setSlug(slugify(title))
@@ -95,6 +137,28 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
     })
   }
 
+  async function handleImageUpload(file: File) {
+    if (!currentUserId) { setError('Sign in again before uploading images.'); return }
+    setUploading(true)
+    setError(null)
+    try {
+      const url = await uploadBlogImage(currentUserId, file)
+      const el = textareaRef.current
+      const start = el?.selectionStart ?? content.length
+      const end = el?.selectionEnd ?? content.length
+      const result = applyMarkdownAction(content, start, end, 'image', url)
+      setContent(result.value)
+      requestAnimationFrame(() => {
+        el?.focus()
+        el?.setSelectionRange(result.selectionStart, result.selectionEnd)
+      })
+    } catch (err) {
+      setError((err as Error).message || 'Could not upload that image.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleSave() {
     const cleanTitle = title.trim()
     const cleanSlug = slugify(slug)
@@ -116,6 +180,8 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
 
       const draft = {
         category_id: categoryId,
+        author_id: authorId,
+        persona_author_id: personaAuthorId,
         slug: cleanSlug,
         title: cleanTitle,
         summary: summary.trim() || null,
@@ -126,7 +192,7 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
       }
 
       if (article) await updateArticle(article.id, draft)
-      else await createArticle(draft, currentUserId)
+      else await createArticle(draft)
 
       onSaved()
     } catch (err) {
@@ -167,6 +233,24 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
             />
           </div>
         </div>
+
+        <Label>Author</Label>
+        <select
+          value={personaAuthorId ? `persona:${personaAuthorId}` : authorId ? `user:${authorId}` : ''}
+          onChange={(e) => {
+            const [kind, id] = e.target.value.split(':')
+            setAuthorId(kind === 'user' ? id : null)
+            setPersonaAuthorId(kind === 'persona' ? id : null)
+          }}
+          style={{ ...inputStyle, cursor: 'pointer', marginBottom: 12 }}
+        >
+          <option value="">Chillverse Team (no byline)</option>
+          {authors.map(a => (
+            <option key={authorOptionValue(a)} value={authorOptionValue(a)}>
+              {a.display_name || a.username}{a.is_persona ? ' (house)' : ''}
+            </option>
+          ))}
+        </select>
 
         <Label>Title</Label>
         <input
@@ -225,6 +309,29 @@ export default function SupportArticleEditor({ article, currentUserId, onClose, 
                 <Icon size={13} />
               </button>
             ))}
+
+            {/* Uploads to the shared blog-images bucket and drops an
+                ![](url) block at the cursor. */}
+            <label
+              title={uploading ? 'Uploading…' : 'Insert image'}
+              style={{
+                ...iconButtonStyle, width: 30, height: 30,
+                color: 'var(--text-dim)', cursor: uploading ? 'default' : 'pointer',
+              }}
+            >
+              {uploading ? <Loader2 size={13} /> : <ImagePlus size={13} />}
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleImageUpload(file)
+                  e.target.value = ''
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
           </div>
         )}
 

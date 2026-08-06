@@ -26,6 +26,9 @@ export async function fetchAllArticles(): Promise<SupportArticle[]> {
 
 export interface ArticleDraft {
   category_id: string
+  /** At most one of these is set — a DB check constraint enforces it. */
+  author_id: string | null
+  persona_author_id: string | null
   slug: string
   title: string
   summary: string | null
@@ -35,13 +38,10 @@ export interface ArticleDraft {
   sort_order: number
 }
 
-export async function createArticle(
-  draft: ArticleDraft,
-  authorId: string | null
-): Promise<SupportArticle> {
+export async function createArticle(draft: ArticleDraft): Promise<SupportArticle> {
   const { data, error } = await supabase
     .from('support_articles')
-    .insert({ ...draft, author_id: authorId })
+    .insert(draft)
     .select('*')
     .single()
 
