@@ -13,8 +13,7 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
   {
     heading: 'Product',
     links: [
-      { label: 'Features', href: '/#features' },
-      { label: 'Leaderboard', href: '/#leaderboard' },
+      { label: 'Orbit & Void', href: null },
       { label: 'Learning Platform', href: 'https://cvwtplatform.vercel.app/', external: true },
     ],
   },
@@ -25,7 +24,6 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
       { label: 'Contact', href: 'mailto:chillverserelationoffice@gmail.com' },
       { label: 'Editorial room', href: '/editorial-room' },
       { label: 'Work at Chillverse', href: '/work' },
-      { label: 'Brand', href: null },
     ],
   },
   {
@@ -33,6 +31,8 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
     links: [
       { label: 'FAQ', href: '/faq' },
       { label: 'Reviews', href: null },
+      { label: 'Blog', href: '/blog' },
+      { label: 'Support', href: '/support' },
     ],
   },
   {
