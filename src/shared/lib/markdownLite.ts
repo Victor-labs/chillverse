@@ -7,6 +7,10 @@
 // still render exactly as before: this only adds *optional* formatting on
 // top of that convention, it doesn't replace it.
 import { createElement, type ReactNode } from 'react'
+import {
+  Info, AlertTriangle, CheckCircle2, Lightbulb, HelpCircle, Star, Sparkles,
+  ShieldCheck, Bell, Flame, Zap, XCircle, BookOpen, type LucideIcon,
+} from 'lucide-react'
 
 const INLINE_TOKEN = /(\*\*.+?\*\*|\*.+?\*|`.+?`|\[.+?\]\(.+?\))/g
 
@@ -35,6 +39,64 @@ function parseInline(text: string, keyPrefix: string): ReactNode[] {
 const INLINE_CODE_STYLE: React.CSSProperties = {
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: '0.9em',
   background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
+}
+
+// ── Callout ("highlight") blocks ──────────────────────────────────────
+// Syntax, written by the editor's highlight picker:
+//
+//   {{callout:blue:Info}}
+//   The highlighted text, which may run over several lines.
+//
+// A blank line closes it, same as every other block, so the existing
+// splitter needs no special case. Colour and icon are both stored as
+// plain names rather than raw hex/SVG, so a callout written today still
+// re-themes correctly when the palette changes.
+
+export const CALLOUT_COLORS: { id: string; label: string; cssVar: string }[] = [
+  { id: 'blue',    label: 'Info',    cssVar: 'var(--blue)' },
+  { id: 'green',   label: 'Success', cssVar: 'var(--green)' },
+  { id: 'gold',    label: 'Warning', cssVar: 'var(--gold)' },
+  { id: 'red',     label: 'Danger',  cssVar: 'var(--red)' },
+  { id: 'purple',  label: 'Note',    cssVar: 'var(--purple)' },
+  { id: 'pink',    label: 'Accent',  cssVar: 'var(--pink)' },
+  { id: 'brand',   label: 'Brand',   cssVar: 'var(--accent)' },
+  { id: 'neutral', label: 'Neutral', cssVar: 'var(--text-dim)' },
+]
+
+export const CALLOUT_ICONS: Record<string, LucideIcon> = {
+  Info, AlertTriangle, CheckCircle2, Lightbulb, HelpCircle, Star, Sparkles,
+  ShieldCheck, Bell, Flame, Zap, XCircle, BookOpen,
+}
+
+export const CALLOUT_ICON_NAMES = Object.keys(CALLOUT_ICONS)
+
+export function calloutColorVar(id: string): string {
+  return CALLOUT_COLORS.find(c => c.id === id)?.cssVar ?? 'var(--blue)'
+}
+
+/** Ref callback for ambient videos. The `muted` attribute alone isn't
+ *  always enough for autoplay — browsers check the *property*, which React
+ *  doesn't always set before the element starts loading — so this sets it
+ *  directly and kicks off playback, swallowing the rejection if the browser
+ *  still blocks it (the first frame then stands in as a poster). */
+function primeAmbientVideo(el: HTMLVideoElement | null): void {
+  if (!el) return
+  el.muted = true
+  el.defaultMuted = true
+  el.disablePictureInPicture = true
+  const started = el.play()
+  if (started && typeof started.catch === 'function') {
+    started.catch(() => { /* autoplay blocked — the poster frame stands in */ })
+  }
+}
+
+/** Options for `renderLiteMarkdown`. */
+export interface RenderOptions {
+  /** Ambient media: videos autoplay muted on a loop with no player chrome
+   *  (no play/pause, no scrubber, no fullscreen). Used by help articles,
+   *  where a clip is an illustration of a step rather than something the
+   *  reader is meant to operate. Blog posts keep normal controls. */
+  ambientMedia?: boolean
 }
 
 /** Extracts an 11-char YouTube video ID from any common YouTube URL shape, or returns the input unchanged if it already looks like a bare ID. */
@@ -86,10 +148,12 @@ const YOUTUBE_BLOCK_RE = /^\{\{youtube:([\w-]{11})\}\}$/
 const VIDEO_BLOCK_RE = /^\{\{video:(.+?)\}\}$/
 const IMAGE_BLOCK_RE = /^!\[(.*?)\]\((.+?)\)$/
 const TABLE_SEPARATOR_RE = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/
+const CALLOUT_OPEN_RE = /^\{\{callout(?::([a-z]+))?(?::([A-Za-z0-9]+))?\}\}$/
 
-/** Renders a blog post's plain-text/lite-markdown content into React nodes. Supports headings, lists, quotes, links, bold/italic/inline code, fenced code blocks, pipe tables, images, `{{youtube:ID}}` embeds, and `{{video:URL}}` embeds (self-hosted uploads). */
-export function renderLiteMarkdown(content: string): ReactNode[] {
+/** Renders a blog post's plain-text/lite-markdown content into React nodes. Supports headings, lists, quotes, links, bold/italic/inline code, fenced code blocks, pipe tables, images, `{{youtube:ID}}` embeds, `{{video:URL}}` embeds (self-hosted uploads), and `{{callout:color:Icon}}` highlight blocks. */
+export function renderLiteMarkdown(content: string, options: RenderOptions = {}): ReactNode[] {
   const blocks = splitIntoRawBlocks(content)
+  const ambient = options.ambientMedia === true
 
   return blocks.map((block, i) => {
     const key = `block-${i}`
@@ -109,11 +173,19 @@ export function renderLiteMarkdown(content: string): ReactNode[] {
     // ── YouTube embed ──
     const ytMatch = YOUTUBE_BLOCK_RE.exec(trimmedBlock)
     if (ytMatch) {
+      const id = ytMatch[1]
+      // Ambient: muted autoplay is the only kind browsers allow without a
+      // gesture, and `loop` needs `playlist` set to the same id to work on
+      // a single video. controls/fs/keyboard are all switched off.
+      const src = ambient
+        ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0&iv_load_policy=3`
+        : `https://www.youtube.com/embed/${id}`
       return createElement(
-        'div', { key, style: YOUTUBE_WRAP_STYLE },
+        'div', { key, style: ambient ? { ...YOUTUBE_WRAP_STYLE, pointerEvents: 'none' } : YOUTUBE_WRAP_STYLE },
         createElement('iframe', {
-          src: `https://www.youtube.com/embed/${ytMatch[1]}`,
-          title: 'YouTube video', allowFullScreen: true, style: YOUTUBE_IFRAME_STYLE,
+          src,
+          title: 'YouTube video', allowFullScreen: !ambient, style: YOUTUBE_IFRAME_STYLE,
+          tabIndex: ambient ? -1 : undefined,
           allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
         })
       )
@@ -122,9 +194,52 @@ export function renderLiteMarkdown(content: string): ReactNode[] {
     // ── Self-hosted video embed ──
     const videoMatch = VIDEO_BLOCK_RE.exec(trimmedBlock)
     if (videoMatch) {
+      if (ambient) {
+        return createElement('video', {
+          key, src: videoMatch[1],
+          autoPlay: true, loop: true, muted: true, playsInline: true, controls: false,
+          preload: 'auto',
+          ref: primeAmbientVideo,
+          disablePictureInPicture: true,
+          controlsList: 'nodownload nofullscreen noremoteplayback',
+          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+          style: AMBIENT_VIDEO_STYLE,
+        })
+      }
       return createElement('video', {
         key, src: videoMatch[1], controls: true, playsInline: true, loop: true, style: VIDEO_BLOCK_STYLE,
       })
+    }
+
+    // ── Callout / highlight ──
+    const calloutLines = trimmedBlock.split('\n')
+    const calloutOpen = CALLOUT_OPEN_RE.exec(calloutLines[0].trim())
+    if (calloutOpen) {
+      const colorVar = calloutColorVar(calloutOpen[1] ?? 'blue')
+      const Icon = CALLOUT_ICONS[calloutOpen[2] ?? 'Info'] ?? Info
+      const body = calloutLines.slice(1).filter(l => l.trim() !== '')
+      return createElement(
+        'div',
+        {
+          key,
+          style: {
+            display: 'flex', gap: 12, alignItems: 'flex-start',
+            margin: '0 0 18px', padding: '14px 16px', borderRadius: 14,
+            background: `color-mix(in srgb, ${colorVar} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${colorVar} 30%, transparent)`,
+            borderLeft: `3px solid ${colorVar}`,
+          },
+        },
+        createElement(Icon, { key: `${key}-icon`, size: 17, color: colorVar, style: { flexShrink: 0, marginTop: 2 } }),
+        createElement(
+          'div', { key: `${key}-body`, style: { flex: 1, minWidth: 0 } },
+          body.map((line, j) => createElement(
+            'p',
+            { key: `${key}-l${j}`, style: { ...CALLOUT_TEXT_STYLE, margin: j === body.length - 1 ? 0 : '0 0 8px' } },
+            parseInline(line, `${key}-l${j}`)
+          ))
+        )
+      )
     }
 
     // ── Standalone image ──
@@ -184,6 +299,13 @@ const YOUTUBE_WRAP_STYLE: React.CSSProperties = { position: 'relative', paddingT
 const YOUTUBE_IFRAME_STYLE: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }
 const IMAGE_BLOCK_STYLE: React.CSSProperties = { width: '100%', borderRadius: 12, margin: '0 0 18px', display: 'block' }
 const VIDEO_BLOCK_STYLE: React.CSSProperties = { width: '100%', borderRadius: 12, margin: '0 0 18px', display: 'block', background: '#000' }
+const AMBIENT_VIDEO_STYLE: React.CSSProperties = {
+  width: '100%', borderRadius: 12, margin: '0 0 18px', display: 'block', background: '#000',
+  // No chrome means nothing to click — swallowing pointer events also stops
+  // the tap-to-pause / long-press-to-save gestures mobile browsers add.
+  pointerEvents: 'none', userSelect: 'none',
+}
+const CALLOUT_TEXT_STYLE: React.CSSProperties = { fontSize: 14.5, lineHeight: 1.65, color: 'var(--text)', fontWeight: 600 }
 const TABLE_WRAP_STYLE: React.CSSProperties = { margin: '0 0 18px', overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10 }
 const TABLE_STYLE: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 14 }
 const TH_STYLE: React.CSSProperties = { textAlign: 'left', padding: '9px 12px', background: 'var(--surface2)', color: 'var(--text)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
@@ -203,7 +325,7 @@ const QUOTE_STYLE: React.CSSProperties = {
 
 export type MarkdownAction =
   | 'bold' | 'italic' | 'code' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'link'
-  | 'codeblock' | 'table' | 'image' | 'youtube' | 'video'
+  | 'codeblock' | 'table' | 'image' | 'youtube' | 'video' | 'callout'
 
 /** Ensures an insertion at `pos` starts on its own blank line (needed for block-level inserts like tables/code/images so they don't merge into a preceding paragraph). */
 function ensureBlockGap(value: string, pos: number): { prefix: string; pos: number } {
@@ -292,6 +414,14 @@ export function applyMarkdownAction(
       if (!url) return { value, selectionStart, selectionEnd }
       const template = `{{video:${url}}}`
       return insertBlock(template, template.length)
+    }
+    case 'callout': {
+      // promptValue arrives as "color:Icon" from the editor's picker.
+      const [color = 'blue', icon = 'Info'] = (promptValue ?? '').split(':')
+      const text = selected || 'Highlighted text'
+      const template = `{{callout:${color}:${icon}}}\n${text}`
+      // Land the cursor on the body line so it can be typed over directly.
+      return insertBlock(template, template.length - text.length)
     }
   }
 }
