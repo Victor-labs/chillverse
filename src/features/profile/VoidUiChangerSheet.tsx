@@ -15,11 +15,11 @@
 import { useState, useEffect } from 'react'
 import type React from 'react'
 import { createPortal } from 'react-dom'
-import { X, Check } from 'lucide-react'
+import { X, Check, Loader2 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
 import {
-  PROFILE_SKINS, profileSkinStyle, profileSkinOverlayStyle, profileSkinAttr,
+  PROFILE_SKINS, getProfileSkin, profileSkinStyle, profileSkinOverlayStyle, profileSkinAttr,
   type ProfileSkinId,
 } from '../../shared/lib/profileSkins'
 import ProfileSkinStyles from './ProfileSkinStyles'
@@ -100,13 +100,14 @@ function SkinPreview({ skin, name }: { skin: ProfileSkinId | null; name: string 
 }
 
 function SkinCard({
-  skin, label, blurb, name, selected, onSelect,
+  skin, label, blurb, name, selected, busy, onSelect,
 }: {
   skin: ProfileSkinId | null
   label: string
   blurb: string
   name: string
   selected: boolean
+  busy: boolean
   onSelect: () => void
 }) {
   return (
@@ -127,13 +128,15 @@ function SkinCard({
           <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>{label}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>{blurb}</div>
         </div>
-        {selected && (
+        {(selected || busy) && (
           <div style={{
             width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
             background: 'rgba(155,109,255,0.16)', border: '1px solid rgba(155,109,255,0.55)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Check size={12} strokeWidth={3} style={{ color: '#9b6dff' }} />
+            {busy
+              ? <Loader2 size={12} strokeWidth={3} style={{ color: '#9b6dff', animation: 'cv-skin-spin 0.8s linear infinite' }} />
+              : <Check size={12} strokeWidth={3} style={{ color: '#9b6dff' }} />}
           </div>
         )}
       </div>
@@ -155,17 +158,30 @@ export default function VoidUiChangerSheet({
     setTimeout(onClose, 280)
   }
 
-  async function apply() {
-    if (saving) return
+  // Applies on tap, like the app theme picker — there is no separate save
+  // step. The previous build hid the write behind an Apply button, which
+  // read as "nothing happened": tapping a card only moved a local
+  // highlight, and Edit Profile's own Save button doesn't touch this
+  // column, so closing the sheet silently discarded the pick.
+  //
+  // Optimistic: the highlight moves immediately, then reverts if the
+  // write fails, so the UI never claims a state the database doesn't have.
+  async function pick(next: ProfileSkinId | null) {
+    if (saving || next === choice) return
+    const previous = choice
+    setChoice(next)
     setSaving(true)
     const { error } = await supabase.from('profiles')
-      .update({ profile_ui_skin: choice })
+      .update({ profile_ui_skin: next })
       .eq('id', profileId)
     setSaving(false)
-    if (error) { onToast(error.message); return }
-    onSaved(choice)
-    onToast(choice ? 'Profile UI updated' : 'Profile UI reset to default')
-    animateOutThenClose()
+    if (error) {
+      setChoice(previous)
+      onToast(error.message)
+      return
+    }
+    onSaved(next)
+    onToast(next ? `${getProfileSkin(next)?.label} applied` : 'Reset to default')
   }
 
   return createPortal(
@@ -193,7 +209,7 @@ export default function VoidUiChangerSheet({
         <ProfileSkinStyles />
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, lineHeight: 1.55 }}>
           Reskins your whole profile page — background, cards, borders, fonts and buttons.
-          Everyone who opens your profile sees it this way too.
+          Everyone who opens your profile sees it this way too. Tap to apply — it saves straight away.
         </p>
 
         <SkinCard
@@ -202,7 +218,8 @@ export default function VoidUiChangerSheet({
           blurb="The standard Chillverse look, following your app theme."
           name={displayName}
           selected={choice === null}
-          onSelect={() => setChoice(null)}
+          busy={saving && choice === null}
+          onSelect={() => pick(null)}
         />
 
         {PROFILE_SKINS.map(s => (
@@ -213,7 +230,8 @@ export default function VoidUiChangerSheet({
             blurb={s.blurb}
             name={displayName}
             selected={choice === s.id}
-            onSelect={() => setChoice(s.id)}
+            busy={saving && choice === s.id}
+            onSelect={() => pick(s.id)}
           />
         ))}
 
@@ -223,11 +241,11 @@ export default function VoidUiChangerSheet({
         </p>
       </div>
 
-      {/* Footer */}
+      {/* Footer — Done only dismisses; each tap above has already saved. */}
       <div style={{ flexShrink: 0, padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
-        <button type="button" onClick={(e) => { ripple(e); apply() }} disabled={saving} className="btn-primary"
-          style={{ width: '100%', padding: 14, borderRadius: 14, fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Applying…' : <><Check size={14} /> Apply</>}
+        <button type="button" onClick={(e) => { ripple(e); animateOutThenClose() }} className="btn-primary"
+          style={{ width: '100%', padding: 14, borderRadius: 14, fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Check size={14} /> Done
         </button>
       </div>
     </div>,

@@ -174,7 +174,7 @@ function SaveToast({ message, onDone }: { message: string; onDone: () => void })
   }, [])
 
   return (
-    <div style={{ position: 'fixed', top: visible ? 16 : -80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, transition: 'top 0.32s cubic-bezier(0.34,1.56,0.64,1)', background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
+    <div style={{ position: 'fixed', top: visible ? 16 : -80, left: '50%', transform: 'translateX(-50%)', zIndex: 30000, transition: 'top 0.32s cubic-bezier(0.34,1.56,0.64,1)', background: 'rgba(20,20,24,0.96)', border: '1px solid rgba(62,207,142,0.4)', borderRadius: 14, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 9, boxShadow: 'var(--elev-raise)', backdropFilter: 'blur(10px)', whiteSpace: 'nowrap' }}>
       <Check size={14} color="#3ecf8e" />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{message}</span>
     </div>
