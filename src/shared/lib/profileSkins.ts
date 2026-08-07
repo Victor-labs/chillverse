@@ -341,6 +341,11 @@ export const PROFILE_SKIN_CSS = `
   [data-cv-skin] button { transition: none; }
   [data-cv-skin] button:active { transform: none; }
 }
+
+/* Spinner for the picker's saving state. Lives here because
+   <ProfileSkinStyles/> is the one stylesheet guaranteed to be mounted
+   whenever the picker is open, and index.css has no plain spin keyframe. */
+@keyframes cv-skin-spin { to { transform: rotate(360deg); } }
 `
 
 export function isValidProfileSkin(value: string | null | undefined): value is ProfileSkinId {
