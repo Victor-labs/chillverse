@@ -795,7 +795,6 @@ export default function EditProfileModal({
 
       {showUiChanger && (
         <VoidUiChangerSheet
-          profileId={profile.id}
           displayName={displayName || profile.username}
           current={uiSkin}
           onClose={() => setShowUiChanger(false)}

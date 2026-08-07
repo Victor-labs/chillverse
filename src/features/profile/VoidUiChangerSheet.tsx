@@ -25,7 +25,6 @@ import {
 import ProfileSkinStyles from './ProfileSkinStyles'
 
 interface VoidUiChangerSheetProps {
-  profileId: string
   displayName: string
   current: ProfileSkinId | null
   onClose: () => void
@@ -145,7 +144,7 @@ function SkinCard({
 }
 
 export default function VoidUiChangerSheet({
-  profileId, displayName, current, onClose, onSaved, onToast,
+  displayName, current, onClose, onSaved, onToast,
 }: VoidUiChangerSheetProps) {
   const [visible, setVisible] = useState(false)
   const [choice, setChoice] = useState<ProfileSkinId | null>(current)
@@ -171,9 +170,12 @@ export default function VoidUiChangerSheet({
     const previous = choice
     setChoice(next)
     setSaving(true)
-    const { error } = await supabase.from('profiles')
-      .update({ profile_ui_skin: next })
-      .eq('id', profileId)
+    // Goes through an RPC, not a direct update: `authenticated` has a
+    // deliberate column-level UPDATE allow-list on profiles and
+    // profile_ui_skin is not on it, so a direct write fails with 42501.
+    // The function also enforces the Void tier server-side, which the
+    // client-side gate on its own never did.
+    const { error } = await supabase.rpc('set_profile_ui_skin', { p_skin: next })
     setSaving(false)
     if (error) {
       setChoice(previous)
