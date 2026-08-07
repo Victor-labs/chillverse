@@ -49,6 +49,7 @@ export interface Profile {
   display_name_font: string | null       // id from FONT_OPTIONS in shared/lib/displayNameStyle.ts, null = default
   display_name_color: string | null      // hex colour for the display name text, null = default
   profile_theme_color: string | null     // hex colour used as this profile's page background, null = default
+  profile_ui_skin: string | null         // id from PROFILE_SKINS in shared/lib/profileSkins.ts; reskins the whole profile page, null = default
   // ── Blog authorship ──
   can_author: boolean                    // eligible to appear in the blog admin's author picker
   is_founder: boolean                    // renders a "Founder" badge on the blog byline
