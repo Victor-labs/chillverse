@@ -245,6 +245,67 @@ export const PROFILE_SKINS: ProfileSkinDef[] = [
  * surface token — i.e. the cards — without needing a class on each one.
  */
 export const PROFILE_SKIN_CSS = `
+
+/* ══════════════════════════════════════════════════════════════════
+   SHELL SHAPE — the silhouette of the profile itself.
+
+   [data-cv-skin] sits on the profile root (full page) and on the
+   preview sheet, so these rules reshape the whole thing rather than
+   only recolouring inside a stock rounded rectangle. This is the part
+   that stops it reading as "a website wearing a texture".
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Paper: torn top and bottom edges ──
+   Two bite patterns at DIFFERENT periods (19px and 27px) so the notches
+   never line up into an obvious repeat — a single period reads as a
+   scalloped doily, not a tear. */
+[data-cv-skin="storybook"] {
+  --cv-torn:
+    radial-gradient(circle at 50% 100%, transparent 0 5px, #000 5.5px) 0 0/19px 9px repeat-x,
+    radial-gradient(circle at 50% 0%,   transparent 0 4px, #000 4.5px) 0 100%/27px 8px repeat-x,
+    linear-gradient(#000 0 100%) 0 9px/100% calc(100% - 17px) no-repeat;
+  -webkit-mask-image: var(--cv-torn);
+          mask-image: var(--cv-torn);
+  border-radius: 0 !important;
+}
+
+/* ── Cyberpunk: hard rectangle, corners cut, neon rim ── */
+[data-cv-skin="cyberpunk"] {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    18px 0, 100% 0,
+    100% calc(100% - 18px), calc(100% - 18px) 100%,
+    0 100%, 0 18px
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(57,255,110,.55),
+    inset 0 0 26px rgba(57,255,110,.14),
+    inset 0 0 90px rgba(0,229,255,.07) !important;
+}
+
+/* ── Glass: one generous continuous radius ── */
+[data-cv-skin="modern"] {
+  border-radius: 30px !important;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.4),
+    inset 0 0 0 1px rgba(255,255,255,.18) !important;
+}
+
+/* A full-page profile fills the viewport, so a rounded or torn BOTTOM
+   would float mid-scroll with nothing under it. Square the page-level
+   edges and let the shaping read at the top, where the silhouette is
+   actually visible against the banner. */
+[data-cv-skin][style*="min-height"] {
+  border-radius: 0 !important;
+  clip-path: none !important;
+}
+[data-cv-skin="storybook"][style*="min-height"] {
+  --cv-torn:
+    radial-gradient(circle at 50% 100%, transparent 0 5px, #000 5.5px) 0 0/19px 9px repeat-x,
+    linear-gradient(#000 0 100%) 0 9px/100% calc(100% - 9px) no-repeat;
+}
+
 /* Buttons are re-materialised with a plain element selector, not a class:
    only 2 of the profile's buttons use .btn-primary, the rest are
    inline-styled <button>s. Only paint properties are set here — never
@@ -287,19 +348,22 @@ export const PROFILE_SKIN_CSS = `
 
 /* ── Banner becomes a carved wooden header board ── */
 [data-cv-skin="storybook"] [data-cv-part="banner"] {
-  height: 132px !important;
-  background:
-    repeating-linear-gradient(91deg, rgba(60,34,14,.22) 0 2px, transparent 2px 9px),
-    linear-gradient(#8a5a2f, #613a1c 58%, #4a2a12) !important;
-  border-bottom: 5px solid #3b210f;
-  box-shadow: inset 0 -14px 26px -10px rgba(0,0,0,.6), inset 0 3px 0 rgba(214,168,106,.35);
+  height: 138px !important;
+  /* Thick carved surround; the image sits in the content box at full
+     strength, so it reads as stamped ONTO wood rather than stained by it. */
+  border: 9px solid #6d4526 !important;
+  border-bottom-width: 12px !important;
+  border-image:
+    repeating-linear-gradient(91deg, #7d5029 0 2px, #64401f 2px 8px) 9 / 9px / 0 stretch;
+  background: linear-gradient(#8a5a2f, #4a2a12) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(40,22,8,.75),
+    inset 0 2px 0 rgba(224,182,120,.28),
+    0 5px 14px -6px rgba(40,22,8,.7);
 }
+/* Banner artwork untouched — no tint, no opacity drop. */
 [data-cv-skin="storybook"] [data-cv-part="banner"] img,
-[data-cv-skin="storybook"] [data-cv-part="banner"] video {
-  opacity: .5;
-  mix-blend-mode: overlay;
-  filter: sepia(.6) contrast(.95);
-}
+[data-cv-skin="storybook"] [data-cv-part="banner"] video { filter: none; opacity: 1; }
 /* Carved scallop scrollwork along the bottom lip of the board. */
 [data-cv-skin="storybook"] [data-cv-part="banner"]::after {
   content: '';
@@ -325,6 +389,7 @@ export const PROFILE_SKIN_CSS = `
     4px 7px 16px -6px rgba(52,32,14,.75) !important;
 }
 [data-cv-skin="storybook"] [data-cv-part="portrait"] > * { border-radius: 2px !important; }
+[data-cv-skin="storybook"] [data-cv-part="portrait"] img { filter: none !important; }
 /* Brass pins at the frame corners. */
 [data-cv-skin="storybook"] [data-cv-part="portrait"]::after {
   content: '';
@@ -403,7 +468,9 @@ export const PROFILE_SKIN_CSS = `
 }
 [data-cv-skin="storybook"] button.btn-primary svg { color: #ffe6d2; }
 
-[data-cv-skin="storybook"] img { filter: sepia(.34) saturate(.8) contrast(.95); }
+/* Photos keep their real colours — only their FRAMES are wooden. The
+   avatar and banner are the player's own images; ageing them made the
+   whole page look like one flat brown wash. */
 [data-cv-skin="storybook"] ::selection { background: rgba(138,47,28,.24); color: #2f2114; }
 
 /* ── Cyberpunk: notched HUD keys ── */
