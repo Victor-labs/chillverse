@@ -815,7 +815,7 @@ export default function Profile() {
       <PageOnboarding pageKey="profile" />
 
       {/* ── Banner ── */}
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>
+      <div data-cv-part="banner" style={{ position: 'relative', zIndex: 1, width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>
         {bannerUrl ? (
           <img src={bannerUrl} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
         ) : (
@@ -868,7 +868,7 @@ export default function Profile() {
 
           {/* Square profile pic — left aligned */}
           <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ width: 80, height: 80, borderRadius: 20, padding: 3, background: `linear-gradient(135deg, ${rank.color}, #4f8ef7)`, boxShadow: `0 0 20px ${rank.color}55`, border: '3px solid var(--bg)' }}>
+            <div data-cv-part="portrait" style={{ width: 80, height: 80, borderRadius: 20, padding: 3, background: `linear-gradient(135deg, ${rank.color}, #4f8ef7)`, boxShadow: `0 0 20px ${rank.color}55`, border: '3px solid var(--bg)' }}>
               <SharedAvatar src={profile?.avatar} name={displayName} size={74} radius={16} disabled />
             </div>
           </div>
@@ -876,7 +876,7 @@ export default function Profile() {
           {/* Name + presence */}
           <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-              <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.4px', ...nameStyleFor({ display_name_font: displayNameFont, display_name_color: displayNameColor }) }}>{displayName}</span>
+              <span data-cv-part="name" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.4px', ...nameStyleFor({ display_name_font: displayNameFont, display_name_color: displayNameColor }) }}>{displayName}</span>
               <PresenceDot status={presence} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
@@ -903,7 +903,7 @@ export default function Profile() {
       {/* ── Bio ── */}
       {bio && (
         <div style={{ padding: '0 20px', marginBottom: 14 }}>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>{bio}</p>
+          <p data-cv-part="bio" style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>{bio}</p>
         </div>
       )}
 
