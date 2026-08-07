@@ -777,7 +777,7 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
                           tier={profile.pro_tier}
                           color={profile.pro_badge_color}
                           memberSince={profile.pro_first_subscribed_at}
-                          size={32}
+                          size={20}
                         />
                       )}
                       {rank && (
