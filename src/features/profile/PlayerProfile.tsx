@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { nameStyleFor } from '../../shared/lib/displayNameStyle'
+import { profileSkinStyle, profileSkinOverlayStyle, profileSkinAttr } from '../../shared/lib/profileSkins'
+import ProfileSkinStyles from './ProfileSkinStyles'
 import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
 import { notifyFollow, notifyProfileView, notifyProfileLike } from '../achievements/achievements'
@@ -145,6 +147,7 @@ interface PlayerData {
   display_name_font: string | null
   display_name_color: string | null
   profile_theme_color: string | null
+  profile_ui_skin: string | null
   is_pro: boolean
   pro_tier: 'orbit' | 'void' | null
   pro_badge_color: string | null
@@ -536,7 +539,9 @@ function PlayerProfileInner() {
   const displayName = player.display_name || player.username
 
   return (
-    <div style={{ minHeight: '100vh', background: player.profile_theme_color ?? 'var(--bg)', paddingBottom: 60 }}>
+    <div data-cv-skin={profileSkinAttr(player.profile_ui_skin)} style={{ minHeight: '100vh', paddingBottom: 60, ...profileSkinStyle(player.profile_ui_skin, player.profile_theme_color ?? 'var(--bg)') }}>
+      {player.profile_ui_skin && <ProfileSkinStyles />}
+      {profileSkinOverlayStyle(player.profile_ui_skin) && <div style={profileSkinOverlayStyle(player.profile_ui_skin)!} />}
 
       {/* ── Banner ── */}
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: 160, background: bannerUrl ? 'transparent' : `linear-gradient(135deg, ${rank.color}44, #4f8ef722)`, overflow: 'hidden' }}>

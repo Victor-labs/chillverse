@@ -21,6 +21,8 @@ import { getGameMeta, getGameById } from '../games/games'
 import { getAllPlayerRanks } from '../games/gameSession'
 import EditProfileModal, { type EditProfileSavedFields } from './EditProfileModal'
 import VoidProfileEdit, { type VoidProfileSavedFields } from './VoidProfileEdit'
+import { profileSkinStyle, profileSkinOverlayStyle, profileSkinAttr, type ProfileSkinId } from '../../shared/lib/profileSkins'
+import ProfileSkinStyles from './ProfileSkinStyles'
 import { nameStyleFor } from '../../shared/lib/displayNameStyle'
 import { AchIcon, RARITY_COLOR } from '../achievements/Achievements'
 import PageOnboarding from '../onboarding/PageOnboarding'
@@ -540,6 +542,9 @@ export default function Profile() {
 
   const [showEdit, setShowEdit]                     = useState(false)
   const [showVoidEdit, setShowVoidEdit]              = useState(false)
+  // Void UI skin — saved instantly from Edit Profile, mirrored here so the
+  // page reskins without a refetch.
+  const [uiSkinOverride, setUiSkinOverride]         = useState<ProfileSkinId | null | undefined>(undefined)
   const [showAddFriend, setShowAddFriend]           = useState(false)
   const [followListMode, setFollowListMode]         = useState<ListMode | null>(null)
   const [showWishlist, setShowWishlist]             = useState(false)
@@ -589,6 +594,7 @@ export default function Profile() {
   const displayNameFont  = voidOverride.display_name_font  ?? profile?.display_name_font  ?? null
   const displayNameColor = voidOverride.display_name_color ?? profile?.display_name_color ?? null
   const profileThemeColor = voidOverride.profile_theme_color ?? profile?.profile_theme_color ?? null
+  const profileUiSkin = uiSkinOverride !== undefined ? uiSkinOverride : ((profile?.profile_ui_skin ?? null) as ProfileSkinId | null)
 
   // Load follow counts
   const loadCounts = () => {
@@ -803,7 +809,9 @@ export default function Profile() {
   const isPro = isProActive(profile)
 
   return (
-    <div style={{ minHeight: '100vh', background: profileThemeColor ?? 'var(--bg)', paddingBottom: 60 }}>
+    <div data-cv-skin={profileSkinAttr(profileUiSkin)} style={{ minHeight: '100vh', paddingBottom: 60, ...profileSkinStyle(profileUiSkin, profileThemeColor ?? 'var(--bg)') }}>
+      {profileUiSkin && <ProfileSkinStyles />}
+      {profileSkinOverlayStyle(profileUiSkin) && <div style={profileSkinOverlayStyle(profileUiSkin)!} />}
       <PageOnboarding pageKey="profile" />
 
       {/* ── Banner ── */}
@@ -1159,6 +1167,7 @@ export default function Profile() {
             setBannerUrl(updates.banner_url)
           }}
           onToast={(msg) => setSaveToast(msg)}
+          onSkinSaved={(skin) => setUiSkinOverride(skin)}
         />
       )}
       {showVoidEdit && (

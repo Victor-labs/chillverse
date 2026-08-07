@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { nameStyleFor } from '../../shared/lib/displayNameStyle'
+import { profileSkinBackground, profileSkinAttr } from '../../shared/lib/profileSkins'
+import ProfileSkinStyles from './ProfileSkinStyles'
 import { useAuth } from '../auth/useAuth'
 import { ripple } from '../../shared/lib/ripple'
 import Avatar from '../../shared/components/Avatar'
@@ -98,6 +100,7 @@ interface PreviewProfile {
   display_name_font: string | null
   display_name_color: string | null
   profile_theme_color: string | null
+  profile_ui_skin: string | null
   pro_expires_at: string | null
   equipped_profile_effect_url: string | null
 }
@@ -634,12 +637,15 @@ export default function ProfilePreviewModal({ userId, onClose, isPreview = false
     >
       <div
         onClick={e => e.stopPropagation()}
+        data-cv-skin={profileSkinAttr(profile?.profile_ui_skin)}
         style={{
           ...sheetBase,
-          background: profile?.profile_theme_color ?? 'var(--bg)', overflowY: isPreview ? 'hidden' : 'auto', overscrollBehavior: 'contain', position: 'relative',
+          ...profileSkinBackground(profile?.profile_ui_skin, profile?.profile_theme_color ?? 'var(--bg)'),
+          overflowY: isPreview ? 'hidden' : 'auto', overscrollBehavior: 'contain', position: 'relative',
           boxShadow: '0 -12px 40px -12px var(--sh)',
         }}
       >
+        {profile?.profile_ui_skin && <ProfileSkinStyles />}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.22)', margin: '10px auto 0' }} />
 
         {/* Banner — kept generously tall even with the default gradient

@@ -5,12 +5,15 @@ import type React from 'react'
 import {
   X, Check, ImageIcon, ChevronDown, Lock, Heart,
   UserRound, Sunrise, Moon, Circle, EyeOff,
-  Package, Star, Pin,
+  Package, Star, Pin, ChevronRight,
 } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { ripple } from '../../shared/lib/ripple'
 import { GAMES } from '../games/games'
 import { updateMissionProgress } from '../missions/weeklyMissions'
+import { isProActive } from '../../shared/lib/proPlans'
+import { getProfileSkin, type ProfileSkinId } from '../../shared/lib/profileSkins'
+import VoidUiChangerSheet from './VoidUiChangerSheet'
 import type { Profile } from '../../shared/types'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -537,10 +540,12 @@ interface EditProfileModalProps {
   onClose: () => void
   onSaved: (updates: EditProfileSavedFields) => void
   onToast: (msg: string) => void
+  /** Void UI skin saves immediately, so it reports up separately from onSaved. */
+  onSkinSaved?: (skin: ProfileSkinId | null) => void
 }
 
 export default function EditProfileModal({
-  profile, bannerUrl, presence, onClose, onSaved, onToast,
+  profile, bannerUrl, presence, onClose, onSaved, onToast, onSkinSaved,
 }: EditProfileModalProps) {
   const [visible, setVisible] = useState(false)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
@@ -558,6 +563,14 @@ export default function EditProfileModal({
   const [playTime, setPlayTime] = useState<string | null>(profile.play_time || null)
   const [favoriteGame, setFavoriteGame] = useState<string | null>(profile.favorite_game || null)
   const [gridCards, setGridCards] = useState<string[]>(profile.grid_cards ?? [])
+
+  // Void UI skin — saved by its own sheet, so it sits outside the dirty
+  // snapshot below and never triggers the discard prompt.
+  const [showUiChanger, setShowUiChanger] = useState(false)
+  const [uiSkin, setUiSkin] = useState<ProfileSkinId | null>(
+    (profile.profile_ui_skin ?? null) as ProfileSkinId | null,
+  )
+  const voidUnlocked = isProActive(profile) && profile.pro_tier === 'void'
 
   const initialSnapshot = useMemo(() => JSON.stringify({
     displayName: profile.display_name || profile.username,
@@ -676,6 +689,48 @@ export default function EditProfileModal({
         {/* ── Scrollable body ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 28px' }}>
 
+          {/* ── Void UI changer — sits above everything else on purpose:
+                it reskins the entire page, so it frames every field below it. ── */}
+          <SectionLabel>Void UI changer 👽</SectionLabel>
+          <button
+            type="button"
+            onClick={(e) => {
+              ripple(e)
+              if (!voidUnlocked) { onToast('Void exclusive — upgrade to Void to reskin your profile'); return }
+              setShowUiChanger(true)
+            }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '14px 16px', borderRadius: 16, cursor: 'pointer',
+              background: voidUnlocked ? 'rgba(155,109,255,0.08)' : 'var(--surface)',
+              border: voidUnlocked ? '1px solid rgba(155,109,255,0.45)' : '1px solid var(--border)',
+              opacity: voidUnlocked ? 1 : 0.72,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 11, flexShrink: 0, fontSize: 18,
+                background: voidUnlocked ? 'rgba(155,109,255,0.16)' : 'var(--surface2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                👽
+              </div>
+              <div style={{ textAlign: 'left', minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>
+                  {getProfileSkin(uiSkin)?.label ?? 'Default'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                  {voidUnlocked
+                    ? 'Reskin your whole profile page for everyone who views it'
+                    : 'Void exclusive'}
+                </div>
+              </div>
+            </div>
+            {voidUnlocked
+              ? <ChevronRight size={16} style={{ color: '#9b6dff', flexShrink: 0 }} />
+              : <Lock size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
+          </button>
+
           {/* Username (locked) */}
           <SectionLabel>Username</SectionLabel>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -737,6 +792,17 @@ export default function EditProfileModal({
           </button>
         </div>
       </div>
+
+      {showUiChanger && (
+        <VoidUiChangerSheet
+          profileId={profile.id}
+          displayName={displayName || profile.username}
+          current={uiSkin}
+          onClose={() => setShowUiChanger(false)}
+          onSaved={(skin) => { setUiSkin(skin); onSkinSaved?.(skin) }}
+          onToast={onToast}
+        />
+      )}
 
       {showDiscardConfirm && (
         <DiscardConfirm
