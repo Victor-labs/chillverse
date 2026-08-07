@@ -251,32 +251,158 @@ export const PROFILE_SKIN_CSS = `
    padding, size or layout — so a restyled button keeps its exact box and
    nothing can reflow. */
 
-/* ── Storybook: everything is a pressed paper key ── */
-[data-cv-skin="storybook"] button {
-  background: linear-gradient(#f9f2df,#e5d5ad) !important;
-  color: #46301a !important;
-  border: 1px solid rgba(109,75,41,.55) !important;
+/* ══════════════════════════════════════════════════════════════════
+   STORYBOOK — a physical fantasy-RPG character sheet.
+
+   Everything below is drawn in CSS: no image assets, and no new markup
+   beyond four data-cv-part hooks on elements that already existed.
+   Pseudo-elements do the ornamental work (corner brackets, brass pins,
+   carved scrollwork), which is why cards are forced position:relative.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Cards become parchment plates with pinned corners ── */
+[data-cv-skin="storybook"] [style*="--surface"] {
+  position: relative;
+  border-radius: 3px !important;
+  box-shadow:
+    1px 1px 0 rgba(84,58,32,.10),
+    5px 8px 18px -8px rgba(84,58,32,.65),
+    inset 0 0 44px rgba(150,110,58,.10) !important;
+}
+/* Ornamental corner brackets. */
+[data-cv-skin="storybook"] [style*="--surface"]::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 0 0/11px 1.5px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 0 0/1.5px 11px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 100% 0/11px 1.5px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 100% 0/1.5px 11px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 0 100%/11px 1.5px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 0 100%/1.5px 11px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 100% 100%/11px 1.5px no-repeat,
+    linear-gradient(rgba(109,75,41,.55) 0 100%) 100% 100%/1.5px 11px no-repeat;
+}
+
+/* ── Banner becomes a carved wooden header board ── */
+[data-cv-skin="storybook"] [data-cv-part="banner"] {
+  height: 132px !important;
+  background:
+    repeating-linear-gradient(91deg, rgba(60,34,14,.22) 0 2px, transparent 2px 9px),
+    linear-gradient(#8a5a2f, #613a1c 58%, #4a2a12) !important;
+  border-bottom: 5px solid #3b210f;
+  box-shadow: inset 0 -14px 26px -10px rgba(0,0,0,.6), inset 0 3px 0 rgba(214,168,106,.35);
+}
+[data-cv-skin="storybook"] [data-cv-part="banner"] img,
+[data-cv-skin="storybook"] [data-cv-part="banner"] video {
+  opacity: .5;
+  mix-blend-mode: overlay;
+  filter: sepia(.6) contrast(.95);
+}
+/* Carved scallop scrollwork along the bottom lip of the board. */
+[data-cv-skin="storybook"] [data-cv-part="banner"]::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+  pointer-events: none; z-index: 3;
+  background:
+    radial-gradient(circle at 50% 100%, #8a5a2f 0 46%, transparent 47%) 0 0/40px 22px repeat-x,
+    linear-gradient(rgba(214,168,106,.4) 0 100%) 0 100%/100% 2px no-repeat;
+}
+
+/* ── Avatar becomes a framed portrait ── */
+[data-cv-skin="storybook"] [data-cv-part="portrait"] {
+  position: relative;
   border-radius: 4px !important;
-  text-shadow: 0 1px 0 rgba(255,255,255,.6);
-  box-shadow: inset 0 1px 0 rgba(255,251,238,.95), 1px 2px 0 rgba(84,58,32,.3) !important;
+  padding: 7px !important;
+  background:
+    repeating-linear-gradient(46deg, rgba(60,34,14,.25) 0 2px, transparent 2px 7px),
+    linear-gradient(140deg, #a8763f, #6d4526 55%, #4e2f16) !important;
+  border: 2px solid #3b210f !important;
+  box-shadow:
+    inset 0 2px 0 rgba(230,190,130,.5),
+    inset 0 -2px 0 rgba(0,0,0,.4),
+    4px 7px 16px -6px rgba(52,32,14,.75) !important;
+}
+[data-cv-skin="storybook"] [data-cv-part="portrait"] > * { border-radius: 2px !important; }
+/* Brass pins at the frame corners. */
+[data-cv-skin="storybook"] [data-cv-part="portrait"]::after {
+  content: '';
+  position: absolute; inset: 4px;
+  pointer-events: none; z-index: 3;
+  background:
+    radial-gradient(circle, #e8c47a 0 40%, #8a6320 41%, transparent 62%) 0 0/7px 7px no-repeat,
+    radial-gradient(circle, #e8c47a 0 40%, #8a6320 41%, transparent 62%) 100% 0/7px 7px no-repeat,
+    radial-gradient(circle, #e8c47a 0 40%, #8a6320 41%, transparent 62%) 0 100%/7px 7px no-repeat,
+    radial-gradient(circle, #e8c47a 0 40%, #8a6320 41%, transparent 62%) 100% 100%/7px 7px no-repeat;
+}
+
+/* ── Name is engraved, not typed ── */
+[data-cv-skin="storybook"] [data-cv-part="name"] {
+  font-family: 'IM Fell English', 'Playfair Display', Georgia, serif !important;
+  font-size: 25px !important;
+  letter-spacing: .01em !important;
+  color: #4a2c12 !important;
+  text-shadow: 0 1px 0 rgba(255,248,225,.85), 0 -1px 0 rgba(74,44,18,.25);
+}
+
+/* ── Bio reads as ink written onto ruled parchment ── */
+[data-cv-skin="storybook"] [data-cv-part="bio"] {
+  font-family: 'IM Fell English', Georgia, serif !important;
+  font-style: italic;
+  font-size: 14.5px !important;
+  color: #4a3521 !important;
+  line-height: 1.75 !important;
+  padding: 12px 14px 14px 22px !important;
+  position: relative;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(109,75,41,.16) 27px 28px),
+    linear-gradient(rgba(150,110,58,.07), transparent) !important;
+  border-left: 3px double rgba(109,75,41,.5);
+}
+[data-cv-skin="storybook"] [data-cv-part="bio"]::before {
+  content: '“';
+  position: absolute; left: 5px; top: 1px;
+  font-size: 28px; line-height: 1; color: rgba(109,75,41,.45);
+}
+
+/* ── Buttons are carved wooden plaques with bevelled ends ── */
+[data-cv-skin="storybook"] button {
+  background:
+    repeating-linear-gradient(93deg, rgba(60,34,14,.16) 0 2px, transparent 2px 8px),
+    linear-gradient(#c08d4e, #94622f 52%, #7a4c22) !important;
+  color: #fdf1d6 !important;
+  border: 1.5px solid #4a2a12 !important;
+  border-radius: 4px !important;
+  font-family: 'IM Fell English', Georgia, serif !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em;
+  text-shadow: 0 1px 1px rgba(50,26,8,.75);
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%);
+  box-shadow:
+    inset 0 2px 0 rgba(240,200,140,.45),
+    inset 0 -3px 0 rgba(48,26,8,.5),
+    2px 3px 0 rgba(58,34,14,.45) !important;
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 [data-cv-skin="storybook"] button:active {
   transform: translate(1px,2px);
-  box-shadow: inset 0 1px 0 rgba(255,251,238,.95) !important;
+  box-shadow: inset 0 2px 0 rgba(240,200,140,.45), inset 0 -3px 0 rgba(48,26,8,.5) !important;
 }
+[data-cv-skin="storybook"] button svg { color: #fdf1d6; }
+/* Primary action gets a wax-seal red plaque instead of oak. */
 [data-cv-skin="storybook"] button.btn-primary {
-  background: linear-gradient(#8f3a22,#6f2714) !important;
-  color: #fdf3dd !important;
-  border: 1px solid #55210f !important;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
-  box-shadow: inset 0 1px 0 rgba(255,200,160,.35), 2px 3px 0 rgba(84,58,32,.4) !important;
+  background:
+    repeating-linear-gradient(93deg, rgba(40,10,4,.18) 0 2px, transparent 2px 8px),
+    linear-gradient(#a4432a, #7d2c17 52%, #631f0f) !important;
+  border-color: #45150a !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255,170,140,.4),
+    inset 0 -3px 0 rgba(40,10,4,.55),
+    2px 3px 0 rgba(58,20,10,.5) !important;
 }
-[data-cv-skin="storybook"] button svg { color: #5b4028; }
-[data-cv-skin="storybook"] button.btn-primary svg { color: #fdf3dd; }
-[data-cv-skin="storybook"] [style*="--surface"] {
-  box-shadow: 1px 1px 0 rgba(84,58,32,.10), 4px 7px 16px -7px rgba(84,58,32,.6) !important;
-}
+[data-cv-skin="storybook"] button.btn-primary svg { color: #ffe6d2; }
+
 [data-cv-skin="storybook"] img { filter: sepia(.34) saturate(.8) contrast(.95); }
 [data-cv-skin="storybook"] ::selection { background: rgba(138,47,28,.24); color: #2f2114; }
 
