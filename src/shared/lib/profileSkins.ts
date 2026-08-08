@@ -36,7 +36,7 @@
 
 import type { CSSProperties } from 'react'
 
-export type ProfileSkinId = 'storybook' | 'cyberpunk' | 'modern'
+export type ProfileSkinId = 'storybook' | 'cyberpunk' | 'modern' | 'ice' | 'comic'
 
 export interface ProfileSkinDef {
   id: ProfileSkinId
@@ -91,6 +91,27 @@ const GLASS_SURFACE = [
   'linear-gradient(rgba(255,255,255,.65) 0 100%) 0 0/100% 1px no-repeat',
   'linear-gradient(155deg, rgba(255,255,255,.34), rgba(255,255,255,.12) 46%, rgba(255,255,255,.2))',
   'rgba(255,255,255,.14)',
+].join(',')
+
+// ── Ice ─────────────────────────────────────────────────────────────
+// Every card is a slab of glacier: a rime line frozen along the top,
+// crystal striations raking across at 115deg, and a cold blue core.
+const ICE_SURFACE = [
+  'linear-gradient(rgba(255,255,255,.92) 0 100%) 0 0/100% 2px no-repeat',
+  'radial-gradient(circle at 18% 8%, rgba(255,255,255,.6), transparent 46%)',
+  'repeating-linear-gradient(115deg, rgba(255,255,255,.17) 0 3px, transparent 3px 12px)',
+  'linear-gradient(160deg, #eef6fe, #c6ddf2 58%, #aacce9)',
+  '#dcebf8',
+].join(',')
+
+// ── Comic ───────────────────────────────────────────────────────────
+// Every card is an inked panel: halftone dots over a saturated indigo
+// fill, lit from the top-left like a printed cel.
+const COMIC_SURFACE = [
+  'radial-gradient(rgba(255,255,255,.07) 0 1.1px, transparent 1.2px) 0 0/6px 6px',
+  'radial-gradient(circle at 12% 6%, rgba(255,90,190,.16), transparent 52%)',
+  'linear-gradient(158deg, #331c6e, #1d1140 62%, #170d33)',
+  '#241452',
 ].join(',')
 
 export const PROFILE_SKINS: ProfileSkinDef[] = [
@@ -233,6 +254,100 @@ export const PROFILE_SKINS: ProfileSkinDef[] = [
       backgroundImage: 'radial-gradient(ellipse at 50% 40%, transparent 58%, rgba(12,30,90,.28))',
     },
   },
+  {
+    id: 'ice',
+    label: 'Glacier',
+    blurb: 'Frozen slabs, crystal keys and a jagged rime edge.',
+    font: "'Cinzel', 'Playfair Display', Georgia, serif",
+    backdrop: [
+      'radial-gradient(ellipse at 50% -8%, rgba(255,255,255,.85), transparent 58%)',
+      'radial-gradient(circle at 84% 16%, rgba(180,225,255,.5), transparent 46%)',
+      'radial-gradient(circle at 12% 78%, rgba(150,200,240,.45), transparent 50%)',
+      'linear-gradient(#bcd9f0, #8fb6da 58%, #6d97c4)',
+    ].join(','),
+    vars: {
+      '--bg': '#a9c9e6',
+      '--bg-image': 'none',
+      '--nav': '#9dc0e0',
+      '--surface': ICE_SURFACE,
+      '--surface2': ICE_SURFACE,
+      '--surface3': 'linear-gradient(#e3f0fc,#bcd8ef),#d2e6f7',
+      '--active': '#c2dcf2',
+      '--popover': 'linear-gradient(#f2f9ff,#d7e9f9),#e8f3fd',
+      '--text': '#12304f',
+      '--text-secondary': '#3d6288',
+      '--text-dim': '#3d6288',
+      '--text-muted': '#6a8dad',
+      '--border': 'rgba(255,255,255,0.75)',
+      '--border-strong': 'rgba(120,175,220,0.85)',
+      '--sh': 'rgba(30,70,110,0.28)',
+      '--sh-strong': 'rgba(30,70,110,0.45)',
+      '--hl': 'rgba(255,255,255,0.7)',
+      '--hl-faint': 'rgba(255,255,255,0.38)',
+      '--glow': 'rgba(160,220,255,0.7)',
+      '--accent': '#2b7cc7',
+      '--accent2': '#7fd6f7',
+      '--accent-soft': 'rgba(43,124,199,0.14)',
+      '--overlay-scrim': 'rgba(16,44,74,0.6)',
+      '--radius': '6px',
+      '--radius-sm': '5px',
+      '--radius-xs': '3px',
+    },
+    overlay: {
+      backgroundImage: [
+        'radial-gradient(rgba(255,255,255,.5) 0 1px, transparent 1.4px) 0 0/34px 34px',
+        'radial-gradient(rgba(255,255,255,.35) 0 1px, transparent 1.4px) 17px 12px/48px 48px',
+        'radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(40,80,120,.22))',
+      ].join(','),
+    },
+  },
+  {
+    id: 'comic',
+    label: 'Comic',
+    blurb: 'Inked panels on a halftone press — angular, loud, tilted.',
+    font: "'Bangers', 'Poppins', Impact, sans-serif",
+    backdrop: [
+      'radial-gradient(circle at 16% 8%, rgba(255,46,136,.32), transparent 46%)',
+      'radial-gradient(circle at 88% 20%, rgba(53,224,255,.24), transparent 44%)',
+      'radial-gradient(circle at 70% 92%, rgba(255,150,40,.2), transparent 46%)',
+      'repeating-conic-gradient(from 0deg at 50% 30%, rgba(255,255,255,.045) 0 6deg, transparent 6deg 12deg)',
+      'linear-gradient(160deg,#241452,#120a2c)',
+    ].join(','),
+    vars: {
+      '--bg': '#160c30',
+      '--bg-image': 'none',
+      '--nav': '#1c1040',
+      '--surface': COMIC_SURFACE,
+      '--surface2': COMIC_SURFACE,
+      '--surface3': 'linear-gradient(158deg,#43268a,#2a1663),#331b73',
+      '--active': '#43268a',
+      '--popover': 'linear-gradient(158deg,#331c6e,#1d1140),#271557',
+      '--text': '#ffffff',
+      '--text-secondary': '#c0aef0',
+      '--text-dim': '#c0aef0',
+      '--text-muted': '#9384c8',
+      '--border': '#0c0620',
+      '--border-strong': '#000000',
+      '--sh': 'rgba(8,3,24,0.6)',
+      '--sh-strong': 'rgba(8,3,24,0.8)',
+      '--hl': 'rgba(255,255,255,0.12)',
+      '--hl-faint': 'rgba(255,255,255,0.06)',
+      '--glow': 'rgba(255,46,136,0.6)',
+      '--accent': '#ff2e88',
+      '--accent2': '#35e0ff',
+      '--accent-soft': 'rgba(255,46,136,0.18)',
+      '--overlay-scrim': 'rgba(10,4,28,0.78)',
+      '--radius': '4px',
+      '--radius-sm': '3px',
+      '--radius-xs': '2px',
+    },
+    overlay: {
+      backgroundImage: [
+        'radial-gradient(rgba(0,0,0,.22) 0 1.3px, transparent 1.4px) 0 0/5px 5px',
+        'radial-gradient(ellipse at 50% 44%, transparent 54%, rgba(6,2,20,.5))',
+      ].join(','),
+    },
+  },
 ]
 
 /**
@@ -300,6 +415,37 @@ export const PROFILE_SKIN_CSS = `
   border-radius: 0 !important;
   clip-path: none !important;
 }
+/* ── Ice: jagged rime edge, frozen rather than torn ──
+   Two mirrored 45deg cuts per tile form V-shaped teeth, which reads as
+   fractured ice; the paper skin's rounded bites would read as melted. */
+[data-cv-skin="ice"] {
+  --cv-frost:
+    linear-gradient(135deg, transparent 0 7px, #000 7px) 0 0/20px 11px repeat-x,
+    linear-gradient(225deg, transparent 0 7px, #000 7px) 10px 0/20px 11px repeat-x,
+    linear-gradient(#000 0 100%) 0 11px/100% calc(100% - 22px) no-repeat,
+    linear-gradient(45deg,  transparent 0 7px, #000 7px) 0 100%/20px 11px repeat-x,
+    linear-gradient(315deg, transparent 0 7px, #000 7px) 10px 100%/20px 11px repeat-x;
+  -webkit-mask-image: var(--cv-frost);
+          mask-image: var(--cv-frost);
+  border-radius: 0 !important;
+}
+[data-cv-skin="ice"][style*="min-height"] {
+  --cv-frost:
+    linear-gradient(135deg, transparent 0 7px, #000 7px) 0 0/20px 11px repeat-x,
+    linear-gradient(225deg, transparent 0 7px, #000 7px) 10px 0/20px 11px repeat-x,
+    linear-gradient(#000 0 100%) 0 11px/100% calc(100% - 11px) no-repeat;
+}
+
+/* ── Comic: the panel itself is cut on the diagonal ── */
+[data-cv-skin="comic"] {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    0 26px, 30px 0, 100% 0,
+    100% calc(100% - 34px), calc(100% - 38px) 100%, 0 100%
+  );
+}
+[data-cv-skin="comic"][style*="min-height"] { clip-path: none !important; }
+
 [data-cv-skin="storybook"][style*="min-height"] {
   --cv-torn:
     radial-gradient(circle at 50% 100%, transparent 0 5px, #000 5.5px) 0 0/19px 9px repeat-x,
@@ -530,9 +676,225 @@ export const PROFILE_SKIN_CSS = `
 }
 [data-cv-skin="modern"] ::selection { background: rgba(255,255,255,.32); color: #fff; }
 
+/* ══════════════════════════════════════════════════════════════════
+   ICE — a glacier character sheet.
+   ══════════════════════════════════════════════════════════════════ */
+[data-cv-skin="ice"] [style*="--surface"] {
+  position: relative;
+  border-radius: 5px !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.85),
+    inset 0 -2px 0 rgba(120,170,215,.4),
+    0 8px 20px -10px rgba(24,60,100,.6) !important;
+}
+/* Icicles hanging from the underside of every slab. */
+[data-cv-skin="ice"] [style*="--surface"]::after {
+  content: '';
+  position: absolute; left: 6px; right: 6px; top: 100%; height: 9px;
+  pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(to bottom, rgba(226,241,253,.95), rgba(180,215,240,0)) 0 0/7px 9px repeat-x;
+  -webkit-mask-image: linear-gradient(135deg, transparent 0 3px, #000 3px) 0 0/14px 9px repeat-x;
+          mask-image: linear-gradient(135deg, transparent 0 3px, #000 3px) 0 0/14px 9px repeat-x;
+}
+/* Frost creeping in from the corners. */
+[data-cv-skin="ice"] [style*="--surface"]::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(circle at 0 0, rgba(255,255,255,.75), transparent 26%),
+    radial-gradient(circle at 100% 0, rgba(255,255,255,.65), transparent 24%),
+    radial-gradient(circle at 100% 100%, rgba(255,255,255,.5), transparent 22%),
+    radial-gradient(circle at 0 100%, rgba(255,255,255,.5), transparent 22%);
+}
+/* Banner: full-colour art set into a thick ice frame. */
+[data-cv-skin="ice"] [data-cv-part="banner"] {
+  height: 138px !important;
+  border: 9px solid #cfe6f8 !important;
+  border-bottom-width: 12px !important;
+  border-image: repeating-linear-gradient(118deg, #ffffff 0 3px, #b9d8ef 3px 9px) 9 / 9px / 0 stretch;
+  background: linear-gradient(#dcecfa, #9dc2e2) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.9),
+    inset 0 -12px 24px -12px rgba(30,70,110,.5),
+    0 6px 16px -8px rgba(24,60,100,.6);
+}
+[data-cv-skin="ice"] [data-cv-part="banner"] img,
+[data-cv-skin="ice"] [data-cv-part="banner"] video { filter: none; opacity: 1; }
+/* Portrait: crystal frame with gem studs. */
+[data-cv-skin="ice"] [data-cv-part="portrait"] {
+  position: relative;
+  border-radius: 4px !important;
+  padding: 7px !important;
+  background: repeating-linear-gradient(120deg, #ffffff 0 3px, #a9cee9 3px 9px) !important;
+  border: 2px solid #7fa9cc !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -2px 0 rgba(90,140,185,.55),
+    0 8px 18px -8px rgba(24,60,100,.7) !important;
+}
+[data-cv-skin="ice"] [data-cv-part="portrait"] > * { border-radius: 2px !important; }
+[data-cv-skin="ice"] [data-cv-part="portrait"] img { filter: none !important; }
+[data-cv-skin="ice"] [data-cv-part="portrait"]::after {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none; z-index: 3;
+  background:
+    linear-gradient(45deg, #eaf7ff 0 50%, #6fb2dd 50%) 0 0/8px 8px no-repeat,
+    linear-gradient(135deg, #eaf7ff 0 50%, #6fb2dd 50%) 100% 0/8px 8px no-repeat,
+    linear-gradient(315deg, #eaf7ff 0 50%, #6fb2dd 50%) 0 100%/8px 8px no-repeat,
+    linear-gradient(225deg, #eaf7ff 0 50%, #6fb2dd 50%) 100% 100%/8px 8px no-repeat;
+}
+[data-cv-skin="ice"] [data-cv-part="name"] {
+  font-family: 'Cinzel', Georgia, serif !important;
+  font-size: 23px !important;
+  letter-spacing: .04em !important;
+  color: #123a63 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.95), 0 2px 6px rgba(120,190,235,.6);
+}
+[data-cv-skin="ice"] [data-cv-part="bio"] {
+  font-family: 'Cinzel', Georgia, serif !important;
+  font-size: 13.5px !important;
+  color: #1d4470 !important;
+  line-height: 1.7 !important;
+  padding: 12px 14px !important;
+  background: linear-gradient(rgba(255,255,255,.5), rgba(255,255,255,.15)) !important;
+  border-left: 3px solid rgba(127,214,247,.9);
+}
+/* Buttons are carved crystal: chamfered, lit from above. */
+[data-cv-skin="ice"] button {
+  background: linear-gradient(#f2faff, #bcdcf3 48%, #8fbde0) !important;
+  color: #10365c !important;
+  border: 1.5px solid #7fadd0 !important;
+  border-radius: 3px !important;
+  font-family: 'Cinzel', Georgia, serif !important;
+  font-weight: 700 !important;
+  letter-spacing: .05em;
+  text-shadow: 0 1px 0 rgba(255,255,255,.9);
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -3px 0 rgba(105,155,200,.55),
+    0 4px 10px -5px rgba(24,60,100,.7) !important;
+}
+[data-cv-skin="ice"] button:active { transform: translateY(2px); }
+[data-cv-skin="ice"] button svg { color: #1a4c7c; }
+[data-cv-skin="ice"] button.btn-primary {
+  background: linear-gradient(#7fd6f7, #2b7cc7 55%, #1c5c9c) !important;
+  color: #ffffff !important;
+  border-color: #14477d !important;
+  text-shadow: 0 1px 2px rgba(8,32,60,.6);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.6),
+    inset 0 -3px 0 rgba(10,40,72,.5),
+    0 0 16px rgba(127,214,247,.55) !important;
+}
+[data-cv-skin="ice"] button.btn-primary svg { color: #fff; }
+[data-cv-skin="ice"] ::selection { background: rgba(43,124,199,.28); color: #12304f; }
+
+/* ══════════════════════════════════════════════════════════════════
+   COMIC — inked panels on a halftone press.
+   Cards get a small alternating tilt so the layout has movement
+   instead of stacking into a neat column of rectangles.
+   ══════════════════════════════════════════════════════════════════ */
+[data-cv-skin="comic"] [style*="--surface"] {
+  position: relative;
+  border: 2.5px solid #0c0620 !important;
+  border-radius: 3px !important;
+  box-shadow: 5px 6px 0 rgba(8,3,24,.75) !important;
+  transform: rotate(-0.5deg);
+}
+[data-cv-skin="comic"] [style*="--surface"]:nth-of-type(even) { transform: rotate(0.55deg); }
+[data-cv-skin="comic"] [style*="--surface"]:nth-of-type(3n) { transform: rotate(0.25deg); }
+/* Speed lines raking out of the top-left corner of each panel. */
+[data-cv-skin="comic"] [style*="--surface"]::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(58deg, rgba(255,255,255,.09) 0 1px, transparent 1px 9px);
+  -webkit-mask-image: radial-gradient(circle at 0 0, #000, transparent 40%);
+          mask-image: radial-gradient(circle at 0 0, #000, transparent 40%);
+}
+[data-cv-skin="comic"] [data-cv-part="banner"] {
+  height: 140px !important;
+  border: 3px solid #0c0620 !important;
+  border-bottom-width: 5px !important;
+  background: linear-gradient(#331c6e, #170d33) !important;
+  box-shadow: inset 0 -30px 44px -20px rgba(8,3,24,.9);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), 0 100%);
+}
+[data-cv-skin="comic"] [data-cv-part="banner"] img,
+[data-cv-skin="comic"] [data-cv-part="banner"] video {
+  filter: saturate(1.35) contrast(1.15);
+  opacity: 1;
+}
+[data-cv-skin="comic"] [data-cv-part="portrait"] {
+  position: relative;
+  border-radius: 2px !important;
+  padding: 5px !important;
+  background: linear-gradient(140deg, #ff2e88, #35e0ff) !important;
+  border: 3px solid #0c0620 !important;
+  transform: rotate(-2.2deg);
+  box-shadow: 5px 6px 0 rgba(8,3,24,.8) !important;
+}
+[data-cv-skin="comic"] [data-cv-part="portrait"] > * { border-radius: 0 !important; }
+[data-cv-skin="comic"] [data-cv-part="portrait"] img { filter: saturate(1.2) contrast(1.1) !important; }
+[data-cv-skin="comic"] [data-cv-part="name"] {
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-size: 32px !important;
+  letter-spacing: .05em !important;
+  color: #ffffff !important;
+  transform: rotate(-1.5deg);
+  display: inline-block;
+  text-shadow:
+    2px 0 0 #0c0620, -2px 0 0 #0c0620, 0 2px 0 #0c0620, 0 -2px 0 #0c0620,
+    4px 5px 0 #ff2e88;
+}
+[data-cv-skin="comic"] [data-cv-part="bio"] {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 13px !important;
+  color: #e8dfff !important;
+  line-height: 1.6 !important;
+  padding: 12px 14px !important;
+  background: linear-gradient(158deg, rgba(255,46,136,.16), rgba(53,224,255,.1)) !important;
+  border: 2.5px solid #0c0620;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 14px) 100%, 0 100%);
+}
+/* Buttons are sheared comic plates with a hard offset shadow. */
+[data-cv-skin="comic"] button {
+  background: linear-gradient(#43268a, #2a1663) !important;
+  color: #ffffff !important;
+  border: 2.5px solid #0c0620 !important;
+  border-radius: 2px !important;
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: .09em;
+  text-shadow: 1.5px 1.5px 0 rgba(8,3,24,.85);
+  clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  box-shadow: 4px 4px 0 rgba(8,3,24,.85) !important;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+[data-cv-skin="comic"] button:active {
+  transform: translate(3px,3px);
+  box-shadow: 1px 1px 0 rgba(8,3,24,.85) !important;
+}
+[data-cv-skin="comic"] button svg { color: #35e0ff; }
+[data-cv-skin="comic"] button.btn-primary {
+  background: linear-gradient(#ff4d9c, #e0116f) !important;
+  color: #fff !important;
+  box-shadow: 4px 4px 0 #35e0ff !important;
+}
+[data-cv-skin="comic"] button.btn-primary:active { box-shadow: 1px 1px 0 #35e0ff !important; }
+[data-cv-skin="comic"] button.btn-primary svg { color: #fff; }
+[data-cv-skin="comic"] ::selection { background: #ff2e88; color: #fff; }
+
 @media (prefers-reduced-motion: reduce) {
   [data-cv-skin] button { transition: none; }
   [data-cv-skin] button:active { transform: none; }
+  [data-cv-skin="comic"] [style*="--surface"],
+  [data-cv-skin="comic"] [data-cv-part="portrait"],
+  [data-cv-skin="comic"] [data-cv-part="name"] { transform: none; }
 }
 
 /* Spinner for the picker's saving state. Lives here because
