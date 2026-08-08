@@ -1,111 +1,16 @@
 // src/pages/Exploration.tsx
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Battery, Lock, Zap, MapPin, ChevronLeft, Crown, Star, Trophy, GamepadIcon, Newspaper } from 'lucide-react'
+import { Battery, Lock, MapPin, Crown, Star, GamepadIcon, Newspaper } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { useProfile } from '../profile/useProfile'
 import { ripple } from '../../shared/lib/ripple'
-import StoryCheckpointOverlay from './story/StoryCheckpointOverlay'
-import { STORY_CONTENT } from './story/content'
-import type { CheckpointStage, StoryChoiceOption } from './story/types'
+import RegionMap from './RegionMap'
+import { MAPS, MAX_ENERGY, tierColor, energyRange } from './explorationMaps'
+import type { Chamber, ChamberState, ExplorationMap } from './explorationMaps'
 import { useFeatureFlags } from '../../shared/lib/featureFlags'
 import { updateMissionProgress, trackWeeklyUniqueValue, trackWeeklyActiveDay } from '../missions/weeklyMissions'
-
-// ── Types ─────────────────────────────────────────────────────
-interface Chamber {
-  id: number
-  name: string
-  baseTimeHours: number
-  xpReward: number
-  artifact: boolean
-}
-
-interface ExplorationMap {
-  id: number
-  name: string
-  tier: string
-  xpRequired: number
-  image: string
-  energyCost: number
-  artifactLocation: string   // matches artifacts.location in DB
-  chambers: Chamber[]
-}
-
-// Which start/mid/claim checkpoints this run has already resolved.
-// Absent key == not yet seen. Populated from exploration_chamber_runs.story_state.
-type StorySeenMap = Partial<Record<CheckpointStage, boolean>>
-
-interface ChamberState {
-  status: 'idle' | 'running' | 'awaiting_story' | 'done'
-  startedAt?: number      // ms timestamp
-  durationMs?: number     // total ms for this run
-  progress?: number       // 0–100
-  artifactFound?: boolean // only true if the artifact roll actually hit
-  storySeen?: StorySeenMap
-}
-
-const MAX_ENERGY = 200
-
-// ── Maps Data ─────────────────────────────────────────────────
-// xpRequired values carry a flat +5% bump over their original figures
-// (30000->31500, 90000->94500, 250000->262500) on top of the sequential
-// full-completion gate below — the two gates are independent and both
-// must pass to unlock a map.
-const MAPS: ExplorationMap[] = [
-  {
-    id: 1, name: 'Greenfields', tier: 'I', xpRequired: 0,
-    artifactLocation: 'Greenfields',
-    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/2f3de4d78ede24c46d7a8ecf5f67b9c0.webp.jpg',
-    energyCost: MAX_ENERGY,
-    chambers: [
-      { id: 1, name: 'Mossy Gate',      baseTimeHours: 5, xpReward: 70,   artifact: false },
-      { id: 2, name: 'Thornwood Pass',  baseTimeHours: 5, xpReward: 110,  artifact: true  },
-      { id: 3, name: 'Sunken Altar',    baseTimeHours: 5, xpReward: 180,  artifact: false },
-      { id: 4, name: 'Root Labyrinth',  baseTimeHours: 5, xpReward: 260,  artifact: true  },
-      { id: 5, name: 'The Deep Hollow', baseTimeHours: 5, xpReward: 550,  artifact: true  },
-    ],
-  },
-  {
-    id: 2, name: 'Crystal Lake', tier: 'II', xpRequired: 31500,
-    artifactLocation: 'Crystal Lake',
-    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/45a3c9b17775c774156c9c924ed4a89e.webp.jpg',
-    energyCost: MAX_ENERGY,
-    chambers: [
-      { id: 1, name: 'Ember Arch',      baseTimeHours: 5, xpReward: 400,  artifact: false },
-      { id: 2, name: 'Cinder Hall',     baseTimeHours: 5, xpReward: 650,  artifact: true  },
-      { id: 3, name: 'Obsidian Court',  baseTimeHours: 5, xpReward: 900,  artifact: false },
-      { id: 4, name: 'The Ashen Keep',  baseTimeHours: 5, xpReward: 1200, artifact: false },
-      { id: 5, name: 'Pyroclast Vault', baseTimeHours: 5, xpReward: 2500, artifact: true  },
-    ],
-  },
-  {
-    id: 3, name: 'Under World', tier: 'III', xpRequired: 94500,
-    artifactLocation: 'Under World',
-    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/7c15d735d2aeb8fff833fdd949d5c4a3.jpg',
-    energyCost: MAX_ENERGY,
-    chambers: [
-      { id: 1, name: 'Salt Shore',        baseTimeHours: 5, xpReward: 1200, artifact: false },
-      { id: 2, name: 'Kelp Maze',         baseTimeHours: 5, xpReward: 2000, artifact: true  },
-      { id: 3, name: 'Drowned Citadel',   baseTimeHours: 5, xpReward: 3500, artifact: false },
-      { id: 4, name: 'Abyss Gate',        baseTimeHours: 5, xpReward: 6000, artifact: true  },
-      { id: 5, name: 'The Sunken Throne', baseTimeHours: 5, xpReward: 9000, artifact: false },
-    ],
-  },
-  {
-    id: 4, name: 'The Void', tier: 'IV', xpRequired: 262500,
-    artifactLocation: 'The Void',
-    image: 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/ecaf76f4607a37f03cfaac5babbc2826.jpg',
-    energyCost: MAX_ENERGY,
-    chambers: [
-      { id: 1, name: 'Cloud Vestibule', baseTimeHours: 5, xpReward: 3000,  artifact: false },
-      { id: 2, name: 'Star Corridor',   baseTimeHours: 5, xpReward: 5000,  artifact: true  },
-      { id: 3, name: 'Void Sanctum',    baseTimeHours: 5, xpReward: 8000,  artifact: true  },
-      { id: 4, name: 'Ether Pinnacle',  baseTimeHours: 5, xpReward: 11000, artifact: true  },
-      { id: 5, name: 'The Apex',        baseTimeHours: 5, xpReward: 15000, artifact: true  },
-    ],
-  },
-]
 
 const MAP5_IMAGE = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Artefacts/Map/edbe74644bf60a82c20ad2e3b69cb5ff.jpg'
 const AVATAR_PLACEHOLDER = 'https://gnobzfxtxrtcxfhhfjni.supabase.co/storage/v1/object/public/Adverts/Onboarding/ac50a770bef6d3a9b94eac44e946924f.jpg'
@@ -337,10 +242,8 @@ function MapCard({
   const locked = xpLocked || chainLocked || !!disabledByFlag
   const xpNeeded = map.xpRequired - playerXP
 
-  const tierColors: Record<string, string> = {
-    'I': '#3ecf8e', 'II': '#4f8ef7', 'III': '#9b6dff', 'IV': '#f5c542',
-  }
-  const tierColor = tierColors[map.tier] ?? '#888899'
+  const accent = tierColor(map.tier)
+  const [minCost, maxCost] = energyRange(map)
 
   return (
     <button
@@ -349,14 +252,14 @@ function MapCard({
       style={{
         position: 'relative', width: '100%',
         background: locked ? 'rgba(255,255,255,0.01)' : 'var(--surface)',
-        border: locked ? '1.5px solid rgba(255,255,255,0.04)' : `1.5px solid ${tierColor}33`,
+        border: locked ? '1.5px solid rgba(255,255,255,0.04)' : `1.5px solid ${accent}33`,
         borderRadius: 20,
         overflow: 'hidden',
         cursor: locked ? 'not-allowed' : 'pointer',
         padding: 0, textAlign: 'left',
         boxShadow: locked
           ? '4px 4px 12px var(--neu-dark)'
-          : `4px 4px 16px var(--neu-dark), -2px -2px 8px var(--neu-light), 0 0 24px ${tierColor}18`,
+          : `4px 4px 16px var(--neu-dark), -2px -2px 8px var(--neu-light), 0 0 24px ${accent}18`,
         transition: 'transform 0.18s, box-shadow 0.18s',
       }}
       onMouseEnter={e => { if (!locked) (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
@@ -375,11 +278,11 @@ function MapCard({
         {/* Tier badge */}
         <div style={{
           position: 'absolute', top: 10, left: 12,
-          background: locked ? 'rgba(255,255,255,0.06)' : `${tierColor}22`,
-          border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : tierColor + '55'}`,
+          background: locked ? 'rgba(255,255,255,0.06)' : `${accent}22`,
+          border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : accent + '55'}`,
           borderRadius: 8, padding: '3px 10px',
           fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
-          color: locked ? 'rgba(255,255,255,0.2)' : tierColor,
+          color: locked ? 'rgba(255,255,255,0.2)' : accent,
           textTransform: 'uppercase',
         }}>
           TIER {map.tier}
@@ -437,9 +340,9 @@ function MapCard({
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Battery size={11} style={{ color: locked ? 'rgba(255,255,255,0.12)' : tierColor }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: locked ? 'rgba(255,255,255,0.12)' : tierColor }}>
-              Full energy per chamber
+            <Battery size={11} style={{ color: locked ? 'rgba(255,255,255,0.12)' : accent }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: locked ? 'rgba(255,255,255,0.12)' : accent }}>
+              {minCost}–{maxCost} energy per site
             </span>
           </div>
         </div>
@@ -448,164 +351,9 @@ function MapCard({
   )
 }
 
-// ── Chamber Row ───────────────────────────────────────────────
-function ChamberRow({
-  chamber, index, state, onExplore, disabled, lockedReason,
-}: {
-  chamber: Chamber
-  index: number
-  state: ChamberState | null
-  onExplore: (c: Chamber) => void
-  disabled: boolean
-  lockedReason?: string
-}) {
-  const isRunning = state?.status === 'running'
-  const isDone = state?.status === 'done'
-
-  const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    if (!isRunning || !state?.startedAt || !state?.durationMs) return
-    const tick = () => {
-      const elapsed = Date.now() - state.startedAt!
-      setProgress(Math.min(100, (elapsed / state.durationMs!) * 100))
-    }
-    tick()
-    const iv = setInterval(tick, 10000) // update every 10s — no countdown shown
-    return () => clearInterval(iv)
-  }, [isRunning, state?.startedAt, state?.durationMs])
-
-  useEffect(() => { if (isDone) setProgress(100) }, [isDone])
-
-  return (
-    <div style={{
-      background: isDone ? 'rgba(62,207,142,0.04)' : 'var(--surface)',
-      border: isDone
-        ? '1.5px solid rgba(62,207,142,0.2)'
-        : isRunning
-          ? '1.5px solid rgba(155,109,255,0.25)'
-          : '1.5px solid rgba(255,255,255,0.05)',
-      borderRadius: 16,
-      padding: '14px 16px',
-      boxShadow: 'var(--elev-raise)',
-      transition: 'border-color 0.3s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Index / check */}
-        <div style={{
-          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-          background: isDone ? 'rgba(62,207,142,0.15)' : isRunning ? 'rgba(155,109,255,0.15)' : 'var(--surface2)',
-          border: isDone ? '1.5px solid rgba(62,207,142,0.4)' : isRunning ? '1.5px solid rgba(155,109,255,0.4)' : '1.5px solid rgba(255,255,255,0.07)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: isDone ? '0 0 10px rgba(62,207,142,0.2)' : 'none',
-        }}>
-          {isDone
-            ? <span style={{ fontSize: 14 }}>✓</span>
-            : <span style={{ fontSize: 12, fontWeight: 800, color: isRunning ? '#9b6dff' : 'var(--text-muted)' }}>{index + 1}</span>
-          }
-        </div>
-
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 14, fontWeight: 800,
-            color: isDone ? '#3ecf8e' : 'var(--text)',
-            marginBottom: 3,
-          }}>
-            {chamber.name}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {isDone ? (
-              <>
-                <span style={{ color: '#f5c542', fontWeight: 700 }}>+{chamber.xpReward} XP</span>
-                {chamber.artifact && (
-                  state?.artifactFound
-                    ? <span style={{ color: '#9b6dff' }}>🏺 Artifact found</span>
-                    : <span style={{ color: 'rgba(255,255,255,0.35)' }}>Oops, you didn't successfully claim an artifact</span>
-                )}
-              </>
-            ) : (
-              <>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Zap size={10} style={{ color: '#f5c542' }} />+{fmtXP(chamber.xpReward)} XP
-                </span>
-                {chamber.artifact && <span style={{ color: 'rgba(155,109,255,0.6)' }}>may contain artifact</span>}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Action */}
-        {!isDone && !isRunning && (
-          <button
-            type="button"
-            onClick={() => onExplore(chamber)}
-            disabled={disabled}
-            style={{
-              padding: '8px 16px', borderRadius: 12, flexShrink: 0,
-              background: disabled ? 'var(--surface2)' : 'linear-gradient(135deg,#9b6dff,#4f8ef7)',
-              border: 'none',
-              color: disabled ? 'var(--text-muted)' : '#fff',
-              fontSize: 12, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer',
-              boxShadow: disabled ? 'none' : '0 4px 14px rgba(155,109,255,0.4)',
-              opacity: disabled ? 0.5 : 1,
-            }}
-          >
-            Explore
-          </button>
-        )}
-        {isDone && <Trophy size={16} style={{ color: '#3ecf8e', flexShrink: 0 }} />}
-        {isRunning && (
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#9b6dff', flexShrink: 0,
-            boxShadow: '0 0 8px #9b6dff',
-            animation: 'pulse 1.8s ease-in-out infinite',
-          }} />
-        )}
-      </div>
-
-      {/* Locked reason */}
-      {!isDone && !isRunning && lockedReason && (
-        <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Lock size={10} /> {lockedReason}
-        </div>
-      )}
-
-      {/* Progress bar */}
-      {(isRunning || isDone) && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{
-            height: 5, borderRadius: 4,
-            background: 'var(--surface2)',
-            overflow: 'hidden',
-            boxShadow: 'var(--elev-inset)',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${progress}%`,
-              background: isDone ? 'linear-gradient(90deg,#3ecf8e,#4f8ef7)' : 'linear-gradient(90deg,#9b6dff,#4f8ef7)',
-              borderRadius: 4,
-              transition: isDone ? 'none' : 'width 1s linear',
-              boxShadow: isDone ? '0 0 8px rgba(62,207,142,0.5)' : '0 0 8px rgba(155,109,255,0.5)',
-            }} />
-          </div>
-          {isRunning && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-              <span style={{ fontSize: 10, color: '#9b6dff', fontWeight: 700 }}>
-                {Math.floor(progress)}%
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Map View ──────────────────────────────────────────────────
 function MapView({
-  map, energy, refreshEnergy, spendEnergy, onBack, userId,
+  map, energy, refreshEnergy, spendEnergy, onBack, userId, avatarUrl,
 }: {
   map: ExplorationMap
   energy: number
@@ -613,6 +361,7 @@ function MapView({
   spendEnergy: (amount: number) => Promise<boolean>
   onBack: () => void
   userId: string | null
+  avatarUrl?: string | null
 }) {
   const [chamberStates, setChamberStates] = useState<Record<number, ChamberState>>({})
   const [loadingRuns, setLoadingRuns] = useState(true)
@@ -620,35 +369,23 @@ function MapView({
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
   const claimingRef = useRef<Set<number>>(new Set())
 
-  // Story checkpoint currently on screen (at most one at a time). Only
-  // chambers with content in STORY_CONTENT[map.id] ever set this.
-  const [activeCheckpoint, setActiveCheckpoint] = useState<{
-    chamber: Chamber
-    stage: CheckpointStage
-    onResolved: (oddsDelta: number) => void | Promise<void>
-  } | null>(null)
-
-  const tierColors: Record<string, string> = {
-    'I': '#3ecf8e', 'II': '#4f8ef7', 'III': '#9b6dff', 'IV': '#f5c542',
-  }
-  const tierColor = tierColors[map.tier] ?? '#9b6dff'
+  const accent = tierColor(map.tier)
 
   function showToast(msg: string, color = '#9b6dff') {
     setToast({ msg, color })
     setTimeout(() => setToast(null), 4000)
   }
 
-  // Base 15% drop, adjusted by any claim-checkpoint story choice for this run
-  // (oddsDelta, 0 if the chamber has no story content or the player never
-  // saw a claim checkpoint). Story-exclusive artifacts are never part of
-  // this random pool — those are only ever granted directly by
-  // apply_story_checkpoint's grant_artifact effect.
+  // Flat 15% drop. This used to be modulated by claim-checkpoint story
+  // choices; with the narrator removed there's no per-run modifier left, so
+  // the rate is constant. Story-exclusive artifacts stay out of this pool.
   // Returns true only if an artifact was actually granted, so the UI never claims
   // "Artifact found" unless something was really added to the player's inventory.
-  async function tryArtifactDrop(oddsDelta = 0): Promise<boolean> {
+  const ARTIFACT_DROP_CHANCE = 0.15
+
+  async function tryArtifactDrop(): Promise<boolean> {
     if (!userId) return false
-    const chance = Math.min(0.6, Math.max(0.05, 0.15 + oddsDelta))
-    if (Math.random() > chance) return false
+    if (Math.random() > ARTIFACT_DROP_CHANCE) return false
 
     // Fetch all artifacts in this location that the player doesn't own yet
     const { data: owned } = await supabase
@@ -681,36 +418,6 @@ function MapView({
     return false
   }
 
-  // Looks up this chamber's checkpoint content for the given stage, if any.
-  // Maps/chambers with no authored story (everything but Greenfields today)
-  // simply return undefined and every story trigger below no-ops.
-  function getCheckpoint(chamberId: number, stage: CheckpointStage) {
-    return STORY_CONTENT[map.id]?.[chamberId]?.[stage]
-  }
-
-  // Calls apply_story_checkpoint for the picked option, applies the flag/
-  // XP/artifact-grant effects server-side, marks the stage seen locally so
-  // it can't retrigger, and resolves with the odds_delta the RPC computed
-  // (0 for anything but a claim-stage pick with artifact_odds_delta effects).
-  async function resolveCheckpoint(chamber: Chamber, stage: CheckpointStage, option: StoryChoiceOption): Promise<number> {
-    setChamberStates(s => ({
-      ...s,
-      [chamber.id]: { ...s[chamber.id], storySeen: { ...s[chamber.id]?.storySeen, [stage]: true } },
-    }))
-
-    if (!userId) return 0
-    const { data, error } = await supabase.rpc('apply_story_checkpoint', {
-      p_user_id: userId,
-      p_map_id: map.id,
-      p_chamber_id: chamber.id,
-      p_stage: stage,
-      p_choice_id: option.id,
-      p_effects: option.effects,
-    })
-    if (error) return 0
-    return typeof data?.odds_delta === 'number' ? data.odds_delta : 0
-  }
-
   // Load this map's chamber runs from the DB — this is what makes the
   // timer survive navigation/refresh/closing the tab, since started_at
   // and ends_at are server timestamps, not a JS setTimeout.
@@ -718,7 +425,7 @@ function MapView({
     if (!userId) { setLoadingRuns(false); return }
     const { data, error } = await supabase
       .from('exploration_chamber_runs')
-      .select('chamber_id, started_at, ends_at, claimed, artifact_awarded, story_state')
+      .select('chamber_id, started_at, ends_at, claimed, artifact_awarded')
       .eq('user_id', userId)
       .eq('map_id', map.id)
 
@@ -728,17 +435,11 @@ function MapView({
     for (const row of data ?? []) {
       const startedAt = new Date(row.started_at).getTime()
       const endsAt = new Date(row.ends_at).getTime()
-      const storyState = (row.story_state ?? {}) as Record<string, { seen?: boolean }>
       next[row.chamber_id] = {
         status: row.claimed ? 'done' : 'running',
         startedAt,
         durationMs: endsAt - startedAt,
         artifactFound: !!row.artifact_awarded,
-        storySeen: {
-          start: !!storyState.start?.seen,
-          mid: !!storyState.mid?.seen,
-          claim: !!storyState.claim?.seen,
-        },
       }
     }
     setChamberStates(next)
@@ -747,12 +448,9 @@ function MapView({
 
   useEffect(() => { loadRuns() }, [userId, map.id])
 
-  // Shared by checkCompletions (no story, or claim checkpoint already
-  // resolved) and by the claim-checkpoint overlay's onResolved callback
-  // (story checkpoint just resolved, oddsDelta comes from its effects).
   // claimingRef guards against double-claims if this fires twice before
   // the DB update lands.
-  async function finalizeClaim(chamber: Chamber, oddsDelta: number) {
+  async function finalizeClaim(chamber: Chamber) {
     if (!userId) return
     if (claimingRef.current.has(chamber.id)) return
     claimingRef.current.add(chamber.id)
@@ -776,7 +474,7 @@ function MapView({
 
       let artifactFound = false
       if (chamber.artifact) {
-        artifactFound = await tryArtifactDrop(oddsDelta)
+        artifactFound = await tryArtifactDrop()
         // Persist the real outcome so the "Artifact found" label survives
         // navigation/refresh and never shows unless something was granted.
         await supabase
@@ -799,59 +497,30 @@ function MapView({
     claimingRef.current.delete(chamber.id)
   }
 
-  // Every 15s, check for any running chamber that has crossed a story
-  // checkpoint (mid at 50% elapsed, claim at completion) or whose ends_at
-  // has passed with no story content, and handle it exactly once.
+  // Every 15s, claim any running chamber whose ends_at has passed. With the
+  // story checkpoints gone this is the only completion path left.
   useEffect(() => {
     async function checkCompletions() {
-      if (!userId || activeCheckpoint) return
+      if (!userId) return
       const now = Date.now()
 
       for (const chamber of map.chambers) {
         const st = chamberStates[chamber.id]
         if (!st || st.status !== 'running' || !st.startedAt || !st.durationMs) continue
-
-        // Mid checkpoint — fires once, at 50% elapsed. Checked before the
-        // completion guard below so it still surfaces even if the chamber
-        // finished entirely while nobody had the map open.
-        const midCheckpoint = getCheckpoint(chamber.id, 'mid')
-        if (midCheckpoint && !st.storySeen?.mid && now >= st.startedAt + st.durationMs * 0.5) {
-          setActiveCheckpoint({ chamber, stage: 'mid', onResolved: () => {} })
-          return
-        }
-
         if (now < st.startedAt + st.durationMs) continue
         if (claimingRef.current.has(chamber.id)) continue
 
-        const claimCheckpoint = getCheckpoint(chamber.id, 'claim')
-        if (claimCheckpoint && !st.storySeen?.claim) {
-          setChamberStates(s => ({ ...s, [chamber.id]: { ...s[chamber.id], status: 'awaiting_story' } }))
-          setActiveCheckpoint({
-            chamber, stage: 'claim',
-            onResolved: oddsDelta => finalizeClaim(chamber, oddsDelta),
-          })
-          return
-        }
-
-        await finalizeClaim(chamber, 0)
+        await finalizeClaim(chamber)
       }
     }
 
     const iv = setInterval(checkCompletions, 15000)
     checkCompletions()
     return () => clearInterval(iv)
-  }, [chamberStates, userId, map.id, activeCheckpoint])
-
-  async function handleCheckpointComplete(option: StoryChoiceOption) {
-    if (!activeCheckpoint) return
-    const { chamber, stage, onResolved } = activeCheckpoint
-    const oddsDelta = await resolveCheckpoint(chamber, stage, option)
-    setActiveCheckpoint(null)
-    await onResolved(oddsDelta)
-  }
+  }, [chamberStates, userId, map.id])
 
   async function handleExplore(chamber: Chamber) {
-    const ok = await spendEnergy(map.energyCost)
+    const ok = await spendEnergy(chamber.energyCost)
     if (!ok) {
       showToast('Not enough energy!', '#ef4444')
       return
@@ -879,13 +548,8 @@ function MapView({
 
     setChamberStates(s => ({
       ...s,
-      [chamber.id]: { status: 'running', startedAt: startedAt.getTime(), durationMs, progress: 0 },
+      [chamber.id]: { status: 'running', startedAt: startedAt.getTime(), durationMs },
     }))
-
-    const startCheckpoint = getCheckpoint(chamber.id, 'start')
-    if (startCheckpoint) {
-      setActiveCheckpoint({ chamber, stage: 'start', onResolved: () => {} })
-    }
   }
 
   const doneCount = Object.values(chamberStates).filter(s => s.status === 'done').length
@@ -904,110 +568,34 @@ function MapView({
 
   return (
     <div style={{ paddingBottom: 100 }}>
-      {/* Back */}
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20,
-          background: 'var(--surface)',
-          border: '1.5px solid rgba(255,255,255,0.07)',
-          borderRadius: 12, padding: '8px 16px',
-          color: 'var(--text-muted)', fontSize: 13, fontWeight: 700,
-          cursor: 'pointer',
-          boxShadow: 'var(--elev-raise)',
-        }}
-      >
-        <ChevronLeft size={16} /> Back
-      </button>
+      <RegionMap
+        map={map}
+        chamberStates={chamberStates}
+        energy={energy}
+        loadingRuns={loadingRuns}
+        onExplore={handleExplore}
+        onBack={onBack}
+        avatarUrl={avatarUrl}
+      />
 
-      {/* Map image banner */}
-      <div style={{
-        position: 'relative', width: '100%', aspectRatio: '16/7',
-        borderRadius: 20, overflow: 'hidden',
-        border: `1.5px solid ${tierColor}33`,
-        marginBottom: 16,
-        boxShadow: `4px 4px 20px var(--neu-dark), 0 0 30px ${tierColor}18`,
-      }}>
-        <img src={map.image} alt={map.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.75)' }}
-        />
-        {/* Gradient overlay */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, rgba(10,10,14,0.9) 0%, transparent 50%)',
-        }} />
-
-        {/* Tier badge */}
-        <div style={{
-          position: 'absolute', top: 14, left: 14,
-          background: `${tierColor}22`, border: `1px solid ${tierColor}55`,
-          borderRadius: 8, padding: '4px 12px',
-          fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
-          color: tierColor, textTransform: 'uppercase',
-        }}>
-          TIER {map.tier}
-        </div>
-
-        {/* Chamber progress dots */}
-        <div style={{
-          position: 'absolute', bottom: 14, left: 16, right: 16,
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          {map.chambers.map((c, i) => {
-            const st = chamberStates[c.id]
-            const done = st?.status === 'done'
-            const running = st?.status === 'running'
-            return (
-              <div key={c.id} style={{
-                width: done ? 24 : running ? 20 : 16,
-                height: done ? 24 : running ? 20 : 16,
-                borderRadius: '50%',
-                background: done ? '#3ecf8e' : running ? '#9b6dff' : 'rgba(255,255,255,0.12)',
-                border: `2px solid ${done ? '#3ecf8e' : running ? '#9b6dff' : 'rgba(255,255,255,0.15)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, color: '#fff', fontWeight: 800,
-                transition: 'background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out)',
-                boxShadow: done ? '0 0 10px rgba(62,207,142,0.5)' : running ? '0 0 10px rgba(155,109,255,0.5)' : 'none',
-              }}>
-                {done ? '✓' : i + 1}
-              </div>
-            )
-          })}
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>
-            {doneCount}/{map.chambers.length}
-          </span>
-        </div>
-
-        {/* Title */}
-        <div style={{
-          position: 'absolute', bottom: 48, left: 16,
-          fontSize: 20, fontWeight: 800, color: '#fff',
-          textShadow: '0 2px 12px rgba(0,0,0,0.8)',
-        }}>
-          {map.name}
-        </div>
-      </div>
-
-      {/* Map progress bar */}
+      {/* Map progress */}
       <div style={{
         background: 'var(--surface)',
         border: '1.5px solid rgba(255,255,255,0.06)',
         borderRadius: 16, padding: '14px 16px',
-        marginBottom: 14,
+        margin: '16px 0 14px',
         boxShadow: 'var(--elev-raise)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Map Progress</span>
-          <span style={{ fontSize: 11, fontWeight: 800, color: tierColor }}>{Math.floor(progressPct)}%</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Region surveyed</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: accent }}>{Math.floor(progressPct)}%</span>
         </div>
         <div style={{ height: 6, borderRadius: 4, background: 'var(--surface2)', overflow: 'hidden', boxShadow: 'var(--elev-inset)' }}>
           <div style={{
             height: '100%', width: `${progressPct}%`,
-            background: `linear-gradient(90deg, ${tierColor}bb, ${tierColor})`,
+            background: `linear-gradient(90deg, ${accent}bb, ${accent})`,
             borderRadius: 4, transition: 'width 0.6s ease',
-            boxShadow: `0 0 8px ${tierColor}66`,
+            boxShadow: `0 0 8px ${accent}66`,
           }} />
         </div>
       </div>
@@ -1029,36 +617,6 @@ function MapView({
         </div>
       )}
 
-      {/* Chambers */}
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12 }}>
-        Chambers
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {map.chambers.map((chamber, i) => {
-          const prevDone = i === 0 || chamberStates[map.chambers[i - 1].id]?.status === 'done'
-          const notEnoughEnergy = energy < map.energyCost
-          const lockedReason = loadingRuns
-            ? undefined
-            : !prevDone
-            ? 'Explore the previous chamber first'
-            : notEnoughEnergy
-            ? 'Not enough energy'
-            : undefined
-
-          return (
-            <ChamberRow
-              key={chamber.id}
-              chamber={chamber}
-              index={i}
-              state={chamberStates[chamber.id] ?? null}
-              onExplore={handleExplore}
-              disabled={loadingRuns || !prevDone || notEnoughEnergy}
-              lockedReason={lockedReason}
-            />
-          )
-        })}
-      </div>
-
       {/* Toast */}
       {toast && (
         <div style={{
@@ -1076,13 +634,6 @@ function MapView({
         </div>
       )}
 
-      {/* Story checkpoint */}
-      {activeCheckpoint && (() => {
-        const checkpoint = getCheckpoint(activeCheckpoint.chamber.id, activeCheckpoint.stage)
-        return checkpoint ? (
-          <StoryCheckpointOverlay checkpoint={checkpoint} onComplete={handleCheckpointComplete} />
-        ) : null
-      })()}
     </div>
   )
 }
@@ -1279,6 +830,7 @@ export default function Exploration() {
             spendEnergy={spendEnergy}
             onBack={() => { setActiveMap(null); loadMapCompletion() }}
             userId={userId}
+            avatarUrl={profile?.avatar ?? null}
           />
         ) : (
           <>
